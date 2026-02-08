@@ -5,13 +5,16 @@ import { useRouter } from 'next/navigation';
 
 interface User {
   _id: string;
-  firstName: string;
-  lastName: string;
+  firstName?: string; // For regular users
+  lastName?: string; // For regular users
+  name?: string; // For workshops
   email: string;
   phone: string;
   status: boolean;
   role?: string;
-  type?: string;
+  type?: string; // 'user' or 'workshop'
+  adr?: string; // For workshops
+  verfie?: boolean; // For workshops
 }
 
 interface UserContextType {

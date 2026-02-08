@@ -30,6 +30,7 @@ export default function RegisterPage() {
     email: "",
     adr: "",
     phone: "",
+    type: "",
     password: "",
     confirmPassword: "",
   });
@@ -47,7 +48,7 @@ export default function RegisterPage() {
     if (formErrors.length > 0) setFormErrors([]);
   };
 
-  const handleWorkshopChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleWorkshopChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setWorkshopData({
       ...workshopData,
       [e.target.name]: e.target.value,
@@ -135,6 +136,7 @@ export default function RegisterPage() {
             email: workshopData.email.trim(),
             adr: workshopData.adr,
             phone: workshopData.phone.trim(),
+            type: workshopData.type,
             password: workshopData.password,
           }),
         });
@@ -159,6 +161,7 @@ export default function RegisterPage() {
           email: "",
           adr: "",
           phone: "",
+          type: "",
           password: "",
           confirmPassword: "",
         });
@@ -643,6 +646,24 @@ export default function RegisterPage() {
                   className="appearance-none relative block w-full px-4 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-colors"
                   placeholder="Nom de l'atelier"
                 />
+              </div>
+
+              <div>
+                <label htmlFor="w_type" className="block text-sm font-medium text-gray-700 mb-2">
+                  Type d&apos;atelier *
+                </label>
+                <select
+                  id="w_type"
+                  name="type"
+                  required
+                  value={workshopData.type}
+                  onChange={handleWorkshopChange}
+                  className="appearance-none relative block w-full px-4 py-3 border border-gray-300 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-colors bg-white"
+                >
+                  <option value="">Sélectionner un type</option>
+                  <option value="mechanic">Mécanique</option>
+                  <option value="car_cover">Inspecteur de véhicules</option>
+                </select>
               </div>
 
               <div>

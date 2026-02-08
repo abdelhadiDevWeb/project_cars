@@ -6,6 +6,7 @@ import { useState, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useUser } from "@/contexts/UserContext";
 import { io, Socket } from 'socket.io-client';
+import { getImageUrl } from "@/utils/backend";
 
 export default function WorkshopDashboardLayout({
   children,
@@ -18,6 +19,7 @@ export default function WorkshopDashboardLayout({
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [socket, setSocket] = useState<Socket | null>(null);
+  const [profileImage, setProfileImage] = useState<string | null>(null);
   const pathname = usePathname();
   const router = useRouter();
   const { user, token, userType, userRole, isLoading, isAuthenticated, logout } = useUser();
@@ -45,7 +47,56 @@ export default function WorkshopDashboardLayout({
       router.push('/login');
       return;
     }
+
+    // Fetch profile image
+    if (user && (user._id || user.id)) {
+      fetchProfileImage();
+    }
   }, [isLoading, isAuthenticated, token, user, userType, router, logout]);
+
+  // Fetch profile image
+  const fetchProfileImage = async () => {
+    if (!user?._id && !user?.id) return;
+
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      const userId = user._id || user.id;
+      const res = await fetch(`/api/user-image/${userId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.ok && data.userImage) {
+          setProfileImage(data.userImage.image);
+        } else {
+          setProfileImage(null);
+        }
+      } else {
+        setProfileImage(null);
+      }
+    } catch (error) {
+      console.error('Error fetching profile image:', error);
+      setProfileImage(null);
+    }
+  };
+
+  // Listen for profile image updates
+  useEffect(() => {
+    const handleProfileImageUpdate = (event: CustomEvent) => {
+      setProfileImage(event.detail.image);
+    };
+
+    window.addEventListener('profileImageUpdated', handleProfileImageUpdate as EventListener);
+
+    return () => {
+      window.removeEventListener('profileImageUpdated', handleProfileImageUpdate as EventListener);
+    };
+  }, []);
 
   // Fetch notifications
   const fetchNotifications = async () => {
@@ -184,7 +235,7 @@ export default function WorkshopDashboardLayout({
 
   const navItems = [
     { name: 'Tableau de bord', icon: 'dashboard', path: '/dashboard-workshop' },
-    { name: 'Commandes de vérification', icon: 'orders', path: '/dashboard-workshop/orders' },
+    { name: 'Liste du jour', icon: 'today', path: '/dashboard-workshop/today' },
     { name: 'Rendez-vous', icon: 'appointment', path: '/dashboard-workshop/appointments' },
     { name: 'Statistiques', icon: 'stats', path: '/dashboard-workshop/statistics' },
     { name: 'Profil', icon: 'profile', path: '/dashboard-workshop/profile' },
@@ -248,11 +299,6 @@ export default function WorkshopDashboardLayout({
                         <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z" />
                       </svg>
                     )}
-                    {item.icon === 'orders' && (
-                      <svg fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M10 2a4 4 0 00-4 4v1H5a1 1 0 00-.994.89l-1 9A1 1 0 004 18h12a1 1 0 00.994-1.11l-1-9A1 1 0 0015 7h-1V6a4 4 0 00-4-4zm2 5V6a2 2 0 10-4 0v1h4zm-6 3a1 1 0 112 0 1 1 0 01-2 0zm7-1a1 1 0 100 2 1 1 0 000-2z" clipRule="evenodd" />
-                      </svg>
-                    )}
                     {item.icon === 'appointment' && (
                       <svg fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
@@ -266,6 +312,11 @@ export default function WorkshopDashboardLayout({
                     {item.icon === 'profile' && (
                       <svg fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                      </svg>
+                    )}
+                    {item.icon === 'today' && (
+                      <svg fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
                       </svg>
                     )}
                   </div>
@@ -417,13 +468,25 @@ export default function WorkshopDashboardLayout({
                 onClick={() => setShowUserMenu(!showUserMenu)}
                 className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-gray-50 transition-colors cursor-pointer"
               >
-                <div className="w-11 h-11 bg-gradient-to-br from-blue-600 to-indigo-500 rounded-full flex items-center justify-center text-white font-semibold shadow-lg hover:shadow-xl transition-shadow">
-                  {user ? (
-                    user.name ? (
-                      user.name.substring(0, 2).toUpperCase()
-                    ) : 'W'
-                  ) : 'W'}
-                </div>
+                {profileImage ? (
+                  <div className="relative w-11 h-11 rounded-full overflow-hidden border-2 border-blue-500 shadow-lg">
+                    <Image
+                      src={getImageUrl(profileImage) || '/images/default-avatar.png'}
+                      alt={user?.name || 'Atelier'}
+                      fill
+                      className="object-cover"
+                      unoptimized
+                    />
+                  </div>
+                ) : (
+                  <div className="w-11 h-11 bg-gradient-to-br from-blue-600 to-indigo-500 rounded-full flex items-center justify-center text-white font-semibold shadow-lg hover:shadow-xl transition-shadow">
+                    {user ? (
+                      user.name ? (
+                        user.name.substring(0, 2).toUpperCase()
+                      ) : 'W'
+                    ) : 'W'}
+                  </div>
+                )}
                 <div className="hidden md:block">
                   <p className="text-sm font-semibold text-gray-900">
                     {user ? (user.name || 'Atelier') : 'Atelier'}
@@ -431,6 +494,11 @@ export default function WorkshopDashboardLayout({
                   <p className="text-xs text-gray-500">
                     {user?.email || 'Email'}
                   </p>
+                  {user?.type && (
+                    <p className="text-xs text-blue-600 font-medium mt-0.5">
+                      {user.type === 'mechanic' ? 'Mécanicien' : 'Technicien en carrosserie automobile'}
+                    </p>
+                  )}
                 </div>
                 <svg className={`w-5 h-5 text-gray-400 hidden md:block transition-transform ${showUserMenu ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />

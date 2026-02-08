@@ -1,16 +1,20 @@
 'use client';
 
-import { useState, useEffect } from "react";
+import Image from "next/image";
+import { useState, useEffect, useRef } from "react";
+import { useUser } from "@/contexts/UserContext";
+import { useRouter } from "next/navigation";
+import { getImageUrl } from "@/utils/backend";
 
 export default function WorkshopProfilePage() {
+  const router = useRouter();
+  const { user, isLoading, updateUser, refreshUser } = useUser();
   const [activeTab, setActiveTab] = useState('profile');
-  const [user, setUser] = useState<any>(null);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     phone: '',
     adr: '',
-    description: '',
   });
 
   const [passwordData, setPasswordData] = useState({
@@ -19,26 +23,212 @@ export default function WorkshopProfilePage() {
     confirmPassword: '',
   });
 
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [isDeletingImage, setIsDeletingImage] = useState(false);
+  const [profileImage, setProfileImage] = useState<string | null>(null);
+  const [error, setError] = useState('');
+  const [errors, setErrors] = useState<string[]>([]);
+  const [success, setSuccess] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Load user data when component mounts or user changes
   useEffect(() => {
-    const userData = localStorage.getItem('user');
-    if (userData) {
-      try {
-        const parsedUser = JSON.parse(userData);
-        setUser(parsedUser);
-        setFormData({
-          name: parsedUser.name || '',
-          email: parsedUser.email || '',
-          phone: parsedUser.phone || '',
-          adr: parsedUser.adr || '',
-          description: parsedUser.description || '',
-        });
-      } catch (error) {
-        console.error('Error parsing user data:', error);
-      }
+    if (user && !isLoading) {
+      setFormData({
+        name: user.name || '',
+        email: user.email || '',
+        phone: user.phone || '',
+        adr: user.adr || '',
+      });
+      // Fetch profile image
+      fetchProfileImage();
     }
-  }, []);
+  }, [user, isLoading]);
+
+  // Fetch profile image
+  const fetchProfileImage = async () => {
+    if (!user?._id && !user?.id) return;
+
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      const userId = user._id || user.id;
+      const res = await fetch(`/api/user-image/${userId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.ok && data.userImage) {
+          setProfileImage(data.userImage.image);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching profile image:', error);
+    }
+  };
+
+  // Redirect if not authenticated
+  useEffect(() => {
+    if (!isLoading && !user) {
+      router.push('/login');
+    }
+  }, [isLoading, user, router]);
+
+  // Handle profile image upload
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
+    if (!allowedTypes.includes(file.type)) {
+      setError("Type de fichier non autorisé. Seules les images (JPEG, PNG, WEBP, GIF) sont acceptées.");
+      return;
+    }
+
+    // Validate file size (5MB max)
+    if (file.size > 5 * 1024 * 1024) {
+      setError("L'image est trop grande. La taille maximale est de 5MB.");
+      return;
+    }
+
+    setIsUploadingImage(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        router.push('/login');
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('profileImage', file);
+
+      const res = await fetch('/api/user-image/upload', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      // Check if response is JSON
+      const contentType = res.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        const text = await res.text();
+        console.error("Non-JSON response:", text.substring(0, 200));
+        setError("Erreur serveur: réponse invalide");
+        setIsUploadingImage(false);
+        return;
+      }
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data?.message || "Erreur lors de l'upload de l'image");
+        setIsUploadingImage(false);
+        return;
+      }
+
+      // Update profile image state
+      if (data.userImage) {
+        setProfileImage(data.userImage.image);
+        // Dispatch event to update header image
+        window.dispatchEvent(new CustomEvent('profileImageUpdated', { 
+          detail: { image: data.userImage.image } 
+        }));
+      }
+
+      setSuccess("Image de profil mise à jour avec succès");
+      setIsUploadingImage(false);
+      
+      // Clear success message after 3 seconds
+      setTimeout(() => setSuccess(''), 3000);
+      
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    } catch (error) {
+      console.error('Error uploading profile image:', error);
+      setError("Erreur de connexion. Veuillez réessayer.");
+      setIsUploadingImage(false);
+    }
+  };
+
+  // Handle profile image deletion
+  const handleImageDelete = async () => {
+    if (!confirm("Êtes-vous sûr de vouloir supprimer votre image de profil ?")) {
+      return;
+    }
+
+    setIsDeletingImage(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        router.push('/login');
+        return;
+      }
+
+      const res = await fetch('/api/user-image/delete', {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      // Check if response is JSON
+      const contentType = res.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        const text = await res.text();
+        console.error("Non-JSON response:", text.substring(0, 200));
+        setError("Erreur serveur: réponse invalide");
+        setIsDeletingImage(false);
+        return;
+      }
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data?.message || "Erreur lors de la suppression de l'image");
+        setIsDeletingImage(false);
+        return;
+      }
+
+      // Clear profile image
+      setProfileImage(null);
+      // Dispatch event to update header image
+      window.dispatchEvent(new CustomEvent('profileImageUpdated', { 
+        detail: { image: null } 
+      }));
+      setSuccess("Image de profil supprimée avec succès");
+      setIsDeletingImage(false);
+      
+      // Clear success message after 3 seconds
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (error) {
+      console.error('Error deleting profile image:', error);
+      setError("Erreur de connexion. Veuillez réessayer.");
+      setIsDeletingImage(false);
+    }
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    // Clear errors when user starts typing
+    if (error) setError('');
+    if (errors.length > 0) setErrors([]);
+    
     setFormData({
       ...formData,
       [e.target.name]: e.target.value,
@@ -46,6 +236,10 @@ export default function WorkshopProfilePage() {
   };
 
   const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Clear errors when user starts typing
+    if (error) setError('');
+    if (errors.length > 0) setErrors([]);
+    
     setPasswordData({
       ...passwordData,
       [e.target.name]: e.target.value,
@@ -54,22 +248,156 @@ export default function WorkshopProfilePage() {
 
   const handleProfileSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: API call to update profile
-    console.log('Updating workshop profile:', formData);
-    alert('Profil mis à jour avec succès!');
+    setIsUpdating(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        router.push('/login');
+        return;
+      }
+
+      const res = await fetch('/api/auth/profile', {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: formData.name,
+          phone: formData.phone,
+          adr: formData.adr,
+        }),
+      });
+
+      // Check if response is JSON
+      const contentType = res.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        const text = await res.text();
+        console.error("Non-JSON response:", text.substring(0, 200));
+        setError("Erreur serveur: réponse invalide");
+        setIsUpdating(false);
+        return;
+      }
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data?.message || "Erreur lors de la mise à jour du profil");
+        setIsUpdating(false);
+        return;
+      }
+
+      // Update user context
+      if (data.user) {
+        updateUser(data.user);
+        await refreshUser();
+      }
+
+      setSuccess("Profil mis à jour avec succès");
+      setIsUpdating(false);
+      
+      // Clear success message after 3 seconds
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      setError("Erreur de connexion. Veuillez réessayer.");
+      setIsUpdating(false);
+    }
   };
 
-  const handlePasswordSubmit = (e: React.FormEvent) => {
+  const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
+    setErrors([]);
+    setSuccess('');
+
+    // Client-side validation
     if (passwordData.newPassword !== passwordData.confirmPassword) {
-      alert('Les mots de passe ne correspondent pas');
+      setError('Les mots de passe ne correspondent pas');
       return;
     }
-    // TODO: API call to update password
-    console.log('Updating password');
-    setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
-    alert('Mot de passe modifié avec succès!');
+
+    setIsChangingPassword(true);
+
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        router.push('/login');
+        return;
+      }
+
+      const res = await fetch('/api/auth/password', {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          currentPassword: passwordData.currentPassword,
+          newPassword: passwordData.newPassword,
+        }),
+      });
+
+      // Check if response is JSON
+      const contentType = res.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        const text = await res.text();
+        console.error("Non-JSON response:", text.substring(0, 200));
+        setError("Erreur serveur: réponse invalide");
+        setIsChangingPassword(false);
+        return;
+      }
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        // Check for detailed validation errors
+        if (data?.errors && Array.isArray(data.errors) && data.errors.length > 0) {
+          setErrors(data.errors);
+          setError(data?.message || "Erreur de validation");
+        } else {
+          setError(data?.message || "Erreur lors du changement de mot de passe");
+          setErrors([]);
+        }
+        setIsChangingPassword(false);
+        return;
+      }
+
+      setSuccess("Mot de passe modifié avec succès");
+      setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      setErrors([]);
+      setIsChangingPassword(false);
+      
+      // Clear success message after 3 seconds
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (error) {
+      console.error('Error changing password:', error);
+      setError("Erreur de connexion. Veuillez réessayer.");
+      setErrors([]);
+      setIsChangingPassword(false);
+    }
   };
+
+  if (isLoading) {
+    return (
+      <div className="p-6 bg-gradient-to-br from-gray-50 via-blue-50/30 to-gray-100 flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <svg className="animate-spin h-12 w-12 text-blue-500 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          <p className="mt-4 text-gray-600">Chargement...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null;
+  }
 
   return (
     <div className="p-6 bg-gradient-to-br from-gray-50 via-blue-50/30 to-gray-100">
@@ -79,32 +407,131 @@ export default function WorkshopProfilePage() {
       </div>
 
       <div className="max-w-4xl mx-auto">
+        {/* Error/Success Messages */}
+        {error && (
+          <div className="mb-6 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg" role="alert">
+            <div className="flex items-center justify-between mb-2">
+              <span className="font-semibold">{error}</span>
+              <button onClick={() => { setError(''); setErrors([]); }} className="text-red-700 hover:text-red-900">
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                </svg>
+              </button>
+            </div>
+            {errors.length > 0 && (
+              <ul className="list-disc list-inside text-sm mt-2 space-y-1">
+                {errors.map((err, index) => (
+                  <li key={index}>{err}</li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+
+        {success && (
+          <div className="mb-6 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-lg flex items-center justify-between" role="alert">
+            <span>{success}</span>
+            <button onClick={() => setSuccess('')} className="text-green-700 hover:text-green-900">
+              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+              </svg>
+            </button>
+          </div>
+        )}
+
         {/* Profile Header */}
         <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-200 mb-6">
           <div className="flex items-center gap-6">
-            <div className="relative w-24 h-24 bg-gradient-to-br from-blue-600 to-indigo-500 rounded-full flex items-center justify-center text-white font-bold text-3xl shadow-lg">
-              {formData.name ? formData.name.substring(0, 2).toUpperCase() : 'AT'}
+            <div className="relative">
+              {profileImage ? (
+                <div className="relative w-24 h-24 rounded-full overflow-hidden border-4 border-blue-500 shadow-lg">
+                  <Image
+                    src={getImageUrl(profileImage) || '/images/default-avatar.png'}
+                    alt={user.name || 'Atelier'}
+                    fill
+                    className="object-cover"
+                    unoptimized
+                  />
+                </div>
+              ) : (
+                <div className="w-24 h-24 bg-gradient-to-br from-blue-600 to-indigo-500 rounded-full flex items-center justify-center text-white font-bold text-3xl shadow-lg border-4 border-blue-500">
+                  {user.name ? user.name.substring(0, 2).toUpperCase() : 'AT'}
+                </div>
+              )}
+              <input
+                type="file"
+                ref={fileInputRef}
+                accept="image/jpeg,image/jpg,image/png,image/webp,image/gif"
+                onChange={handleImageUpload}
+                className="hidden"
+                id="profile-image-upload"
+                disabled={isUploadingImage || isDeletingImage}
+              />
+              <label
+                htmlFor="profile-image-upload"
+                className={`absolute bottom-0 right-0 bg-blue-500 hover:bg-blue-600 text-white rounded-full p-2 cursor-pointer shadow-lg transition-colors ${isUploadingImage || isDeletingImage ? 'opacity-50 cursor-not-allowed' : ''}`}
+                title="Modifier la photo de profil"
+              >
+                {isUploadingImage ? (
+                  <svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                ) : (
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                )}
+              </label>
+              {profileImage && (
+                <button
+                  onClick={handleImageDelete}
+                  disabled={isDeletingImage || isUploadingImage}
+                  className="absolute top-0 right-0 bg-red-500 hover:bg-red-600 text-white rounded-full p-1.5 cursor-pointer shadow-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Supprimer la photo de profil"
+                >
+                  {isDeletingImage ? (
+                    <svg className="w-3 h-3 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                  ) : (
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  )}
+                </button>
+              )}
             </div>
             <div className="flex-1">
               <h2 className="text-2xl font-bold text-gray-900 font-[var(--font-poppins)]">
-                {formData.name || 'Nom de l\'atelier'}
+                {user.name || 'Nom de l\'atelier'}
               </h2>
-              <p className="text-gray-600">{formData.email}</p>
-              <p className="text-gray-600">{formData.phone}</p>
+              <p className="text-gray-600">{user.email}</p>
+              <p className="text-gray-600">{user.phone}</p>
               <div className="flex items-center gap-2 mt-2">
-                <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-bold">
-                  Atelier vérifié
-                </span>
-                {user?.status && (
+                {user.verfie && (
+                  <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-bold">
+                    Atelier vérifié
+                  </span>
+                )}
+                {user.status ? (
                   <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-bold">
                     Compte actif
+                  </span>
+                ) : (
+                  <span className="px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs font-bold">
+                    Compte en attente
+                  </span>
+                )}
+                {user.type && (
+                  <span className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-bold">
+                    {user.type === 'mechanic' ? 'Mécanicien' : 'Technicien en carrosserie automobile'}
                   </span>
                 )}
               </div>
             </div>
-            <button className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors">
-              Modifier la photo
-            </button>
           </div>
         </div>
 
@@ -165,17 +592,17 @@ export default function WorkshopProfilePage() {
 
                   <div>
                     <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                      Email *
+                      Email
                     </label>
                     <input
                       type="email"
                       id="email"
                       name="email"
-                      required
+                      disabled
                       value={formData.email}
-                      onChange={handleChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-100 text-gray-600 cursor-not-allowed"
                     />
+                    <p className="text-xs text-gray-500 mt-1">L&apos;email ne peut pas être modifié</p>
                   </div>
 
                   <div>
@@ -209,33 +636,13 @@ export default function WorkshopProfilePage() {
                   </div>
                 </div>
 
-                <div>
-                  <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-2">
-                    Description de l&apos;atelier
-                  </label>
-                  <textarea
-                    id="description"
-                    name="description"
-                    rows={4}
-                    value={formData.description}
-                    onChange={handleChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="Décrivez votre atelier, vos spécialités, vos services..."
-                  />
-                </div>
-
                 <div className="flex gap-4">
                   <button
                     type="submit"
-                    className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors"
+                    disabled={isUpdating}
+                    className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Enregistrer les modifications
-                  </button>
-                  <button
-                    type="button"
-                    className="px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-semibold transition-colors"
-                  >
-                    Annuler
+                    {isUpdating ? 'Mise à jour...' : 'Enregistrer les modifications'}
                   </button>
                 </div>
               </form>
@@ -291,9 +698,10 @@ export default function WorkshopProfilePage() {
                 <div className="flex gap-4">
                   <button
                     type="submit"
-                    className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors"
+                    disabled={isChangingPassword}
+                    className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Changer le mot de passe
+                    {isChangingPassword ? 'Changement en cours...' : 'Changer le mot de passe'}
                   </button>
                 </div>
               </form>

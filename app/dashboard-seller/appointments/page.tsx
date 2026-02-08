@@ -634,7 +634,7 @@ export default function AppointmentsPage() {
               <p className="text-gray-600">Aucun rendez-vous trouvé</p>
             </div>
           ) : (
-            <div className="space-y-4">
+        <div className="space-y-4">
               {myAppointments.map((appointment: any) => (
                 <div key={appointment._id || appointment.id} className="bg-white rounded-2xl shadow-lg p-6 border border-gray-200 hover:shadow-xl transition-all">
                   <div className="flex flex-col lg:flex-row gap-6">
@@ -663,7 +663,7 @@ export default function AppointmentsPage() {
                             </svg>
                             <span className="text-gray-600 font-medium">
                               {appointment.id_workshop?.name || 'Atelier'}
-                            </span>
+                        </span>
                           </div>
                           <div className="flex items-center gap-2">
                             <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -719,8 +719,8 @@ export default function AppointmentsPage() {
               ))}
             </div>
           )}
-        </div>
-      )}
+          </div>
+        )}
     </div>
   );
 }
