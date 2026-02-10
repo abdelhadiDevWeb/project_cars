@@ -96,8 +96,9 @@ export default function AdminDashboardLayout({
 
   return (
     <div className="min-h-screen bg-gray-100 flex">
+      <div className={`${sidebarOpen ? 'w-64' : 'w-20'} flex-shrink-0`}></div>
       {/* Left Sidebar */}
-      <aside className={`${sidebarOpen ? 'w-64' : 'w-20'} relative text-white transition-all duration-300 flex flex-col overflow-hidden`}>
+      <aside className={`${sidebarOpen ? 'w-64' : 'w-20'} fixed left-0 top-0 h-screen text-white transition-all duration-300 flex flex-col overflow-hidden z-50`}>
         {/* Background Image with Gradient Overlay */}
         <div className="absolute inset-0 overflow-hidden">
           <div className="relative w-full h-full">
@@ -115,19 +116,19 @@ export default function AdminDashboardLayout({
 
         {/* Content */}
         <div className="relative z-10 flex flex-col h-full">
-          {/* Logo */}
+          {/* Dashboard Header with Animation */}
           <div className="p-6 border-b border-white/20 backdrop-blur-sm">
-            <div className="flex items-center gap-3">
-              <div className="relative w-12 h-12 flex-shrink-0 bg-white/10 rounded-xl p-2 backdrop-blur-sm border border-white/20">
-                <Image
-                  src="/logo.png"
-                  alt="CarSure DZ Logo"
-                  fill
-                  className="object-contain"
-                />
+            <div className={`flex items-center justify-center gap-3 transition-all duration-300 ${sidebarOpen ? 'opacity-100' : 'opacity-0'}`}>
+              <div className="relative w-12 h-12 flex-shrink-0 bg-white/20 backdrop-blur-sm rounded-xl p-2 border border-white/30 animate-pulse">
+                <svg className="w-full h-full text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                </svg>
               </div>
               {sidebarOpen && (
-                <span className="text-xl font-bold font-[var(--font-poppins)] text-white drop-shadow-lg">CarSure DZ</span>
+                <div className="animate-slide-in">
+                  <h2 className="text-lg font-bold font-[var(--font-poppins)] text-white drop-shadow-lg">Espace Administrateur</h2>
+                  <p className="text-xs text-purple-200 mt-0.5">Gérez la plateforme</p>
+                </div>
               )}
             </div>
           </div>
@@ -237,17 +238,6 @@ export default function AdminDashboardLayout({
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
               </svg>
             </button>
-            <div className="flex items-center gap-3">
-              <div className="relative w-12 h-12">
-                <Image
-                  src="/logo.png"
-                  alt="CarSure DZ Logo"
-                  fill
-                  className="object-contain"
-                />
-              </div>
-              <span className="text-xl font-bold bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent font-[var(--font-poppins)]">CarSure DZ</span>
-            </div>
           </div>
 
           <div className="flex items-center gap-4">

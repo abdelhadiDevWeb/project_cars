@@ -304,7 +304,7 @@ export default function RegisterPage() {
             </div>
           </div>
 
-          <form onSubmit={handleVerifyEmail} className="bg-white p-8 rounded-2xl shadow-lg border border-gray-200">
+          <form onSubmit={handleVerifyEmail} className="bg-white/95 backdrop-blur-md p-8 rounded-3xl shadow-2xl border-2 border-gray-200/50">
             <div className="mb-6">
               <label htmlFor="code" className="block text-sm font-medium text-gray-700 mb-2">
                 Code de vérification (6 chiffres)
@@ -339,7 +339,7 @@ export default function RegisterPage() {
             <button
               type="submit"
               disabled={isVerifying || verificationCode.length !== 6 || timeLeft <= 0}
-              className="w-full py-3 bg-teal-500 hover:bg-teal-600 text-white rounded-lg font-semibold transition-colors shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="w-full py-4 bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-600 hover:to-cyan-600 text-white rounded-xl font-bold transition-all duration-200 shadow-xl hover:shadow-2xl hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center gap-2"
             >
               {isVerifying ? (
                 <>
@@ -397,14 +397,25 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-cyan-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-cyan-50 to-teal-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
+      {/* Animated Background Elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-20 left-10 w-72 h-72 bg-teal-200 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob"></div>
+        <div className="absolute bottom-20 right-10 w-72 h-72 bg-cyan-200 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-2000"></div>
+      </div>
+
+      <div className="max-w-md w-full space-y-8 relative z-10">
         {/* Logo and Header */}
         <div className="text-center">
-          <h2 className="text-3xl font-bold text-blue-900 font-[var(--font-poppins)] mb-2">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-teal-500 to-cyan-500 rounded-2xl mb-4 shadow-xl">
+            <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+            </svg>
+          </div>
+          <h2 className="text-4xl font-bold bg-gradient-to-r from-blue-900 via-teal-700 to-cyan-600 bg-clip-text text-transparent font-[var(--font-poppins)] mb-2">
             Créer un compte
           </h2>
-          <p className="text-sm text-gray-600">
+          <p className="text-base text-gray-600">
             Rejoignez CarSure DZ et commencez à acheter/vendre des véhicules certifiés
           </p>
         </div>
@@ -414,44 +425,52 @@ export default function RegisterPage() {
           <button
             type="button"
             onClick={() => setRegisterAs("client")}
-            className={`p-5 rounded-2xl border shadow-sm text-left transition-all hover:-translate-y-0.5 ${
+            className={`p-6 rounded-2xl border-2 text-left transition-all duration-200 hover:scale-105 ${
               registerAs === "client"
-                ? "border-teal-500 bg-white shadow-md"
-                : "border-gray-200 bg-white/70 hover:bg-white"
+                ? "border-teal-500 bg-white shadow-xl scale-105"
+                : "border-gray-200 bg-white/80 hover:bg-white hover:shadow-lg"
             }`}
           >
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-500 flex items-center justify-center mb-3">
-              <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
+            <div className={`w-14 h-14 rounded-xl flex items-center justify-center mb-4 transition-all ${
+              registerAs === "client"
+                ? "bg-gradient-to-br from-teal-500 to-cyan-500 shadow-lg"
+                : "bg-gradient-to-br from-gray-200 to-gray-300"
+            }`}>
+              <svg className={`w-7 h-7 ${registerAs === "client" ? "text-white" : "text-gray-500"}`} fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
               </svg>
             </div>
-            <p className="font-bold text-gray-900">Client</p>
+            <p className="font-bold text-gray-900 text-lg">Client</p>
             <p className="text-xs text-gray-600 mt-1">Acheteur / vendeur</p>
           </button>
 
           <button
             type="button"
             onClick={() => setRegisterAs("workshop")}
-            className={`p-5 rounded-2xl border shadow-sm text-left transition-all hover:-translate-y-0.5 ${
+            className={`p-6 rounded-2xl border-2 text-left transition-all duration-200 hover:scale-105 ${
               registerAs === "workshop"
-                ? "border-teal-500 bg-white shadow-md"
-                : "border-gray-200 bg-white/70 hover:bg-white"
+                ? "border-teal-500 bg-white shadow-xl scale-105"
+                : "border-gray-200 bg-white/80 hover:bg-white hover:shadow-lg"
             }`}
           >
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center mb-3">
-              <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
+            <div className={`w-14 h-14 rounded-xl flex items-center justify-center mb-4 transition-all ${
+              registerAs === "workshop"
+                ? "bg-gradient-to-br from-blue-600 to-indigo-600 shadow-lg"
+                : "bg-gradient-to-br from-gray-200 to-gray-300"
+            }`}>
+              <svg className={`w-7 h-7 ${registerAs === "workshop" ? "text-white" : "text-gray-500"}`} fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
               </svg>
             </div>
-            <p className="font-bold text-gray-900">Atelier</p>
+            <p className="font-bold text-gray-900 text-lg">Atelier</p>
             <p className="text-xs text-gray-600 mt-1">Partenaire / inspection</p>
           </button>
         </div>
 
         {/* Register Form */}
-        <form className="mt-2 space-y-6 bg-white p-8 rounded-2xl shadow-lg border border-gray-200" onSubmit={handleSubmit}>
+        <form className="mt-2 space-y-6 bg-white/95 backdrop-blur-md p-8 rounded-3xl shadow-2xl border-2 border-gray-200/50" onSubmit={handleSubmit}>
           {formError && (
-            <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+            <div className="p-4 bg-gradient-to-r from-red-50 to-pink-50 border-2 border-red-200 rounded-xl">
               <div className="flex items-start gap-3">
                 <svg className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
@@ -472,7 +491,7 @@ export default function RegisterPage() {
                     setFormError("");
                     setFormErrors([]);
                   }}
-                  className="text-red-600 hover:text-red-800 flex-shrink-0"
+                  className="text-red-600 hover:text-red-800 flex-shrink-0 transition-colors"
                 >
                   <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
@@ -504,7 +523,7 @@ export default function RegisterPage() {
                   required
                   value={userData.firstName}
                   onChange={handleUserChange}
-                  className="appearance-none relative block w-full px-4 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-colors"
+                  className="appearance-none relative block w-full px-4 py-3.5 bg-gradient-to-br from-gray-50 to-white border-2 border-gray-200 placeholder-gray-400 text-gray-900 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all shadow-sm hover:shadow-md"
                   placeholder="Prénom"
                 />
               </div>
@@ -520,7 +539,7 @@ export default function RegisterPage() {
                   required
                   value={userData.lastName}
                   onChange={handleUserChange}
-                  className="appearance-none relative block w-full px-4 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-colors"
+                  className="appearance-none relative block w-full px-4 py-3.5 bg-gradient-to-br from-gray-50 to-white border-2 border-gray-200 placeholder-gray-400 text-gray-900 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all shadow-sm hover:shadow-md"
                   placeholder="Nom"
                 />
               </div>
@@ -643,7 +662,7 @@ export default function RegisterPage() {
                   required
                   value={workshopData.name}
                   onChange={handleWorkshopChange}
-                  className="appearance-none relative block w-full px-4 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-colors"
+                  className="appearance-none relative block w-full px-4 py-3.5 bg-gradient-to-br from-gray-50 to-white border-2 border-gray-200 placeholder-gray-400 text-gray-900 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all shadow-sm hover:shadow-md"
                   placeholder="Nom de l'atelier"
                 />
               </div>
@@ -677,7 +696,7 @@ export default function RegisterPage() {
                   required
                   value={workshopData.email}
                   onChange={handleWorkshopChange}
-                  className="appearance-none relative block w-full px-4 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-colors"
+                  className="appearance-none relative block w-full px-4 py-3.5 bg-gradient-to-br from-gray-50 to-white border-2 border-gray-200 placeholder-gray-400 text-gray-900 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all shadow-sm hover:shadow-md"
                   placeholder="atelier@email.com"
                 />
               </div>
@@ -693,7 +712,7 @@ export default function RegisterPage() {
                   required
                   value={workshopData.adr}
                   onChange={handleWorkshopChange}
-                  className="appearance-none relative block w-full px-4 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-colors"
+                  className="appearance-none relative block w-full px-4 py-3.5 bg-gradient-to-br from-gray-50 to-white border-2 border-gray-200 placeholder-gray-400 text-gray-900 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all shadow-sm hover:shadow-md"
                   placeholder="Adresse"
                 />
               </div>
@@ -709,7 +728,7 @@ export default function RegisterPage() {
                   required
                   value={workshopData.phone}
                   onChange={handleWorkshopChange}
-                  className="appearance-none relative block w-full px-4 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-colors"
+                  className="appearance-none relative block w-full px-4 py-3.5 bg-gradient-to-br from-gray-50 to-white border-2 border-gray-200 placeholder-gray-400 text-gray-900 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all shadow-sm hover:shadow-md"
                   placeholder="+213 XXX XX XX XX"
                 />
               </div>
@@ -810,7 +829,7 @@ export default function RegisterPage() {
             <button
               type="submit"
               disabled={!registerAs || isSubmitting}
-              className="group relative w-full flex justify-center items-center gap-2 py-3 px-4 border border-transparent text-sm font-semibold rounded-lg text-white bg-teal-500 hover:bg-teal-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 transition-colors shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+              className="group relative w-full flex justify-center items-center gap-2 py-4 px-6 border border-transparent text-base font-bold rounded-xl text-white bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-600 hover:to-cyan-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 transition-all duration-200 shadow-xl hover:shadow-2xl hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
             >
               {isSubmitting ? (
                 <>
@@ -838,8 +857,11 @@ export default function RegisterPage() {
 
         {/* Back to Home */}
         <div className="text-center">
-          <Link href="/" className="text-sm text-gray-600 hover:text-teal-600 transition-colors">
-            ← Retour à l&apos;accueil
+          <Link href="/" className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-teal-600 transition-colors font-medium">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            Retour à l&apos;accueil
           </Link>
         </div>
       </div>
@@ -847,7 +869,7 @@ export default function RegisterPage() {
       {/* Success Modal - Email Verified */}
       {showSuccessModal && (
         <div 
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] p-4"
+          className="fixed inset-0 bg-gray-500/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4"
           onClick={(e) => {
             // Close modal if clicking outside
             if (e.target === e.currentTarget) {
@@ -856,7 +878,7 @@ export default function RegisterPage() {
             }
           }}
         >
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 transform transition-all animate-in fade-in zoom-in">
+          <div className="bg-white/95 backdrop-blur-md rounded-3xl shadow-2xl max-w-md w-full p-8 transform transition-all border-2 border-gray-200/50">
             <div className="text-center">
               {/* Success Icon */}
               <div className="mx-auto w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mb-6 animate-bounce">
@@ -900,7 +922,7 @@ export default function RegisterPage() {
                   setShowSuccessModal(false);
                   window.location.href = "/login";
                 }}
-                className="w-full py-3 bg-teal-500 hover:bg-teal-600 text-white rounded-lg font-semibold transition-colors shadow-lg"
+                className="w-full py-3.5 bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-600 hover:to-cyan-600 text-white rounded-xl font-bold transition-all duration-200 shadow-xl hover:shadow-2xl hover:scale-105"
               >
                 Aller à la page de connexion
               </button>

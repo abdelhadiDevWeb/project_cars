@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useUser } from "@/contexts/UserContext";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import Image from "next/image";
+import { getImageUrl } from "@/utils/backend";
 
 interface Workshop {
   _id: string;
@@ -26,6 +28,7 @@ interface Car {
 
 export default function AppointmentsPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, isLoading: userLoading } = useUser();
   const [workshops, setWorkshops] = useState<Workshop[]>([]);
   const [cars, setCars] = useState<Car[]>([]);
@@ -45,6 +48,14 @@ export default function AppointmentsPage() {
   const [myAppointments, setMyAppointments] = useState<any[]>([]);
   const [loadingMyAppointments, setLoadingMyAppointments] = useState(true);
   const [activeTab, setActiveTab] = useState<'book' | 'my-appointments'>('book');
+
+  // Check URL parameter for tab
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab === 'my-appointments') {
+      setActiveTab('my-appointments');
+    }
+  }, [searchParams]);
 
   // Fetch workshops
   useEffect(() => {
@@ -323,6 +334,8 @@ export default function AppointmentsPage() {
       'en_attente': 'En attente',
       'accepted': 'Accepté',
       'refused': 'Refusé',
+      'en_cours': 'En cours',
+      'finish': 'Terminé',
     };
     return labels[status] || status;
   };
@@ -332,6 +345,8 @@ export default function AppointmentsPage() {
       'en_attente': 'bg-yellow-100 text-yellow-700 border-yellow-200',
       'accepted': 'bg-green-100 text-green-700 border-green-200',
       'refused': 'bg-red-100 text-red-700 border-red-200',
+      'en_cours': 'bg-blue-100 text-blue-700 border-blue-200',
+      'finish': 'bg-purple-100 text-purple-700 border-purple-200',
     };
     return colors[status] || 'bg-gray-100 text-gray-700 border-gray-200';
   };
@@ -713,6 +728,60 @@ export default function AppointmentsPage() {
                           {appointment.time}
                         </span>
                       </div>
+
+                      {/* Show images and PDF for finished appointments */}
+                      {appointment.status === 'finish' && (
+                        <div className="bg-purple-50 rounded-lg p-4 border border-purple-200 mb-4">
+                          <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                            <svg className="w-5 h-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                            Rapport de vérification
+                          </h4>
+                          
+                          {/* Images */}
+                          {appointment.images && appointment.images.length > 0 && (
+                            <div className="mb-4">
+                              <p className="text-xs text-gray-600 mb-2 font-medium">Images ({appointment.images.length})</p>
+                              <div className="grid grid-cols-3 gap-3">
+                                {appointment.images.map((image: string, index: number) => (
+                                  <div key={index} className="relative h-24 rounded-lg overflow-hidden border border-gray-300 shadow-sm hover:shadow-md transition-shadow cursor-pointer group">
+                                    <Image
+                                      src={getImageUrl(image) || image}
+                                      alt={`Image de vérification ${index + 1}`}
+                                      fill
+                                      className="object-cover group-hover:scale-105 transition-transform"
+                                      unoptimized
+                                    />
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* PDF Report */}
+                          {appointment.rapport_pdf && (
+                            <div>
+                              <p className="text-xs text-gray-600 mb-2 font-medium">Rapport PDF</p>
+                              <a
+                                href={getImageUrl(appointment.rapport_pdf) || appointment.rapport_pdf}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-2 px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg font-semibold transition-colors text-sm"
+                              >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                          </svg>
+                                Voir le rapport PDF
+                        </a>
+                      </div>
+                          )}
+
+                          {(!appointment.images || appointment.images.length === 0) && !appointment.rapport_pdf && (
+                            <p className="text-sm text-gray-500 italic">Aucun fichier disponible pour le moment</p>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>

@@ -6,6 +6,7 @@ import { useState, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useUser } from "@/contexts/UserContext";
 import { getImageUrl } from "@/utils/backend";
+import { io, Socket } from 'socket.io-client';
 
 export default function SellerDashboardLayout({
   children,
@@ -18,6 +19,7 @@ export default function SellerDashboardLayout({
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [profileImage, setProfileImage] = useState<string | null>(null);
+  const [socket, setSocket] = useState<Socket | null>(null);
   const pathname = usePathname();
   const router = useRouter();
   const { user, token, userType, userRole, isLoading, isAuthenticated, logout } = useUser();
@@ -123,6 +125,48 @@ export default function SellerDashboardLayout({
     }
   };
 
+  // Initialize Socket.io connection
+  useEffect(() => {
+    if (user && user._id && userType === 'user') {
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 
+                        process.env.NEXT_PUBLIC_URLBACKEND || 
+                        'http://localhost:8001';
+      
+      const newSocket = io(backendUrl, {
+        transports: ['websocket', 'polling'],
+      });
+
+      newSocket.on('connect', () => {
+        console.log('Socket connected for user');
+        // Join user room
+        const userId = user._id || user.id;
+        if (userId) {
+          newSocket.emit('join_user', userId);
+        }
+      });
+
+      newSocket.on('new_notification', (data: any) => {
+        console.log('New notification received:', data);
+        // Refresh notifications when a new one arrives
+        fetchNotifications();
+      });
+
+      newSocket.on('disconnect', () => {
+        console.log('Socket disconnected');
+      });
+
+      setSocket(newSocket);
+
+      return () => {
+        const userId = user._id || user.id;
+        if (userId) {
+          newSocket.emit('leave_user', userId);
+        }
+        newSocket.close();
+      };
+    }
+  }, [user, userType]);
+
   // Fetch notifications on mount and periodically
   useEffect(() => {
     if (user && user._id && userType === 'user') {
@@ -205,8 +249,9 @@ export default function SellerDashboardLayout({
 
   return (
     <div className="min-h-screen bg-gray-100 flex">
+      <div className={`${sidebarOpen ? 'w-64' : 'w-20'} flex-shrink-0`}></div>
       {/* Left Sidebar */}
-      <aside className={`${sidebarOpen ? 'w-64' : 'w-20'} relative text-white transition-all duration-300 flex flex-col overflow-hidden`}>
+      <aside className={`${sidebarOpen ? 'w-64' : 'w-20'} fixed left-0 top-0 h-screen text-white transition-all duration-300 flex flex-col overflow-hidden z-50`}>
         {/* Background Image with Gradient Overlay */}
         <div className="absolute inset-0 overflow-hidden">
           <div className="relative w-full h-full">
@@ -224,19 +269,19 @@ export default function SellerDashboardLayout({
 
         {/* Content */}
         <div className="relative z-10 flex flex-col h-full">
-          {/* Logo */}
+          {/* Dashboard Header with Animation */}
           <div className="p-6 border-b border-white/20 backdrop-blur-sm">
-            <div className="flex items-center gap-3">
-              <div className="relative w-12 h-12 flex-shrink-0 bg-white/10 rounded-xl p-2 backdrop-blur-sm border border-white/20">
-                <Image
-                  src="/logo.png"
-                  alt="CarSure DZ Logo"
-                  fill
-                  className="object-contain"
-                />
+            <div className={`flex items-center justify-center gap-3 transition-all duration-300 ${sidebarOpen ? 'opacity-100' : 'opacity-0'}`}>
+              <div className="relative w-12 h-12 flex-shrink-0 bg-white/20 backdrop-blur-sm rounded-xl p-2 border border-white/30 animate-pulse">
+                <svg className="w-full h-full text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
               </div>
               {sidebarOpen && (
-                <span className="text-xl font-bold font-[var(--font-poppins)] text-white drop-shadow-lg">CarSure DZ</span>
+                <div className="animate-slide-in">
+                  <h2 className="text-lg font-bold font-[var(--font-poppins)] text-white drop-shadow-lg">Espace Vendeur</h2>
+                  <p className="text-xs text-teal-200 mt-0.5">Gérez vos véhicules</p>
+                </div>
               )}
             </div>
           </div>
@@ -313,7 +358,7 @@ export default function SellerDashboardLayout({
       </aside>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden relative">
         {/* Top Header */}
         <header className="bg-white border-b border-gray-200 shadow-sm px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -325,17 +370,6 @@ export default function SellerDashboardLayout({
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
               </svg>
             </button>
-            <div className="flex items-center gap-3">
-              <div className="relative w-12 h-12">
-                <Image
-                  src="/logo.png"
-                  alt="CarSure DZ Logo"
-                  fill
-                  className="object-contain"
-                />
-              </div>
-              <span className="text-xl font-bold bg-gradient-to-r from-teal-600 to-cyan-600 bg-clip-text text-transparent font-[var(--font-poppins)]">CarSure DZ</span>
-            </div>
           </div>
 
           <div className="flex items-center gap-4">
@@ -398,8 +432,8 @@ export default function SellerDashboardLayout({
                                   await markAsRead(notification._id || notification.id);
                                 }
                                 // Navigate based on type
-                                if (notification.type === 'done_rdv_workshop' || notification.type === 'cancel_rdv_workshop') {
-                                  router.push('/dashboard-seller/appointments');
+                                if (notification.type === 'done_rdv_workshop' || notification.type === 'cancel_rdv_workshop' || notification.type === 'rdv_workshop') {
+                                  router.push('/dashboard-seller/appointments?tab=my-appointments');
                                   setShowNotifications(false);
                                 }
                               }}
