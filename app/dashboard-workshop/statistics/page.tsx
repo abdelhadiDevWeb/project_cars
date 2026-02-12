@@ -169,51 +169,51 @@ export default function WorkshopStatisticsPage() {
             </div>
           ) : (
             <>
-              <div className="h-64 flex items-end justify-between gap-2">
+          <div className="h-64 flex items-end justify-between gap-2">
                 {monthlyStats.map((data, index) => {
                   const maxValue = Math.max(...monthlyStats.map(d => Math.max(d.appointments, d.completed)));
                   const appointmentsHeight = maxValue > 0 ? (data.appointments / maxValue) * 100 : 0;
                   const completedHeight = maxValue > 0 ? (data.completed / maxValue) * 100 : 0;
-                  return (
-                    <div key={index} className="flex-1 flex flex-col items-center gap-1 h-full justify-end">
-                      <div className="w-full flex flex-col items-center gap-1 justify-end" style={{ height: '100%' }}>
+              return (
+                <div key={index} className="flex-1 flex flex-col items-center gap-1 h-full justify-end">
+                  <div className="w-full flex flex-col items-center gap-1 justify-end" style={{ height: '100%' }}>
                         <div className="w-full bg-gradient-to-t from-blue-500 to-blue-400 rounded-t-lg shadow-md" style={{ height: `${appointmentsHeight}%` }}></div>
-                        <div className="w-full bg-gradient-to-t from-green-500 to-green-400 rounded-t-lg shadow-md" style={{ height: `${completedHeight}%` }}></div>
-                      </div>
-                      <span className="text-xs text-gray-600 font-medium mt-2">{data.month}</span>
-                    </div>
-                  );
-                })}
-              </div>
-              <div className="flex gap-4 mt-4 justify-center">
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 bg-blue-600 rounded-full"></div>
-                  <span className="text-xs text-gray-600">Rendez-vous</span>
+                    <div className="w-full bg-gradient-to-t from-green-500 to-green-400 rounded-t-lg shadow-md" style={{ height: `${completedHeight}%` }}></div>
+                  </div>
+                  <span className="text-xs text-gray-600 font-medium mt-2">{data.month}</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 bg-green-600 rounded-full"></div>
+              );
+            })}
+          </div>
+          <div className="flex gap-4 mt-4 justify-center">
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 bg-blue-600 rounded-full"></div>
+                  <span className="text-xs text-gray-600">Rendez-vous</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 bg-green-600 rounded-full"></div>
                   <span className="text-xs text-gray-600">Terminés</span>
                 </div>
               </div>
             </>
           )}
-        </div>
+      </div>
 
-        {/* Additional Stats */}
+      {/* Additional Stats */}
         <div className="space-y-6">
-          <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-200">
+        <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-200">
             <h3 className="text-lg font-bold text-gray-900 mb-4 font-[var(--font-poppins)]">Rendez-vous ce mois</h3>
             <p className="text-3xl font-bold text-blue-600 font-[var(--font-poppins)]">{stats.appointmentsThisMonth}</p>
             <p className="text-sm text-gray-600 mt-2">Nouveaux rendez-vous</p>
-          </div>
+        </div>
 
-          <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-200">
+        <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-200">
             <h3 className="text-lg font-bold text-gray-900 mb-4 font-[var(--font-poppins)]">Taux de complétion</h3>
             <p className="text-3xl font-bold text-green-600 font-[var(--font-poppins)]">{stats.completionRate}%</p>
             <p className="text-sm text-gray-600 mt-2">Rendez-vous terminés / Total</p>
-          </div>
+        </div>
 
-          <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-200">
+        <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-200">
             <h3 className="text-lg font-bold text-gray-900 mb-4 font-[var(--font-poppins)]">Rendez-vous à venir</h3>
             <p className="text-3xl font-bold text-orange-600 font-[var(--font-poppins)]">{stats.upcomingAppointments}</p>
             <p className="text-sm text-gray-600 mt-2">Prochains rendez-vous</p>

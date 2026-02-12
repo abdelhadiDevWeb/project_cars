@@ -40,10 +40,9 @@ export function getImageUrl(imagePath: string): string | null {
   // If it starts with /, it's already a path
   const cleanPath = imagePath.startsWith('/') ? imagePath : `/${imagePath}`;
   
-  // Use backend URL for uploads
+  // Use relative path for uploads (Next.js will proxy it)
   if (cleanPath.startsWith('/uploads/')) {
-    const backendUrl = getBackendUrl().replace(/\/$/, ''); // Remove trailing slash
-    return `${backendUrl}${cleanPath}`;
+    return cleanPath;
   }
   
   // For other paths, return as is (they're served by Next.js)

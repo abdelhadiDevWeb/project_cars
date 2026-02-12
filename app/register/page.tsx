@@ -89,7 +89,7 @@ export default function RegisterPage() {
             setFormErrors(data.errors);
             setFormError(data?.message || "Erreur de validation");
           } else {
-            setFormError(data?.message || "Erreur lors de l'inscription");
+          setFormError(data?.message || "Erreur lors de l'inscription");
             setFormErrors([]);
           }
           setIsSubmitting(false);
@@ -147,7 +147,7 @@ export default function RegisterPage() {
             setFormErrors(data.errors);
             setFormError(data?.message || "Erreur de validation");
           } else {
-            setFormError(data?.message || "Erreur lors de l'inscription");
+          setFormError(data?.message || "Erreur lors de l'inscription");
             setFormErrors([]);
           }
           setIsSubmitting(false);

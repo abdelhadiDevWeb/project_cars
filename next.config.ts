@@ -1,6 +1,22 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'http',
+        hostname: 'localhost',
+        port: '8001',
+        pathname: '/uploads/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'localhost',
+        port: '8001',
+        pathname: '/uploads/**',
+      },
+    ],
+  },
   async rewrites() {
     // Proxy Next.js /api/* to Bun backend.
     // Set URLBACKEND in client env (e.g. http://localhost:8001)

@@ -186,7 +186,7 @@ export default function AppointmentsPage() {
           {
             headers: {
               'Authorization': `Bearer ${token}`,
-            },
+    },
           }
         );
 
@@ -244,7 +244,7 @@ export default function AppointmentsPage() {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
-        },
+    },
         body: JSON.stringify({
           id_workshop: selectedWorkshop._id || selectedWorkshop.id,
           id_car: selectedCar._id || selectedCar.id,
@@ -291,7 +291,7 @@ export default function AppointmentsPage() {
         const refreshRes = await fetch('/api/rdv-workshop/my-appointments', {
           headers: {
             'Authorization': `Bearer ${token}`,
-          },
+    },
         });
         if (refreshRes.ok) {
           const refreshData = await refreshRes.json();

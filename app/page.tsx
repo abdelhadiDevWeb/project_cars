@@ -259,13 +259,13 @@ export default function Home() {
                   <span className="block text-gray-800">
                     en toute confiance
                   </span>
-                </h1>
-                
+              </h1>
+              
                 <p className="text-base sm:text-lg text-gray-600 leading-relaxed max-w-xl">
                   La plateforme de référence en Algérie pour acheter et vendre des véhicules d&apos;occasion vérifiés et certifiés par des ateliers agréés.
                 </p>
               </div>
-              
+
               <div className="flex flex-wrap items-center gap-3">
                 <div className="flex items-center gap-2 px-4 py-2.5 bg-white/90 backdrop-blur-md rounded-lg shadow-md border border-white/50 hover:shadow-lg transition-all">
                   <div className="w-9 h-9 bg-gradient-to-br from-green-400 to-emerald-500 rounded-lg flex items-center justify-center shadow-sm">
@@ -337,18 +337,18 @@ export default function Home() {
                   
                   {/* Carousel Indicators - Modern Design */}
                   <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-20 flex gap-2 bg-white/95 backdrop-blur-md px-5 py-2.5 rounded-full shadow-xl border border-white/50">
-                    {heroCars.map((_, index) => (
-                      <button
-                        key={index}
-                        onClick={() => setCurrentHeroIndex(index)}
+                {heroCars.map((_, index) => (
+                  <button
+                    key={index}
+                    onClick={() => setCurrentHeroIndex(index)}
                         className={`rounded-full transition-all duration-300 ${
-                          index === currentHeroIndex
+                      index === currentHeroIndex
                             ? 'w-10 h-2.5 bg-gradient-to-r from-teal-500 to-cyan-500 shadow-md'
                             : 'w-2.5 h-2.5 bg-gray-300 hover:bg-gray-400'
-                        }`}
+                    }`}
                         aria-label={`Go to slide ${index + 1}`}
-                      />
-                    ))}
+                  />
+                ))}
                   </div>
                   
                   {/* Navigation Arrows */}
@@ -394,8 +394,8 @@ export default function Home() {
         <div className="bg-white/95 backdrop-blur-md rounded-3xl shadow-2xl p-6 lg:p-8 border border-gray-200/50">
           <div className="mb-6">
             <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-900 to-teal-700 bg-clip-text text-transparent mb-2 font-[var(--font-poppins)]">
-              Dernières Offres Certifiées
-            </h2>
+            Dernières Offres Certifiées
+          </h2>
             <p className="text-gray-600">Recherchez parmi nos véhicules vérifiés</p>
           </div>
           
@@ -463,9 +463,9 @@ export default function Home() {
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
               ) : (
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
               )}
               Rechercher
             </button>
@@ -480,8 +480,8 @@ export default function Home() {
           <div className="lg:col-span-2">
             <div className="mb-8">
               <h2 className="text-4xl font-bold bg-gradient-to-r from-blue-900 to-teal-700 bg-clip-text text-transparent mb-2 font-[var(--font-poppins)]">
-                Dernières Offres Certifiées
-              </h2>
+              Dernières Offres Certifiées
+            </h2>
               <p className="text-gray-600">Découvrez notre sélection de véhicules vérifiés</p>
             </div>
             
@@ -504,22 +504,22 @@ export default function Home() {
                 <p className="text-gray-600">Aucune voiture active disponible pour le moment.</p>
               </div>
             ) : (
-              <div className="grid md:grid-cols-2 gap-6">
-                {cars.map((car, index) => (
+            <div className="grid md:grid-cols-2 gap-6">
+              {cars.map((car, index) => (
                   <div
                     key={car._id || car.id}
                     className="group bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden border-2 border-gray-100 hover:border-teal-300 hover:-translate-y-2"
-                    style={{
-                      animationDelay: `${index * 100}ms`,
-                    }}
-                  >
+                  style={{
+                    animationDelay: `${index * 100}ms`,
+                  }}
+                >
                     <Link href={`/cars/${car._id || car.id}`}>
                       <div className="relative h-56 overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200">
                         {car.images && car.images.length > 0 && getImageUrl(car.images[0]) ? (
-                          <Image
+                    <Image
                             src={getImageUrl(car.images[0])!}
                             alt={`${car.brand} ${car.model}`}
-                            fill
+                      fill
                             className="object-cover group-hover:scale-110 transition-transform duration-500"
                             unoptimized
                           />
@@ -562,33 +562,33 @@ export default function Home() {
                               {car.owner.firstName} {car.owner.lastName}
                             </Link>
                           </div>
-                        </div>
-                      )}
-                      
+                      </div>
+                    )}
+                  
                       <div className="flex items-center gap-4 text-gray-600 text-sm bg-gray-50 rounded-xl p-3">
                         <span className="flex items-center gap-2">
                           <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
                             <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
                           </div>
                           <span className="font-semibold">{car.km.toLocaleString()} km</span>
-                        </span>
+                      </span>
                         <span className="flex items-center gap-2">
                           <div className="w-8 h-8 bg-teal-100 rounded-lg flex items-center justify-center">
                             <svg className="w-4 h-4 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
+                        </svg>
                           </div>
                           <span className="font-semibold">{car.year}</span>
-                        </span>
-                      </div>
-                      
+                      </span>
+                    </div>
+                    
                       <div className="flex items-center justify-between pt-2 border-t border-gray-200">
                         <div>
                           <span className="text-3xl font-bold bg-gradient-to-r from-teal-600 to-cyan-600 bg-clip-text text-transparent font-[var(--font-poppins)]">
                             {car.price.toLocaleString()} DA
-                          </span>
+                      </span>
                         </div>
                         <div className="flex items-center gap-1.5 bg-gradient-to-r from-green-400 to-emerald-500 text-white px-4 py-2 rounded-full text-xs font-bold shadow-md">
                           <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
@@ -596,17 +596,17 @@ export default function Home() {
                           </svg>
                           ACTIF
                         </div>
-                      </div>
-                      
+                    </div>
+                    
                       <Link href={`/cars/${car._id || car.id}`}>
                         <div className="w-full py-3.5 bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-600 hover:to-cyan-600 text-white rounded-xl font-semibold transition-all duration-200 text-sm text-center cursor-pointer shadow-lg hover:shadow-xl group-hover:scale-105">
-                          Voir Détails
+                      Voir Détails
                         </div>
                       </Link>
                     </div>
                   </div>
-                ))}
-              </div>
+              ))}
+            </div>
             )}
           </div>
 
@@ -616,7 +616,7 @@ export default function Home() {
               <div className="mb-6">
                 <h2 className="text-2xl font-bold bg-gradient-to-r from-teal-600 to-cyan-600 bg-clip-text text-transparent mb-2 font-[var(--font-poppins)]">
                   CarSure DZ
-                </h2>
+              </h2>
                 <p className="text-gray-600 text-sm">Votre plateforme de confiance</p>
               </div>
               
