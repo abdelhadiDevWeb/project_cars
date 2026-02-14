@@ -521,7 +521,7 @@ export default function CarDetailsPage() {
                         <div className="mb-4 p-4 bg-gradient-to-r from-purple-100 to-indigo-100 rounded-xl border border-purple-200">
                           <p className="text-xs text-gray-600 mb-1 font-medium">Atelier de vérification</p>
                           <p className="text-lg font-bold text-gray-900">{appointment.id_workshop.name || 'Atelier'}</p>
-                        </div>
+              </div>
                       )}
                       
                       {/* Images */}
@@ -552,7 +552,7 @@ export default function CarDetailsPage() {
 
                       {/* PDF Report */}
                       {appointment.rapport_pdf && (
-                        <div>
+              <div>
                           <p className="text-base font-bold text-gray-800 mb-4 flex items-center gap-2">
                             <svg className="w-5 h-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
@@ -571,7 +571,7 @@ export default function CarDetailsPage() {
                             Voir le rapport PDF
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                            </svg>
+                      </svg>
                           </a>
                         </div>
                       )}

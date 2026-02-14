@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { getImageUrl } from "@/utils/backend";
 
 export default function AdminDashboardLayout({
   children,
@@ -13,11 +14,12 @@ export default function AdminDashboardLayout({
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [user, setUser] = useState<any>(null);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [monthlyRevenue, setMonthlyRevenue] = useState<number | null>(null);
+  const [monthName, setMonthName] = useState<string>('');
   const pathname = usePathname();
   const router = useRouter();
 
-  useEffect(() => {
-    // Check if user is logged in and is admin
+  const loadUser = () => {
     const token = localStorage.getItem('token');
     const userData = localStorage.getItem('user');
     const userType = localStorage.getItem('userType');
@@ -53,7 +55,49 @@ export default function AdminDashboardLayout({
       console.error('Error parsing user data:', error);
       router.push('/');
     }
+  };
+
+  useEffect(() => {
+    loadUser();
+    
+    // Listen for user update events
+    const handleUserUpdate = () => {
+      loadUser();
+    };
+    
+    window.addEventListener('userUpdated', handleUserUpdate);
+    
+    return () => {
+      window.removeEventListener('userUpdated', handleUserUpdate);
+    };
   }, [router]);
+
+  useEffect(() => {
+    // Fetch monthly revenue
+    const fetchMonthlyRevenue = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await fetch('/api/admin/monthly-revenue', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+
+        const data = await response.json();
+        if (data.ok) {
+          setMonthlyRevenue(data.monthlyRevenue);
+          setMonthName(data.month || '');
+        }
+      } catch (error) {
+        console.error('Error fetching monthly revenue:', error);
+      }
+    };
+
+    fetchMonthlyRevenue();
+    // Refresh every 5 minutes
+    const interval = setInterval(fetchMonthlyRevenue, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleLogout = async () => {
     try {
@@ -214,8 +258,14 @@ export default function AdminDashboardLayout({
           {sidebarOpen && (
             <div className="p-4 border-t border-white/20 backdrop-blur-sm">
               <div className="bg-white/10 backdrop-blur-md rounded-xl p-5 border border-white/20 shadow-xl">
-                <p className="text-2xl font-bold mb-1 text-white drop-shadow-md">36,712 000 DA</p>
-                <p className="text-xs text-purple-100">Total encaissements</p>
+                <p className="text-2xl font-bold mb-1 text-white drop-shadow-md">
+                  {monthlyRevenue !== null 
+                    ? `${monthlyRevenue.toLocaleString('fr-FR')} DA`
+                    : 'Chargement...'}
+                </p>
+                <p className="text-xs text-purple-100">
+                  {monthName ? `Revenu ${monthName}` : 'Revenu mensuel'}
+                </p>
               </div>
             </div>
           )}
@@ -251,12 +301,23 @@ export default function AdminDashboardLayout({
                 onClick={() => setShowUserMenu(!showUserMenu)}
                 className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-gray-50 transition-colors cursor-pointer"
               >
-                <div className="w-11 h-11 bg-gradient-to-br from-purple-600 to-indigo-500 rounded-full flex items-center justify-center text-white font-semibold shadow-lg hover:shadow-xl transition-shadow">
-                  {user ? (
-                    user.firstName ? (
-                      `${user.firstName.charAt(0)}${user.lastName?.charAt(0) || ''}`
-                    ) : 'A'
-                  ) : 'A'}
+                <div className="relative w-11 h-11 rounded-full overflow-hidden border-2 border-purple-200 shadow-lg hover:shadow-xl transition-shadow">
+                  {user?.profileImage ? (
+                    <Image
+                      src={getImageUrl(user.profileImage) || ''}
+                      alt={`${user.firstName} ${user.lastName}`}
+                      fill
+                      className="object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-purple-600 to-indigo-500 flex items-center justify-center text-white font-semibold">
+                      {user ? (
+                        user.firstName ? (
+                          `${user.firstName.charAt(0)}${user.lastName?.charAt(0) || ''}`
+                        ) : 'A'
+                      ) : 'A'}
+                    </div>
+                  )}
                 </div>
                 <div className="hidden md:block">
                   <p className="text-sm font-semibold text-gray-900">

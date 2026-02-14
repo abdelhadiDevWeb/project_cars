@@ -451,19 +451,19 @@ export default function MyCarsPage() {
           </div>
         ) : (
           <>
-            {/* Cars Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredCars.map((car) => (
+        {/* Cars Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredCars.map((car) => (
                 <div key={car._id || car.id} className="bg-white rounded-2xl shadow-lg overflow-hidden border border-gray-200 hover:shadow-xl transition-all">
-                  <div className="relative h-48">
+              <div className="relative h-48">
                     {car.images && car.images.length > 0 && getImageUrl(car.images[0]) ? (
-                      <Image
+                <Image
                         src={getImageUrl(car.images[0])!}
                         alt={`${car.brand} ${car.model}`}
-                        fill
-                        className="object-cover"
+                  fill
+                  className="object-cover"
                         unoptimized
-                      />
+                />
                     ) : (
                       <div className="w-full h-full bg-gray-200 flex items-center justify-center">
                         <svg className="w-16 h-16 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -472,36 +472,36 @@ export default function MyCarsPage() {
                         <span className="ml-2 text-gray-500 text-sm">Aucune image</span>
                       </div>
                     )}
-                    <div className="absolute top-4 left-4">
+                <div className="absolute top-4 left-4">
                       <span className={`px-3 py-1.5 rounded-full text-xs font-bold ${getStatusColor(car.status)}`}>
                         {getStatusLabel(car.status)}
-                      </span>
-                    </div>
-                  </div>
-                  
-                  <div className="p-5 space-y-3">
+                  </span>
+                </div>
+              </div>
+              
+              <div className="p-5 space-y-3">
                     <h3 className="text-xl font-bold text-gray-900 font-[var(--font-poppins)]">
                       {car.brand} {car.model} {car.year}
                     </h3>
-                    
-                    <div className="flex items-center gap-4 text-gray-600 text-sm">
-                      <span className="flex items-center gap-1">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
+                
+                <div className="flex items-center gap-4 text-gray-600 text-sm">
+                  <span className="flex items-center gap-1">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
                         {car.km.toLocaleString()} km
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
+                    </svg>
                         {car.year}
-                      </span>
-                    </div>
-                    
-                    <div className="text-2xl font-bold text-teal-600 font-[var(--font-poppins)]">
+                  </span>
+                </div>
+                
+                <div className="text-2xl font-bold text-teal-600 font-[var(--font-poppins)]">
                       {car.price.toLocaleString()} DA
-                    </div>
+                </div>
 
                     {/* Show finished appointments with images and PDF */}
                     {carAppointments[car._id || car.id]?.some((apt: any) => apt.status === 'finish') && (
@@ -509,7 +509,7 @@ export default function MyCarsPage() {
                         <h4 className="text-xs font-semibold text-gray-700 mb-2 flex items-center gap-1">
                           <svg className="w-4 h-4 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
+                    </svg>
                           Rapport de vérification
                         </h4>
                         {carAppointments[car._id || car.id]
@@ -545,43 +545,43 @@ export default function MyCarsPage() {
                                 >
                                   <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                                  </svg>
+                    </svg>
                                   PDF
                                 </a>
                               )}
                             </div>
                           ))}
-                      </div>
+                </div>
                     )}
 
-                    <div className="flex gap-2 pt-2">
+                <div className="flex gap-2 pt-2">
                       <button
                         onClick={() => {
                           setViewingCar(car);
                           setSelectedImageIndex(0);
                         }}
-                        className="flex-1 px-4 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-lg font-semibold transition-colors text-center text-sm"
-                      >
-                        Voir
+                    className="flex-1 px-4 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-lg font-semibold transition-colors text-center text-sm"
+                  >
+                    Voir
                       </button>
                       <button 
                         onClick={() => handleEdit(car)}
                         className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-semibold transition-colors text-sm"
                       >
-                        Modifier
-                      </button>
+                    Modifier
+                  </button>
                       <button 
                         onClick={() => handleDelete(car._id || car.id)}
                         disabled={deletingCarId === (car._id || car.id)}
                         className="px-4 py-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg font-semibold transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {deletingCarId === (car._id || car.id) ? 'Suppression...' : 'Supprimer'}
-                      </button>
-                    </div>
-                  </div>
+                  </button>
                 </div>
-              ))}
+              </div>
             </div>
+          ))}
+        </div>
 
             {/* Edit Modal */}
             {editingCar && (

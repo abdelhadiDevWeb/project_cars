@@ -368,7 +368,7 @@ export default function ProfilePage() {
       }
 
       setSuccess("Mot de passe modifié avec succès");
-      setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+    setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
       setErrors([]);
       setIsChangingPassword(false);
       
@@ -513,13 +513,13 @@ export default function ProfilePage() {
               <p className="text-gray-600">{user.phone}</p>
               <div className="flex items-center gap-2 mt-2">
                 {user.status ? (
-                  <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-bold">
+                <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-bold">
                     Compte activé
                   </span>
                 ) : (
                   <span className="px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs font-bold">
                     Compte en attente
-                  </span>
+                </span>
                 )}
               </div>
             </div>

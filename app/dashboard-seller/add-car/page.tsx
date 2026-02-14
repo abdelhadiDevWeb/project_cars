@@ -13,7 +13,12 @@ export default function AddCarPage() {
     year: '',
     km: '',
     price: '',
+    vin: '',
   });
+  const [vinValidating, setVinValidating] = useState(false);
+  const [vinValid, setVinValid] = useState<boolean | null>(null);
+  const [vinError, setVinError] = useState('');
+  const [vinRemark, setVinRemark] = useState('');
   const [customBrand, setCustomBrand] = useState('');
   const [showCustomBrand, setShowCustomBrand] = useState(false);
   const [images, setImages] = useState<File[]>([]);
@@ -55,6 +60,80 @@ export default function AddCarPage() {
     });
   };
 
+  const handleVinChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const vin = e.target.value.toUpperCase().replace(/[^A-HJ-NPR-Z0-9]/g, '').slice(0, 17);
+    setFormData({ ...formData, vin });
+    setVinError('');
+    setVinValid(null);
+    setVinRemark('');
+
+    if (vin.length === 17) {
+      setVinValidating(true);
+      try {
+        const token = localStorage.getItem('token');
+        const response = await fetch('/api/car/verify-vin', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({ vin }),
+        });
+
+        const data = await response.json();
+        if (data.ok && data.valid) {
+          setVinValid(true);
+          setVinError('');
+          setVinRemark(data.remark || 'VIN vérifié');
+        } else {
+          setVinValid(false);
+          // Ensure error message is always a string
+          let errorMessage = 'VIN invalide. Veuillez vérifier le numéro.';
+          
+          // Handle data.message
+          if (data.message) {
+            if (typeof data.message === 'string') {
+              errorMessage = data.message;
+            } else if (typeof data.message === 'object') {
+              // If message is an object, try to extract a meaningful error
+              if (data.message.error && typeof data.message.error === 'string') {
+                errorMessage = data.message.error;
+              } else if (data.message.message && typeof data.message.message === 'string') {
+                errorMessage = data.message.message;
+              } else {
+                // Fallback: use a generic message instead of stringifying the object
+                errorMessage = 'VIN invalide. Veuillez vérifier le numéro.';
+              }
+            }
+          } 
+          // Handle data.error
+          else if (data.error) {
+            if (typeof data.error === 'string') {
+              errorMessage = data.error;
+            } else if (typeof data.error === 'object') {
+              if (data.error.message && typeof data.error.message === 'string') {
+                errorMessage = data.error.message;
+              } else if (data.error.error && typeof data.error.error === 'string') {
+                errorMessage = data.error.error;
+              } else {
+                errorMessage = 'VIN invalide. Veuillez vérifier le numéro.';
+              }
+            }
+          }
+          
+          setVinError(errorMessage);
+          setVinRemark('');
+        }
+      } catch (error) {
+        console.error('Error verifying VIN:', error);
+        setVinValid(false);
+        setVinError('Erreur lors de la vérification du VIN. Veuillez réessayer.');
+      } finally {
+        setVinValidating(false);
+      }
+    }
+  };
+
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const files = Array.from(e.target.files);
@@ -85,6 +164,18 @@ export default function AddCarPage() {
       return;
     }
 
+    // Validate VIN if provided
+    if (formData.vin && formData.vin.length === 17) {
+      if (vinValid === false || vinValidating) {
+        setError('Veuillez vérifier que le VIN est valide avant de continuer');
+        return;
+      }
+      if (vinValid === null) {
+        setError('Veuillez attendre la vérification du VIN');
+        return;
+      }
+    }
+
     if (images.length === 0) {
       setError('Veuillez télécharger au moins une image');
       return;
@@ -110,6 +201,9 @@ export default function AddCarPage() {
       formDataToSend.append('year', formData.year);
       formDataToSend.append('km', formData.km);
       formDataToSend.append('price', formData.price);
+      if (formData.vin && formData.vin.length === 17) {
+        formDataToSend.append('vin', formData.vin);
+      }
       // Status is not sent - backend will set default to 'no_proccess'
 
       // Append images
@@ -157,10 +251,14 @@ export default function AddCarPage() {
         year: '',
         km: '',
         price: '',
+        vin: '',
       });
       setCustomBrand('');
       setShowCustomBrand(false);
       setImages([]);
+      setVinValid(null);
+      setVinError('');
+      setVinRemark('');
       
       // Redirect after 2 seconds
       setTimeout(() => {
@@ -316,6 +414,99 @@ export default function AddCarPage() {
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
                   placeholder="Ex: 80000"
                 />
+              </div>
+
+              <div>
+                <label htmlFor="vin" className="block text-sm font-medium text-gray-700 mb-2">
+                  VIN (Numéro d'identification du véhicule)
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    id="vin"
+                    name="vin"
+                    value={formData.vin}
+                    onChange={handleVinChange}
+                    maxLength={17}
+                    className={`w-full px-4 py-3 pr-12 border-2 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 uppercase transition-colors ${
+                      vinValid === false 
+                        ? 'border-red-500 bg-red-50 focus:border-red-500 focus:ring-red-500' 
+                        : vinValid === true 
+                        ? 'border-green-500 bg-green-50 focus:border-green-500 focus:ring-green-500' 
+                        : 'border-gray-300'
+                    }`}
+                    placeholder="Ex: 1HGBH41JXMN109186"
+                  />
+                  {vinValidating && (
+                    <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                      <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-teal-500"></div>
+                    </div>
+                  )}
+                  {vinValid === true && !vinValidating && (
+                    <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                      <svg className="w-6 h-6 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                  )}
+                  {vinValid === false && !vinValidating && formData.vin.length === 17 && (
+                    <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                      <svg className="w-6 h-6 text-red-600" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                  )}
+                </div>
+                {vinValidating && (
+                  <div className="mt-2 flex items-center gap-2 text-sm text-teal-600">
+                    <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-teal-500"></div>
+                    <span>Vérification du VIN en cours...</span>
+                  </div>
+                )}
+                {vinError && vinValid === false && !vinValidating && (
+                  <div className="mt-2 p-3 bg-red-50 border-2 border-red-200 rounded-lg">
+                    <div className="flex items-start gap-2">
+                      <svg className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                      </svg>
+                      <div>
+                        <p className="text-sm font-semibold text-red-800">VIN invalide</p>
+                        <p className="text-sm text-red-700 mt-1">{vinError}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {vinValid === true && !vinValidating && (
+                  <div className="mt-2 p-3 bg-green-50 border-2 border-green-200 rounded-lg shadow-sm">
+                    <div className="flex items-start gap-2">
+                      <svg className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                      </svg>
+                      <div>
+                        <p className="text-sm font-semibold text-green-800">VIN valide et vérifié ✓</p>
+                        {vinRemark && (
+                          <p className="text-sm text-green-700 mt-1 font-medium">{vinRemark}</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {formData.vin.length > 0 && formData.vin.length < 17 && (
+                  <p className="mt-1 text-sm text-gray-500">
+                    {formData.vin.length}/17 caractères
+                  </p>
+                )}
+                {formData.vin.length === 0 && (
+                  <p className="mt-1 text-xs text-gray-500">17 caractères alphanumériques (sans I, O, Q)</p>
+                )}
+                {formData.vin.length > 0 && formData.vin.length < 17 && (
+                  <p className="mt-2 text-sm text-gray-600">
+                    {formData.vin.length}/17 caractères
+                  </p>
+                )}
+                {formData.vin.length === 0 && (
+                  <p className="mt-1 text-xs text-gray-500">17 caractères alphanumériques (sans I, O, Q)</p>
+                )}
               </div>
             </div>
           </div>
