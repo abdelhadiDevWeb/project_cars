@@ -48,13 +48,18 @@ export default function UsersPage() {
       setFilteredWorkshops(workshops);
     } else {
       const searchLower = searchTerm.toLowerCase();
-      const filtered = users.filter(user => 
-        user.firstName.toLowerCase().includes(searchLower) ||
-        user.lastName.toLowerCase().includes(searchLower) ||
-        `${user.firstName} ${user.lastName}`.toLowerCase().includes(searchLower) ||
-        user.email.toLowerCase().includes(searchLower) ||
-        user.phone.includes(searchTerm)
-      );
+      const filtered = users
+        .filter(user => {
+          const role = user.role?.toLowerCase() || '';
+          return role !== 'admin'; // Ensure admin users are filtered out (case insensitive)
+        })
+        .filter(user => 
+          user.firstName.toLowerCase().includes(searchLower) ||
+          user.lastName.toLowerCase().includes(searchLower) ||
+          `${user.firstName} ${user.lastName}`.toLowerCase().includes(searchLower) ||
+          user.email.toLowerCase().includes(searchLower) ||
+          user.phone.includes(searchTerm)
+        );
       setFilteredUsers(filtered);
 
       const filteredW = workshops.filter(workshop =>
@@ -82,11 +87,16 @@ export default function UsersPage() {
 
       const data = await response.json();
       if (data.ok) {
-        // Map _id to id for users if needed
-        const usersWithId = (data.users || []).map((user: any) => ({
-          ...user,
-          id: user.id || user._id?.toString() || user._id,
-        }));
+        // Map _id to id for users if needed and filter out admin users
+        const usersWithId = (data.users || [])
+          .map((user: any) => ({
+            ...user,
+            id: user.id || user._id?.toString() || user._id,
+          }))
+          .filter((user: any) => {
+            const role = user.role?.toLowerCase() || '';
+            return role !== 'admin'; // Filter out admin users (case insensitive)
+          });
         
         // Map _id to id for workshops if needed
         const workshopsWithId = (data.workshops || []).map((workshop: any) => ({
@@ -376,12 +386,8 @@ export default function UsersPage() {
                           <p className="text-sm text-gray-700">{user.phone}</p>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                            user.role === 'admin' 
-                              ? 'bg-purple-100 text-purple-700' 
-                              : 'bg-blue-100 text-blue-700'
-                          }`}>
-                            {user.role === 'admin' ? 'Admin' : 'Client'}
+                          <span className="px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">
+                            Client
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">

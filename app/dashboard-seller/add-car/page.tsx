@@ -19,6 +19,7 @@ export default function AddCarPage() {
   const [vinValid, setVinValid] = useState<boolean | null>(null);
   const [vinError, setVinError] = useState('');
   const [vinRemark, setVinRemark] = useState('');
+  const [vinDetails, setVinDetails] = useState<any>(null);
   const [customBrand, setCustomBrand] = useState('');
   const [showCustomBrand, setShowCustomBrand] = useState(false);
   const [images, setImages] = useState<File[]>([]);
@@ -50,6 +51,11 @@ export default function AddCarPage() {
         [name]: value,
       });
     }
+    
+    // Clear error when user changes brand or model (they might be fixing the mismatch)
+    if ((name === 'brand' || name === 'model') && error) {
+      setError('');
+    }
   };
 
   const handleCustomBrandChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -58,6 +64,14 @@ export default function AddCarPage() {
       ...formData,
       brand: e.target.value,
     });
+    // Clear error when user changes custom brand
+    if (error) {
+      setError('');
+    }
+    // Clear error when user changes custom brand
+    if (error) {
+      setError('');
+    }
   };
 
   const handleVinChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -66,11 +80,23 @@ export default function AddCarPage() {
     setVinError('');
     setVinValid(null);
     setVinRemark('');
+    setVinDetails(null);
 
     if (vin.length === 17) {
       setVinValidating(true);
+      setVinError('');
+      setVinValid(null);
+      setVinRemark('');
+      
       try {
         const token = localStorage.getItem('token');
+        if (!token) {
+          setVinValid(false);
+          setVinError('Vous devez être connecté pour vérifier le VIN.');
+          setVinValidating(false);
+          return;
+        }
+
         const response = await fetch('/api/car/verify-vin', {
           method: 'POST',
           headers: {
@@ -80,34 +106,41 @@ export default function AddCarPage() {
           body: JSON.stringify({ vin }),
         });
 
-        const data = await response.json();
-        if (data.ok && data.valid) {
+        let data;
+        try {
+          data = await response.json();
+        } catch (jsonError) {
+          // If response is not JSON, try to get text
+          const text = await response.text();
+          setVinValid(false);
+          setVinError(`Erreur serveur: ${response.status} ${response.statusText || text || 'Réponse invalide'}`);
+          setVinValidating(false);
+          return;
+        }
+
+        // Check if response is OK and VIN is valid
+        if (response.ok && data.ok && data.valid) {
           setVinValid(true);
           setVinError('');
           setVinRemark(data.remark || 'VIN vérifié');
+          setVinDetails(data.details || null);
         } else {
+          // VIN is invalid or doesn't exist
           setVinValid(false);
-          // Ensure error message is always a string
-          let errorMessage = 'VIN invalide. Veuillez vérifier le numéro.';
+          let errorMessage = 'VIN invalide ou non trouvé. Veuillez vérifier le numéro.';
           
-          // Handle data.message
+          // Handle different error formats from API
           if (data.message) {
             if (typeof data.message === 'string') {
               errorMessage = data.message;
             } else if (typeof data.message === 'object') {
-              // If message is an object, try to extract a meaningful error
               if (data.message.error && typeof data.message.error === 'string') {
                 errorMessage = data.message.error;
               } else if (data.message.message && typeof data.message.message === 'string') {
                 errorMessage = data.message.message;
-              } else {
-                // Fallback: use a generic message instead of stringifying the object
-                errorMessage = 'VIN invalide. Veuillez vérifier le numéro.';
               }
             }
-          } 
-          // Handle data.error
-          else if (data.error) {
+          } else if (data.error) {
             if (typeof data.error === 'string') {
               errorMessage = data.error;
             } else if (typeof data.error === 'object') {
@@ -115,19 +148,27 @@ export default function AddCarPage() {
                 errorMessage = data.error.message;
               } else if (data.error.error && typeof data.error.error === 'string') {
                 errorMessage = data.error.error;
-              } else {
-                errorMessage = 'VIN invalide. Veuillez vérifier le numéro.';
               }
+            }
+          }
+          
+          // If status is 400 or 404, it means VIN doesn't exist or is invalid
+          if (response.status === 400 || response.status === 404) {
+            if (!errorMessage.includes('VIN') && !errorMessage.includes('vin')) {
+              errorMessage = `VIN invalide ou non trouvé. ${errorMessage}`;
             }
           }
           
           setVinError(errorMessage);
           setVinRemark('');
+          setVinDetails(null);
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error verifying VIN:', error);
         setVinValid(false);
-        setVinError('Erreur lors de la vérification du VIN. Veuillez réessayer.');
+        setVinError(error?.message || 'Erreur de connexion lors de la vérification du VIN. Veuillez réessayer.');
+        setVinRemark('');
+        setVinDetails(null);
       } finally {
         setVinValidating(false);
       }
@@ -153,6 +194,49 @@ export default function AddCarPage() {
     }
   };
 
+  // Function to normalize strings for comparison (remove spaces, lowercase, remove special chars)
+  const normalizeString = (str: string): string => {
+    return str.toLowerCase().trim().replace(/[^a-z0-9]/g, '');
+  };
+
+  // Function to check if brand/model match VIN data
+  const checkBrandModelMatch = (brand: string, model: string): { match: boolean; error?: string } => {
+    if (!vinDetails || !vinValid) {
+      return { match: true }; // If no VIN validation, allow submission
+    }
+
+    const normalizedBrand = normalizeString(brand);
+    const normalizedModel = normalizeString(model);
+    const normalizedVinMake = normalizeString(vinDetails.make || '');
+    const normalizedVinModel = normalizeString(vinDetails.model || '');
+
+    // Check if brand matches make
+    const brandMatch = normalizedBrand === normalizedVinMake || 
+                       normalizedVinMake.includes(normalizedBrand) || 
+                       normalizedBrand.includes(normalizedVinMake);
+
+    // Check if model matches
+    const modelMatch = normalizedModel === normalizedVinModel || 
+                       normalizedVinModel.includes(normalizedModel) || 
+                       normalizedModel.includes(normalizedVinModel);
+
+    if (!brandMatch || !modelMatch) {
+      let errorDetails = [];
+      if (!brandMatch) {
+        errorDetails.push(`La marque "${brand}" ne correspond pas à "${vinDetails.make}" du VIN`);
+      }
+      if (!modelMatch) {
+        errorDetails.push(`Le modèle "${model}" ne correspond pas à "${vinDetails.model}" du VIN`);
+      }
+      return {
+        match: false,
+        error: `Les informations du véhicule ne correspondent pas au VIN vérifié.\n\n${errorDetails.join('\n')}\n\nVIN vérifié: ${vinDetails.make} ${vinDetails.model}${vinDetails.year ? ` (${vinDetails.year})` : ''}`
+      };
+    }
+
+    return { match: true };
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -172,6 +256,13 @@ export default function AddCarPage() {
       }
       if (vinValid === null) {
         setError('Veuillez attendre la vérification du VIN');
+        return;
+      }
+
+      // Check if brand and model match VIN data
+      const matchResult = checkBrandModelMatch(finalBrand, formData.model);
+      if (!matchResult.match) {
+        setError(matchResult.error || 'Les informations du véhicule ne correspondent pas au VIN vérifié');
         return;
       }
     }
@@ -262,7 +353,7 @@ export default function AddCarPage() {
       
       // Redirect after 2 seconds
       setTimeout(() => {
-        router.push('/dashboard-seller/my-cars');
+      router.push('/dashboard-seller/my-cars');
       }, 2000);
     } catch (error) {
       console.error('Error adding car:', error);
@@ -280,13 +371,23 @@ export default function AddCarPage() {
 
       <div className="max-w-4xl mx-auto">
         {error && (
-          <div className="mb-6 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg flex items-center justify-between" role="alert">
-            <span>{error}</span>
-            <button onClick={() => setError('')} className="text-red-700 hover:text-red-900">
-              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-              </svg>
-            </button>
+          <div className="mb-6 bg-gradient-to-br from-red-50 to-pink-50 border-2 border-red-300 text-red-800 px-6 py-4 rounded-xl shadow-sm" role="alert">
+            <div className="flex items-start gap-3">
+              <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
+                <svg className="w-5 h-5 text-red-600" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <p className="font-bold text-red-900 mb-1">Erreur de validation</p>
+                <div className="text-sm text-red-800 whitespace-pre-line leading-relaxed">{error}</div>
+              </div>
+              <button onClick={() => setError('')} className="text-red-600 hover:text-red-800 flex-shrink-0">
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                </svg>
+              </button>
+            </div>
           </div>
         )}
 
@@ -464,28 +565,105 @@ export default function AddCarPage() {
                   </div>
                 )}
                 {vinError && vinValid === false && !vinValidating && (
-                  <div className="mt-2 p-3 bg-red-50 border-2 border-red-200 rounded-lg">
-                    <div className="flex items-start gap-2">
-                      <svg className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                      </svg>
-                      <div>
-                        <p className="text-sm font-semibold text-red-800">VIN invalide</p>
-                        <p className="text-sm text-red-700 mt-1">{vinError}</p>
+                  <div className="mt-2 p-4 bg-gradient-to-br from-red-50 to-pink-50 border-2 border-red-300 rounded-xl shadow-sm animate-fade-in">
+                    <div className="flex items-start gap-3">
+                      <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
+                        <svg className="w-6 h-6 text-red-600" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-bold text-red-900 mb-1">VIN invalide ou non trouvé</p>
+                        <p className="text-sm text-red-800 leading-relaxed">{vinError}</p>
                       </div>
                     </div>
                   </div>
                 )}
                 {vinValid === true && !vinValidating && (
-                  <div className="mt-2 p-3 bg-green-50 border-2 border-green-200 rounded-lg shadow-sm">
-                    <div className="flex items-start gap-2">
-                      <svg className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                      </svg>
-                      <div>
-                        <p className="text-sm font-semibold text-green-800">VIN valide et vérifié ✓</p>
+                  <div className="mt-2 p-4 bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-300 rounded-xl shadow-sm">
+                    <div className="flex items-start gap-3">
+                      <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+                        <svg className="w-6 h-6 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-bold text-green-900 mb-2">VIN valide et vérifié ✓</p>
                         {vinRemark && (
-                          <p className="text-sm text-green-700 mt-1 font-medium">{vinRemark}</p>
+                          <p className="text-sm text-green-800 font-semibold mb-3">{vinRemark}</p>
+                        )}
+                        {vinDetails && (
+                          <div className="mt-3 pt-3 border-t border-green-200">
+                            <p className="text-xs font-semibold text-green-900 mb-2 uppercase tracking-wide">Détails du véhicule :</p>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                              {vinDetails.make && (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-green-700 font-medium min-w-[80px]">Marque:</span>
+                                  <span className="text-green-900">{vinDetails.make}</span>
+                                </div>
+                              )}
+                              {vinDetails.model && (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-green-700 font-medium min-w-[80px]">Modèle:</span>
+                                  <span className="text-green-900">{vinDetails.model}</span>
+                                </div>
+                              )}
+                              {vinDetails.year && (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-green-700 font-medium min-w-[80px]">Année:</span>
+                                  <span className="text-green-900">{vinDetails.year}</span>
+                                </div>
+                              )}
+                              {vinDetails.bodyType && (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-green-700 font-medium min-w-[80px]">Type:</span>
+                                  <span className="text-green-900">{vinDetails.bodyType}</span>
+                                </div>
+                              )}
+                              {vinDetails.engine && (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-green-700 font-medium min-w-[80px]">Moteur:</span>
+                                  <span className="text-green-900">{vinDetails.engine}</span>
+                                </div>
+                              )}
+                              {vinDetails.transmission && (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-green-700 font-medium min-w-[80px]">Transmission:</span>
+                                  <span className="text-green-900">{vinDetails.transmission}</span>
+                                </div>
+                              )}
+                              {vinDetails.driveType && (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-green-700 font-medium min-w-[80px]">Traction:</span>
+                                  <span className="text-green-900">{vinDetails.driveType}</span>
+                                </div>
+                              )}
+                              {vinDetails.fuelType && (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-green-700 font-medium min-w-[80px]">Carburant:</span>
+                                  <span className="text-green-900">{vinDetails.fuelType}</span>
+                                </div>
+                              )}
+                              {vinDetails.doors && (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-green-700 font-medium min-w-[80px]">Portes:</span>
+                                  <span className="text-green-900">{vinDetails.doors}</span>
+                                </div>
+                              )}
+                              {vinDetails.seats && (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-green-700 font-medium min-w-[80px]">Places:</span>
+                                  <span className="text-green-900">{vinDetails.seats}</span>
+                                </div>
+                              )}
+                              {vinDetails.color && (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-green-700 font-medium min-w-[80px]">Couleur:</span>
+                                  <span className="text-green-900">{vinDetails.color}</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
                         )}
                       </div>
                     </div>
@@ -493,14 +671,6 @@ export default function AddCarPage() {
                 )}
                 {formData.vin.length > 0 && formData.vin.length < 17 && (
                   <p className="mt-1 text-sm text-gray-500">
-                    {formData.vin.length}/17 caractères
-                  </p>
-                )}
-                {formData.vin.length === 0 && (
-                  <p className="mt-1 text-xs text-gray-500">17 caractères alphanumériques (sans I, O, Q)</p>
-                )}
-                {formData.vin.length > 0 && formData.vin.length < 17 && (
-                  <p className="mt-2 text-sm text-gray-600">
                     {formData.vin.length}/17 caractères
                   </p>
                 )}

@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { getImageUrl } from "@/utils/backend";
+import ChatModal from "@/components/ChatModal";
+import { useUser } from "@/contexts/UserContext";
 
 interface Car {
   _id: string;
@@ -15,6 +17,8 @@ interface Car {
   price: number;
   status: 'no_proccess' | 'en_attente' | 'actif' | 'sold';
   images: string[];
+  vin?: string;
+  vinRemark?: string;
   owner: {
     _id: string;
     firstName: string;
@@ -47,8 +51,8 @@ export default function CarDetailsPage() {
   const [isUpdating, setIsUpdating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [carAppointments, setCarAppointments] = useState<any[]>([]);
-  const [chatMessage, setChatMessage] = useState('');
-  const [chatMessages, setChatMessages] = useState<Array<{sender: string, message: string, timestamp: Date}>>([]);
+  const [showChatModal, setShowChatModal] = useState(false);
+  const { user, isAuthenticated } = useUser();
 
   // Fetch car data
   useEffect(() => {
@@ -276,38 +280,19 @@ export default function CarDetailsPage() {
 
   return (
     <div className="min-h-screen bg-white">
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-gray-200/50 shadow-sm">
-        <nav className="container mx-auto px-4 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
-            <Link href="/" className="flex items-center gap-3 group">
-              <div className="relative w-14 h-14 bg-gradient-to-br from-teal-500 to-cyan-500 rounded-xl p-2 shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:scale-105">
-                <Image
-                  src="/logo.png"
-                  alt="CarSure DZ Logo"
-                  fill
-                  className="object-contain"
-                  priority
-                />
-              </div>
-              <span className="text-2xl font-bold bg-gradient-to-r from-teal-600 to-cyan-600 bg-clip-text text-transparent font-[var(--font-poppins)]">
-                CarSure DZ
-              </span>
-            </Link>
-            <Link
-              href="/"
-              className="px-6 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-semibold transition-all duration-200 flex items-center gap-2 shadow-sm hover:shadow-md"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-              </svg>
-              Retour
-            </Link>
-          </div>
-        </nav>
-      </header>
-
       <div className="container mx-auto px-4 lg:px-8 py-8">
+        <div className="mb-6">
+          <button
+            type="button"
+            onClick={() => router.back()}
+            className="inline-flex items-center gap-2 text-gray-700 hover:text-teal-600 font-semibold transition-colors"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            Retour
+          </button>
+        </div>
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Left Column - Images and Details */}
           <div className="lg:col-span-2 space-y-6">
@@ -503,6 +488,19 @@ export default function CarDetailsPage() {
                 </div>
               </div>
 
+              {/* VIN Information - On separate line */}
+              {car.vin && (
+                <div className="mt-4 w-full">
+                  <p className="text-sm font-semibold text-teal-800 mb-2">Numéro VIN</p>
+                  <div className="p-3 bg-teal-50 rounded-lg border border-teal-200">
+                    <p className="text-base font-mono text-teal-900">{car.vin}</p>
+                    {car.vinRemark && (
+                      <p className="text-sm text-teal-700 italic mt-1">{car.vinRemark}</p>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* Show finished appointments with images and PDF */}
               {carAppointments.length > 0 && (
                 <div className="bg-gradient-to-br from-purple-50 via-indigo-50 to-pink-50 rounded-3xl shadow-2xl p-8 border-2 border-purple-200/50 mt-6">
@@ -646,63 +644,18 @@ export default function CarDetailsPage() {
                         Envoyer un email
                       </a>
                       
-                      {/* Chat Section */}
-                      <div className="mt-4 pt-4 border-t border-gray-200">
-                        <h4 className="text-sm font-semibold text-gray-700 mb-3">Chat</h4>
-                        <div className="bg-gray-50 rounded-lg p-3 mb-3 h-48 overflow-y-auto space-y-2">
-                          {chatMessages.length === 0 ? (
-                            <p className="text-xs text-gray-500 text-center py-4">Aucun message. Commencez la conversation !</p>
-                          ) : (
-                            chatMessages.map((msg, idx) => (
-                              <div key={idx} className={`flex ${msg.sender === 'me' ? 'justify-end' : 'justify-start'}`}>
-                                <div className={`max-w-[80%] rounded-lg px-3 py-2 ${
-                                  msg.sender === 'me' 
-                                    ? 'bg-teal-500 text-white' 
-                                    : 'bg-white text-gray-700 border border-gray-200'
-                                }`}>
-                                  <p className="text-sm">{msg.message}</p>
-                                  <p className="text-xs opacity-70 mt-1">
-                                    {new Date(msg.timestamp).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
-                                  </p>
-                                </div>
-                              </div>
-                            ))
-                          )}
-                        </div>
-                        <form onSubmit={(e) => {
-                          e.preventDefault();
-                          if (chatMessage.trim()) {
-                            setChatMessages([...chatMessages, {
-                              sender: 'me',
-                              message: chatMessage,
-                              timestamp: new Date()
-                            }]);
-                            setChatMessage('');
-                            // Simulate response (in real app, this would be sent to backend)
-                            setTimeout(() => {
-                              setChatMessages(prev => [...prev, {
-                                sender: 'seller',
-                                message: 'Merci pour votre message. Je vous répondrai bientôt !',
-                                timestamp: new Date()
-                              }]);
-                            }, 1000);
-                          }
-                        }} className="flex gap-2">
-                          <input
-                            type="text"
-                            value={chatMessage}
-                            onChange={(e) => setChatMessage(e.target.value)}
-                            placeholder="Tapez votre message..."
-                            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 text-sm"
-                          />
-                          <button
-                            type="submit"
-                            className="px-4 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-lg font-semibold transition-colors text-sm"
-                          >
-                            Envoyer
-                          </button>
-                        </form>
-                      </div>
+                      {/* Chat Button */}
+                      {isAuthenticated && user && owner && typeof owner === 'object' && user._id !== owner._id && (
+                        <button
+                          onClick={() => setShowChatModal(true)}
+                          className="w-full py-4 bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white rounded-xl font-semibold transition-all duration-200 shadow-xl hover:shadow-2xl text-center flex items-center justify-center gap-2"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                          </svg>
+                          Chat with him
+                        </button>
+                      )}
                 </div>
                   )}
                 </>
@@ -717,6 +670,17 @@ export default function CarDetailsPage() {
           </div>
         </div>
       </div>
+
+      {/* Chat Modal - Rendered outside the grid structure */}
+      {owner && showChatModal && typeof owner === 'object' && user && user._id !== owner._id && (
+        <ChatModal
+          isOpen={showChatModal}
+          onClose={() => setShowChatModal(false)}
+          otherUserId={owner._id}
+          otherUserName={`${owner.firstName} ${owner.lastName}`}
+          otherUserEmail={owner.email}
+        />
+      )}
     </div>
   );
 }

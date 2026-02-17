@@ -40,9 +40,16 @@ export function UserProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
-  // Initialize from localStorage on mount
+  // Initialize from localStorage on mount - only once
   useEffect(() => {
+    let isMounted = true;
+    let hasInitialized = false;
+
     const initAuth = async () => {
+      // Prevent multiple initializations
+      if (hasInitialized) return;
+      hasInitialized = true;
+
       try {
         const storedToken = localStorage.getItem('token');
         const storedUser = localStorage.getItem('user');
@@ -50,7 +57,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
         const storedUserRole = localStorage.getItem('userRole');
 
         if (storedToken && storedUser) {
-          // Verify token is still valid by fetching user data
+          // Verify token is still valid by fetching user data - only once
           try {
             const res = await fetch('/api/auth/me', {
               headers: {
@@ -58,34 +65,56 @@ export function UserProvider({ children }: { children: ReactNode }) {
               },
             });
 
+            if (!isMounted) return;
+
             if (res.ok) {
               const data = await res.json();
-              setToken(storedToken);
-              setUser(data.user || JSON.parse(storedUser));
-              setUserType(storedUserType);
-              setUserRole(storedUserRole);
+              if (data.ok && data.user) {
+                setToken(storedToken);
+                setUser(data.user);
+                setUserType(data.user.type || storedUserType);
+                setUserRole(data.user.role || storedUserRole);
+              } else {
+                // Invalid response, use stored data
+                setToken(storedToken);
+                setUser(JSON.parse(storedUser));
+                setUserType(storedUserType);
+                setUserRole(storedUserRole);
+              }
             } else {
               // Token invalid, clear storage
-              clearAuth();
+              if (isMounted) {
+                clearAuth();
+              }
             }
           } catch (error) {
             console.error('Error verifying token:', error);
-            // If verification fails, use stored data but mark as potentially stale
-            setToken(storedToken);
-            setUser(JSON.parse(storedUser));
-            setUserType(storedUserType);
-            setUserRole(storedUserRole);
+            // If verification fails, use stored data
+            if (isMounted) {
+              setToken(storedToken);
+              setUser(JSON.parse(storedUser));
+              setUserType(storedUserType);
+              setUserRole(storedUserRole);
+            }
           }
         }
       } catch (error) {
         console.error('Error initializing auth:', error);
-        clearAuth();
+        if (isMounted) {
+          clearAuth();
+        }
       } finally {
-        setIsLoading(false);
+        if (isMounted) {
+          setIsLoading(false);
+        }
       }
     };
 
     initAuth();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const clearAuth = () => {

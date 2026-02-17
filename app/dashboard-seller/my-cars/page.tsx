@@ -17,6 +17,8 @@ interface Car {
   status: 'no_proccess' | 'en_attente' | 'actif' | 'sold';
   images: string[];
   owner: string;
+  vin?: string;
+  vinRemark?: string;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -499,6 +501,16 @@ export default function MyCarsPage() {
                   </span>
                 </div>
                 
+                {/* VIN on separate line */}
+                {car.vin && (
+                  <div className="flex items-center gap-2 text-teal-600 font-semibold text-sm mt-2">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <span className="font-mono">VIN: {car.vin}</span>
+                  </div>
+                )}
+                
                 <div className="text-2xl font-bold text-teal-600 font-[var(--font-poppins)]">
                       {car.price.toLocaleString()} DA
                 </div>
@@ -586,7 +598,7 @@ export default function MyCarsPage() {
             {/* Edit Modal */}
             {editingCar && (
               <div className="fixed inset-0 bg-gray-500/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fadeIn">
-                <div className="bg-white rounded-3xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto border border-gray-200 animate-slideUp modal-scroll">
+                <div className="bg-white rounded-3xl shadow-2xl max-w-5xl w-full max-h-[95vh] border border-gray-200 animate-slideUp">
                   {/* Header with Gradient */}
                   <div className="flex items-center justify-between p-6 bg-gradient-to-r from-teal-500 via-teal-600 to-cyan-500 rounded-t-3xl">
                     <div className="flex items-center gap-4">
@@ -614,7 +626,7 @@ export default function MyCarsPage() {
                     </button>
                   </div>
 
-                  <div className="p-6 space-y-6">
+                  <div className="p-6 space-y-6 overflow-y-auto max-h-[calc(95vh-120px)]">
                     {/* Basic Information Card */}
                     <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl p-6 border border-gray-200 shadow-sm">
                       <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
@@ -713,6 +725,24 @@ export default function MyCarsPage() {
                           />
                         </div>
                       </div>
+
+                      {/* VIN Display (Read-only) */}
+                      {editingCar.vin && (
+                        <div className="mt-4 bg-teal-50 rounded-xl p-4 border-2 border-teal-200">
+                          <label className="block text-sm font-medium text-teal-800 mb-2 flex items-center gap-2">
+                            <svg className="w-4 h-4 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            Numéro VIN (non modifiable)
+                          </label>
+                          <div className="bg-white rounded-lg p-3 border border-teal-300">
+                            <p className="text-base font-mono text-teal-900 mb-1">{editingCar.vin}</p>
+                            {editingCar.vinRemark && (
+                              <p className="text-sm text-teal-700 italic">{editingCar.vinRemark}</p>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     {/* Images Section Card */}
@@ -842,7 +872,7 @@ export default function MyCarsPage() {
                     </div>
 
                     {/* Action Buttons */}
-                    <div className="flex gap-4 pt-4 border-t border-gray-200">
+                    <div className="flex gap-4 pt-4 border-t border-gray-200 mt-auto">
                       <button
                         onClick={() => handleUpdate(editingCar._id || editingCar.id)}
                         disabled={isUpdating}
@@ -879,9 +909,9 @@ export default function MyCarsPage() {
 
             {/* Car Details Modal */}
             {viewingCar && (
-              <div className="fixed inset-0 bg-gray-500/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto animate-fadeIn">
-                <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full p-6 max-h-[90vh] overflow-y-auto border border-gray-200 animate-slideUp modal-scroll">
-                  <div className="flex items-center justify-between mb-6">
+              <div className="fixed inset-0 bg-gray-500/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fadeIn">
+                <div className="bg-white rounded-2xl shadow-2xl max-w-6xl w-full h-[95vh] flex flex-col border border-gray-200 animate-slideUp">
+                  <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-200 px-6 pt-6">
                     <h2 className="text-2xl font-bold text-gray-900 font-[var(--font-poppins)]">
                       Détails de la voiture
                     </h2>
@@ -895,7 +925,7 @@ export default function MyCarsPage() {
                     </button>
                   </div>
 
-                  <div className="space-y-6">
+                  <div className="flex-1 overflow-y-auto space-y-6 px-6 pb-6">
                     {/* Main Image with Navigation */}
                     <div className="relative h-64 lg:h-96 rounded-2xl overflow-hidden border border-gray-200">
                       {viewingCar.images && viewingCar.images.length > 0 && getImageUrl(viewingCar.images[selectedImageIndex]) ? (
@@ -1003,6 +1033,21 @@ export default function MyCarsPage() {
                         </div>
                       </div>
 
+                      {/* VIN Information - on separate line */}
+                      {viewingCar.vin && (
+                        <div className="mt-4">
+                          <div className="flex items-center gap-2 text-teal-600 font-semibold">
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            <span className="font-mono text-base">VIN: {viewingCar.vin}</span>
+                            {viewingCar.vinRemark && (
+                              <span className="text-sm text-teal-700 italic ml-2">({viewingCar.vinRemark})</span>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
                       {viewingCar.createdAt && (
                         <div className="pt-4 border-t border-gray-200">
                           <p className="text-sm text-gray-600">
@@ -1013,7 +1058,7 @@ export default function MyCarsPage() {
                     </div>
 
                     {/* Action Buttons */}
-                    <div className="flex gap-4 pt-4">
+                    <div className="flex gap-4 pt-4 border-t border-gray-200 mt-auto">
                       <button
                         onClick={() => {
                           setViewingCar(null);

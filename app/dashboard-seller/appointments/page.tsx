@@ -6,6 +6,8 @@ import { useUser } from "@/contexts/UserContext";
 import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { getImageUrl } from "@/utils/backend";
+import { io, Socket } from 'socket.io-client';
+import { getBackendUrl } from '@/utils/backend';
 
 interface Workshop {
   _id: string;
@@ -48,6 +50,17 @@ export default function AppointmentsPage() {
   const [myAppointments, setMyAppointments] = useState<any[]>([]);
   const [loadingMyAppointments, setLoadingMyAppointments] = useState(true);
   const [activeTab, setActiveTab] = useState<'book' | 'my-appointments'>('book');
+  const [appointmentFilter, setAppointmentFilter] = useState<'accepted' | 'en_cours' | 'finish'>('accepted');
+  const [socket, setSocket] = useState<Socket | null>(null);
+  const [newNotifications, setNewNotifications] = useState<{
+    accepted: boolean;
+    en_cours: boolean;
+    finish: boolean;
+  }>({
+    accepted: false,
+    en_cours: false,
+    finish: false,
+  });
 
   // Check URL parameter for tab
   useEffect(() => {
@@ -118,54 +131,113 @@ export default function AppointmentsPage() {
   }, [user, router]);
 
   // Fetch user's appointments
-  useEffect(() => {
-    const fetchMyAppointments = async () => {
-      if (!user) return;
+  const fetchMyAppointments = async () => {
+    if (!user) return;
 
-      try {
-        setLoadingMyAppointments(true);
-        const token = localStorage.getItem('token');
-        if (!token) {
-          router.push('/login');
-          return;
-        }
-
-        const res = await fetch('/api/rdv-workshop/my-appointments', {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-        });
-
-        const contentType = res.headers.get("content-type");
-        if (!contentType || !contentType.includes("application/json")) {
-          const text = await res.text();
-          console.error("Non-JSON response:", text.substring(0, 200));
-          setLoadingMyAppointments(false);
-          return;
-        }
-
-        const data = await res.json();
-
-        console.log('📋 Appointments response:', data);
-
-        if (res.ok && data.ok && data.appointments) {
-          console.log('✅ Found appointments:', data.appointments.length);
-          setMyAppointments(data.appointments);
-        } else {
-          console.error('❌ Error fetching appointments:', data?.message || 'Unknown error');
-          setMyAppointments([]);
-        }
-      } catch (error) {
-        console.error('Error fetching appointments:', error);
-      } finally {
-        setLoadingMyAppointments(false);
+    try {
+      setLoadingMyAppointments(true);
+      const token = localStorage.getItem('token');
+      if (!token) {
+        router.push('/login');
+        return;
       }
-    };
 
+      const res = await fetch('/api/rdv-workshop/my-appointments', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      const contentType = res.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        const text = await res.text();
+        console.error("Non-JSON response:", text.substring(0, 200));
+        setLoadingMyAppointments(false);
+        return;
+      }
+
+      const data = await res.json();
+
+      console.log('📋 Appointments response:', data);
+
+      if (res.ok && data.ok && data.appointments) {
+        console.log('✅ Found appointments:', data.appointments.length);
+        setMyAppointments(data.appointments);
+      } else {
+        console.error('❌ Error fetching appointments:', data?.message || 'Unknown error');
+        setMyAppointments([]);
+      }
+    } catch (error) {
+      console.error('Error fetching appointments:', error);
+    } finally {
+      setLoadingMyAppointments(false);
+    }
+  };
+
+  useEffect(() => {
     if (user) {
       fetchMyAppointments();
     }
   }, [user, router]);
+
+  // Initialize Socket.io connection for real-time updates
+  useEffect(() => {
+    if (!user) return;
+
+    const backendUrl = getBackendUrl();
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    const newSocket = io(backendUrl, {
+      auth: { token },
+      transports: ['websocket', 'polling'],
+    });
+
+    setSocket(newSocket);
+
+    newSocket.on('connect', () => {
+      console.log('Socket connected:', newSocket.id);
+      newSocket.emit('join_user', user._id);
+    });
+
+    // Listen for notification of appointment updates
+    newSocket.on('new_notification', (data: any) => {
+      console.log('New notification received:', data);
+      
+      // Determine which section this notification is for
+      let targetStatus: 'accepted' | 'en_cours' | 'finish' | null = null;
+      
+      if (data.type === 'rdv_workshop' || data.type === 'accept_rdv' || data.message?.toLowerCase().includes('accepté') || data.message?.toLowerCase().includes('accept')) {
+        targetStatus = 'accepted';
+      } else if (data.message?.toLowerCase().includes('en cours') || data.message?.toLowerCase().includes('commencé')) {
+        targetStatus = 'en_cours';
+      } else if (data.message?.toLowerCase().includes('terminé') || data.message?.toLowerCase().includes('finish') || data.message?.toLowerCase().includes('fini')) {
+        targetStatus = 'finish';
+      }
+      
+      // Always refresh appointments when notification arrives
+      fetchMyAppointments();
+      
+      // If we're not in the target section, show notification indicator
+      if (targetStatus && appointmentFilter !== targetStatus && activeTab === 'my-appointments') {
+        setNewNotifications(prev => ({
+          ...prev,
+          [targetStatus]: true,
+        }));
+      }
+    });
+
+    newSocket.on('disconnect', () => {
+      console.log('Socket disconnected');
+    });
+
+    return () => {
+      if (newSocket) {
+        newSocket.emit('leave_user', user._id);
+        newSocket.disconnect();
+      }
+    };
+  }, [user]);
 
   // Fetch available times when date or workshop changes
   useEffect(() => {
@@ -634,6 +706,85 @@ export default function AppointmentsPage() {
       {/* My Appointments Section */}
       {activeTab === 'my-appointments' && (
         <div>
+          {/* Filter Buttons */}
+          <div className="mb-6 flex gap-4 bg-white rounded-2xl shadow-lg p-2 border border-gray-200">
+            <button
+              onClick={() => {
+                setAppointmentFilter('accepted');
+                setNewNotifications(prev => ({ ...prev, accepted: false }));
+              }}
+              className={`flex-1 px-6 py-4 rounded-xl font-semibold transition-all duration-300 flex items-center justify-center gap-3 relative ${
+                appointmentFilter === 'accepted'
+                  ? 'bg-gradient-to-r from-green-500 to-green-600 text-white shadow-lg transform scale-105'
+                  : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
+              }`}
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span>Acceptés</span>
+              <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                appointmentFilter === 'accepted' ? 'bg-white/30 text-white' : 'bg-green-100 text-green-700'
+              }`}>
+                {myAppointments.filter(a => a.status === 'accepted').length}
+              </span>
+              {newNotifications.accepted && appointmentFilter !== 'accepted' && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>
+              )}
+            </button>
+            
+            <button
+              onClick={() => {
+                setAppointmentFilter('en_cours');
+                setNewNotifications(prev => ({ ...prev, en_cours: false }));
+              }}
+              className={`flex-1 px-6 py-4 rounded-xl font-semibold transition-all duration-300 flex items-center justify-center gap-3 relative ${
+                appointmentFilter === 'en_cours'
+                  ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg transform scale-105'
+                  : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
+              }`}
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span>En cours</span>
+              <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                appointmentFilter === 'en_cours' ? 'bg-white/30 text-white' : 'bg-blue-100 text-blue-700'
+              }`}>
+                {myAppointments.filter(a => a.status === 'en_cours').length}
+              </span>
+              {newNotifications.en_cours && appointmentFilter !== 'en_cours' && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>
+              )}
+            </button>
+            
+            <button
+              onClick={() => {
+                setAppointmentFilter('finish');
+                setNewNotifications(prev => ({ ...prev, finish: false }));
+              }}
+              className={`flex-1 px-6 py-4 rounded-xl font-semibold transition-all duration-300 flex items-center justify-center gap-3 relative ${
+                appointmentFilter === 'finish'
+                  ? 'bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-lg transform scale-105'
+                  : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
+              }`}
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span>Terminés</span>
+              <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                appointmentFilter === 'finish' ? 'bg-white/30 text-white' : 'bg-purple-100 text-purple-700'
+              }`}>
+                {myAppointments.filter(a => a.status === 'finish').length}
+              </span>
+              {newNotifications.finish && appointmentFilter !== 'finish' && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>
+              )}
+            </button>
+          </div>
+
           {loadingMyAppointments ? (
             <div className="flex items-center justify-center py-12">
               <svg className="animate-spin h-12 w-12 text-teal-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -648,9 +799,18 @@ export default function AppointmentsPage() {
               </svg>
               <p className="text-gray-600">Aucun rendez-vous trouvé</p>
             </div>
+          ) : myAppointments.filter((appointment: any) => appointment.status === appointmentFilter).length === 0 ? (
+            <div className="text-center py-12 bg-white rounded-2xl shadow-lg border border-gray-200">
+              <svg className="mx-auto w-16 h-16 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              <p className="text-gray-600">Aucun rendez-vous {appointmentFilter === 'accepted' ? 'accepté' : appointmentFilter === 'en_cours' ? 'en cours' : 'terminé'} trouvé</p>
+            </div>
           ) : (
         <div className="space-y-4">
-              {myAppointments.map((appointment: any) => (
+              {myAppointments
+                .filter((appointment: any) => appointment.status === appointmentFilter)
+                .map((appointment: any) => (
                 <div key={appointment._id || appointment.id} className="bg-white rounded-2xl shadow-lg p-6 border border-gray-200 hover:shadow-xl transition-all">
                   <div className="flex flex-col lg:flex-row gap-6">
                     {/* Car Info */}

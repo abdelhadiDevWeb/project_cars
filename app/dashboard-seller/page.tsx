@@ -164,7 +164,7 @@ export default function DashboardSellerPage() {
       user: apt.id_workshop?.name || 'Atelier',
       status: apt.status,
     })),
-    ...recentNotifications.map(notif => ({
+    ...recentNotifications.filter(notif => notif.type !== 'other').map(notif => ({
       type: 'message' as const,
       car: '',
       time: formatTimeAgo(notif.createdAt),

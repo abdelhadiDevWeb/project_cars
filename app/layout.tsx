@@ -32,7 +32,7 @@ export default function RootLayout({
         className={`${inter.variable} ${poppins.variable} antialiased`}
       >
         <UserProvider>
-          {children}
+        {children}
         </UserProvider>
       </body>
     </html>

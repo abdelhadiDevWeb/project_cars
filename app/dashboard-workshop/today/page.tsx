@@ -52,6 +52,8 @@ export default function TodayPage() {
   const [uploadingPdf, setUploadingPdf] = useState(false);
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
   const [selectedPdf, setSelectedPdf] = useState<File | null>(null);
+  const [successMessage, setSuccessMessage] = useState('');
+  const [activeTab, setActiveTab] = useState<'accepted' | 'en_cours' | 'finish'>('accepted');
 
   useEffect(() => {
     const fetchTodayAppointments = async () => {
@@ -189,6 +191,7 @@ export default function TodayPage() {
       }
 
       // Refresh appointments
+      let updatedAppointment = null;
       const refreshRes = await fetch('/api/workshop-stats/today', {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -198,12 +201,35 @@ export default function TodayPage() {
         const refreshData = await refreshRes.json();
         if (refreshData.ok && refreshData.appointments) {
           setAppointments(refreshData.appointments);
+          
+          // Update selectedAppointment with new data
+          updatedAppointment = refreshData.appointments.find(
+            (apt: Appointment) => (apt._id || apt.id) === (selectedAppointment._id || selectedAppointment.id)
+          );
+          if (updatedAppointment) {
+            setSelectedAppointment(updatedAppointment);
+          }
         }
       }
 
-      setShowUploadModal(false);
-      setSelectedImages([]);
-      setSelectedAppointment(null);
+      // Only close modal if both images and PDF are uploaded
+      const hasImages = updatedAppointment?.images && updatedAppointment.images.length > 0;
+      const hasPdf = updatedAppointment?.rapport_pdf;
+      
+      if (hasImages && hasPdf) {
+        // Both are uploaded, close modal
+        setShowUploadModal(false);
+        setSelectedImages([]);
+        setSelectedAppointment(null);
+        setSuccessMessage('');
+      } else {
+        // Images uploaded but PDF not yet, keep modal open
+        setSuccessMessage(`Images uploadées avec succès ! (${selectedImages.length} image(s))`);
+        setSelectedImages([]);
+        setTimeout(() => {
+          setSuccessMessage('');
+        }, 3000);
+      }
       setUploadingImages(false);
     } catch (error) {
       console.error('Error uploading images:', error);
@@ -239,6 +265,7 @@ export default function TodayPage() {
       }
 
       // Refresh appointments
+      let updatedAppointment = null;
       const refreshRes = await fetch('/api/workshop-stats/today', {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -248,12 +275,36 @@ export default function TodayPage() {
         const refreshData = await refreshRes.json();
         if (refreshData.ok && refreshData.appointments) {
           setAppointments(refreshData.appointments);
+          
+          // Update selectedAppointment with new data
+          updatedAppointment = refreshData.appointments.find(
+            (apt: Appointment) => (apt._id || apt.id) === (selectedAppointment._id || selectedAppointment.id)
+          );
+          if (updatedAppointment) {
+            setSelectedAppointment(updatedAppointment);
+          }
         }
       }
 
-      setShowUploadModal(false);
-      setSelectedPdf(null);
-      setSelectedAppointment(null);
+      // Only close modal if both images and PDF are uploaded
+      const hasImages = updatedAppointment?.images && updatedAppointment.images.length > 0;
+      const hasPdf = updatedAppointment?.rapport_pdf;
+      
+      if (hasImages && hasPdf) {
+        // Both are uploaded, close modal
+        setShowUploadModal(false);
+        setSelectedPdf(null);
+        setSelectedAppointment(null);
+        setSelectedImages([]);
+        setSuccessMessage('');
+      } else {
+        // PDF uploaded but images not yet, keep modal open
+        setSuccessMessage('PDF uploadé avec succès !');
+        setSelectedPdf(null);
+        setTimeout(() => {
+          setSuccessMessage('');
+        }, 3000);
+      }
       setUploadingPdf(false);
     } catch (error) {
       console.error('Error uploading PDF:', error);
@@ -283,6 +334,67 @@ export default function TodayPage() {
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-gray-900 font-[var(--font-poppins)] mb-2">Liste du jour</h1>
         <p className="text-gray-600">{today}</p>
+      </div>
+
+      {/* Tab Buttons */}
+      <div className="mb-6 flex gap-4 bg-white rounded-2xl shadow-lg p-2 border border-gray-200">
+        <button
+          onClick={() => setActiveTab('accepted')}
+          className={`flex-1 px-6 py-4 rounded-xl font-semibold transition-all duration-300 flex items-center justify-center gap-3 ${
+            activeTab === 'accepted'
+              ? 'bg-gradient-to-r from-green-500 to-green-600 text-white shadow-lg transform scale-105'
+              : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
+          }`}
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span>Acceptés</span>
+          <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+            activeTab === 'accepted' ? 'bg-white/30 text-white' : 'bg-green-100 text-green-700'
+          }`}>
+            {appointments.filter(a => a.status === 'accepted').length}
+          </span>
+        </button>
+        
+        <button
+          onClick={() => setActiveTab('en_cours')}
+          className={`flex-1 px-6 py-4 rounded-xl font-semibold transition-all duration-300 flex items-center justify-center gap-3 ${
+            activeTab === 'en_cours'
+              ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg transform scale-105'
+              : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
+          }`}
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span>En cours</span>
+          <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+            activeTab === 'en_cours' ? 'bg-white/30 text-white' : 'bg-blue-100 text-blue-700'
+          }`}>
+            {appointments.filter(a => a.status === 'en_cours').length}
+          </span>
+        </button>
+        
+        <button
+          onClick={() => setActiveTab('finish')}
+          className={`flex-1 px-6 py-4 rounded-xl font-semibold transition-all duration-300 flex items-center justify-center gap-3 ${
+            activeTab === 'finish'
+              ? 'bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-lg transform scale-105'
+              : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
+          }`}
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span>Terminés</span>
+          <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+            activeTab === 'finish' ? 'bg-white/30 text-white' : 'bg-purple-100 text-purple-700'
+          }`}>
+            {appointments.filter(a => a.status === 'finish').length}
+          </span>
+        </button>
       </div>
 
       {/* Progress Card */}
@@ -336,7 +448,8 @@ export default function TodayPage() {
       )}
 
       {/* En Cours Appointments Section */}
-      <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-200 mb-6">
+      {activeTab === 'en_cours' && (
+      <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-200">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-bold text-gray-900 font-[var(--font-poppins)] flex items-center gap-2">
             <svg className="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -429,27 +542,33 @@ export default function TodayPage() {
 
                       {/* Actions */}
                       <div className="flex flex-wrap gap-3">
-                        <button
-                          onClick={() => {
-                            setSelectedAppointment(appointment);
-                            setShowUploadModal(true);
-                          }}
-                          className="px-6 py-2.5 bg-purple-500 hover:bg-purple-600 text-white rounded-lg font-semibold transition-colors text-sm flex items-center gap-2"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                          </svg>
-                          Ajouter images/PDF
-                        </button>
-                        <button
-                          onClick={() => handleStatusChange(appointment._id || appointment.id!, 'finish')}
-                          className="px-6 py-2.5 bg-purple-500 hover:bg-purple-600 text-white rounded-lg font-semibold transition-colors text-sm flex items-center gap-2"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
-                          Terminer la vérification
-                        </button>
+                        {/* Only show button if both images and PDF are not uploaded */}
+                        {(!appointment.images || appointment.images.length === 0 || !appointment.rapport_pdf) && (
+                          <button
+                            onClick={() => {
+                              setSelectedAppointment(appointment);
+                              setShowUploadModal(true);
+                            }}
+                            className="px-6 py-2.5 bg-purple-500 hover:bg-purple-600 text-white rounded-lg font-semibold transition-colors text-sm flex items-center gap-2"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                            </svg>
+                            Ajouter images/PDF
+                          </button>
+                        )}
+                        {/* Only show "Terminer" button if both images and PDF are uploaded */}
+                        {appointment.images && appointment.images.length > 0 && appointment.rapport_pdf && (
+                          <button
+                            onClick={() => handleStatusChange(appointment._id || appointment.id!, 'finish')}
+                            className="px-6 py-2.5 bg-purple-500 hover:bg-purple-600 text-white rounded-lg font-semibold transition-colors text-sm flex items-center gap-2"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            Terminer la vérification
+                          </button>
+                        )}
                         <a
                           href={`tel:${appointment.id_owner_car?.phone}`}
                           className="px-6 py-2.5 bg-green-500 hover:bg-green-600 text-white rounded-lg font-semibold transition-colors text-sm flex items-center gap-2"
@@ -467,9 +586,11 @@ export default function TodayPage() {
           </div>
         )}
       </div>
+      )}
 
       {/* Accepted Appointments Section */}
-      <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-200 mb-6">
+      {activeTab === 'accepted' && (
+      <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-200">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-bold text-gray-900 font-[var(--font-poppins)] flex items-center gap-2">
             <svg className="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -587,8 +708,10 @@ export default function TodayPage() {
           </div>
         )}
       </div>
+      )}
 
       {/* Finished Appointments Section */}
+      {activeTab === 'finish' && (
       <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-200">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-bold text-gray-900 font-[var(--font-poppins)] flex items-center gap-2">
@@ -750,6 +873,7 @@ export default function TodayPage() {
           </div>
         )}
       </div>
+      )}
 
       {/* Upload Modal - Same as appointments page */}
       {showUploadModal && selectedAppointment && (

@@ -4,7 +4,8 @@ import { useState, useEffect } from "react";
 import { useUser } from "@/contexts/UserContext";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { getImageUrl } from "@/utils/backend";
+import { getImageUrl, getBackendUrl } from "@/utils/backend";
+import { io, Socket } from 'socket.io-client';
 
 interface Appointment {
   _id: string;
@@ -23,7 +24,7 @@ interface Appointment {
     model: string;
     year: number;
     images?: string[];
-  };
+  } | null;
   date: string;
   time: string;
   status: 'en_attente' | 'accepted' | 'refused' | 'en_cours' | 'finish';
@@ -47,53 +48,136 @@ export default function WorkshopAppointmentsPage() {
   const [selectedPdf, setSelectedPdf] = useState<File | null>(null);
   const [successMessage, setSuccessMessage] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [socket, setSocket] = useState<Socket | null>(null);
+  const [newNotifications, setNewNotifications] = useState<{
+    all: boolean;
+    en_attente: boolean;
+    accepted: boolean;
+    en_cours: boolean;
+    finish: boolean;
+    refused: boolean;
+  }>({
+    all: false,
+    en_attente: false,
+    accepted: false,
+    en_cours: false,
+    finish: false,
+    refused: false,
+  });
+
+  const fetchAppointments = async () => {
+    if (!user || !token) return;
+
+    try {
+      setLoading(true);
+      setError('');
+
+      const res = await fetch('/api/rdv-workshop/workshop-appointments', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      const contentType = res.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        const text = await res.text();
+        console.error("Non-JSON response:", text.substring(0, 200));
+        setError("Erreur serveur: réponse invalide");
+        setLoading(false);
+        return;
+      }
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data?.message || "Erreur lors de la récupération des rendez-vous");
+        setLoading(false);
+        return;
+      }
+
+      if (data.ok && data.appointments) {
+        setAppointments(data.appointments);
+      }
+    } catch (error) {
+      console.error('Error fetching appointments:', error);
+      setError("Erreur de connexion. Veuillez réessayer.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchAppointments = async () => {
-      if (!user || !token) return;
-
-      try {
-        setLoading(true);
-        setError('');
-
-        const res = await fetch('/api/rdv-workshop/workshop-appointments', {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-        });
-
-        const contentType = res.headers.get("content-type");
-        if (!contentType || !contentType.includes("application/json")) {
-          const text = await res.text();
-          console.error("Non-JSON response:", text.substring(0, 200));
-          setError("Erreur serveur: réponse invalide");
-          setLoading(false);
-          return;
-        }
-
-        const data = await res.json();
-
-        if (!res.ok) {
-          setError(data?.message || "Erreur lors de la récupération des rendez-vous");
-          setLoading(false);
-          return;
-        }
-
-        if (data.ok && data.appointments) {
-          setAppointments(data.appointments);
-        }
-      } catch (error) {
-        console.error('Error fetching appointments:', error);
-        setError("Erreur de connexion. Veuillez réessayer.");
-      } finally {
-        setLoading(false);
-      }
-    };
-
     if (user && token) {
       fetchAppointments();
     }
   }, [user, token]);
+
+  // Socket.IO setup for real-time notifications
+  useEffect(() => {
+    if (!user || !token) return;
+
+    const backendUrl = getBackendUrl();
+    const newSocket = io(backendUrl, {
+      auth: {
+        token: token,
+      },
+    });
+
+    newSocket.on('connect', () => {
+      console.log('Socket connected for workshop appointments');
+      newSocket.emit('join_user', user._id);
+    });
+
+    // Listen for notification of appointment updates
+    newSocket.on('new_notification', (data: any) => {
+      console.log('New notification received:', data);
+      
+      // Determine which section this notification is for
+      let targetStatus: 'all' | 'en_attente' | 'accepted' | 'en_cours' | 'finish' | 'refused' | null = null;
+      
+      if (data.type === 'rdv_workshop' || data.message?.toLowerCase().includes('nouveau') || data.message?.toLowerCase().includes('demande')) {
+        targetStatus = 'en_attente';
+      } else if (data.type === 'accept_rdv' || data.message?.toLowerCase().includes('accepté') || data.message?.toLowerCase().includes('accept')) {
+        targetStatus = 'accepted';
+      } else if (data.message?.toLowerCase().includes('en cours') || data.message?.toLowerCase().includes('commencé')) {
+        targetStatus = 'en_cours';
+      } else if (data.message?.toLowerCase().includes('terminé') || data.message?.toLowerCase().includes('finish') || data.message?.toLowerCase().includes('fini')) {
+        targetStatus = 'finish';
+      } else if (data.message?.toLowerCase().includes('refusé') || data.message?.toLowerCase().includes('refused')) {
+        targetStatus = 'refused';
+      }
+      
+      // Always refresh appointments when notification arrives
+      fetchAppointments();
+      
+      // If we're not in the target section, show notification indicator
+      if (targetStatus && filter !== targetStatus && filter !== 'all') {
+        setNewNotifications(prev => ({
+          ...prev,
+          [targetStatus]: true,
+        }));
+      } else if (targetStatus && filter === 'all') {
+        // If filter is 'all', show notification on the specific status button
+        setNewNotifications(prev => ({
+          ...prev,
+          [targetStatus]: true,
+        }));
+      }
+    });
+
+    newSocket.on('disconnect', () => {
+      console.log('Socket disconnected');
+    });
+
+    setSocket(newSocket);
+
+    return () => {
+      if (newSocket) {
+        newSocket.emit('leave_user', user._id);
+        newSocket.disconnect();
+      }
+    };
+  }, [user, token, filter]);
 
   const handleStatusChange = async (appointmentId: string, newStatus: 'en_attente' | 'accepted' | 'refused' | 'en_cours' | 'finish') => {
     try {
@@ -202,15 +286,33 @@ export default function WorkshopAppointmentsPage() {
         }
       }
 
-      // Show success message but don't close modal
-      setSuccessMessage(`Images uploadées avec succès ! (${selectedImages.length} image(s))`);
-      setSelectedImages([]);
-      setUploadingImages(false);
+      // Update selectedAppointment with new data
+      const updatedAppointment = refreshData.appointments.find(
+        (apt: Appointment) => (apt._id || apt.id) === (selectedAppointment._id || selectedAppointment.id)
+      );
+      if (updatedAppointment) {
+        setSelectedAppointment(updatedAppointment);
+      }
+
+      // Only close modal if both images and PDF are uploaded
+      const hasImages = updatedAppointment?.images && updatedAppointment.images.length > 0;
+      const hasPdf = updatedAppointment?.rapport_pdf;
       
-      // Clear success message after 3 seconds
-      setTimeout(() => {
+      if (hasImages && hasPdf) {
+        // Both are uploaded, close modal
+        setShowUploadModal(false);
+        setSelectedImages([]);
+        setSelectedAppointment(null);
         setSuccessMessage('');
-      }, 3000);
+      } else {
+        // Images uploaded but PDF not yet, keep modal open
+        setSuccessMessage(`Images uploadées avec succès ! (${selectedImages.length} image(s))`);
+        setSelectedImages([]);
+        setTimeout(() => {
+          setSuccessMessage('');
+        }, 3000);
+      }
+      setUploadingImages(false);
     } catch (error) {
       console.error('Error uploading images:', error);
       setError("Erreur de connexion. Veuillez réessayer.");
@@ -258,13 +360,34 @@ export default function WorkshopAppointmentsPage() {
         }
       }
 
-      // Close modal after successful PDF upload
-      setShowUploadModal(false);
-      setSelectedPdf(null);
-      setSelectedAppointment(null);
-      setSelectedImages([]);
+      // Update selectedAppointment with new data
+      const updatedAppointment = refreshData.appointments.find(
+        (apt: Appointment) => (apt._id || apt.id) === (selectedAppointment._id || selectedAppointment.id)
+      );
+      if (updatedAppointment) {
+        setSelectedAppointment(updatedAppointment);
+      }
+
+      // Only close modal if both images and PDF are uploaded
+      const hasImages = updatedAppointment?.images && updatedAppointment.images.length > 0;
+      const hasPdf = updatedAppointment?.rapport_pdf;
+      
+      if (hasImages && hasPdf) {
+        // Both are uploaded, close modal
+        setShowUploadModal(false);
+        setSelectedPdf(null);
+        setSelectedAppointment(null);
+        setSelectedImages([]);
+        setSuccessMessage('');
+      } else {
+        // PDF uploaded but images not yet, keep modal open
+        setSuccessMessage('PDF uploadé avec succès !');
+        setSelectedPdf(null);
+        setTimeout(() => {
+          setSuccessMessage('');
+        }, 3000);
+      }
       setUploadingPdf(false);
-      setSuccessMessage('');
     } catch (error) {
       console.error('Error uploading PDF:', error);
       setError("Erreur de connexion. Veuillez réessayer.");
@@ -387,14 +510,20 @@ export default function WorkshopAppointmentsPage() {
           ].map((filterOption) => (
             <button
               key={filterOption.value}
-              onClick={() => setFilter(filterOption.value)}
-              className={`px-6 py-2 rounded-lg font-semibold transition-colors ${
+              onClick={() => {
+                setFilter(filterOption.value);
+                setNewNotifications(prev => ({ ...prev, [filterOption.value]: false }));
+              }}
+              className={`px-6 py-2 rounded-lg font-semibold transition-colors relative ${
                 filter === filterOption.value
                   ? 'bg-blue-500 text-white'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
               {filterOption.label} ({filterOption.count})
+              {newNotifications[filterOption.value] && filter !== filterOption.value && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>
+              )}
             </button>
           ))}
         </div>
@@ -430,10 +559,10 @@ export default function WorkshopAppointmentsPage() {
               <div className="flex flex-col lg:flex-row gap-6">
                 {/* Car Image */}
                 <div className="relative w-full lg:w-48 h-48 rounded-xl overflow-hidden flex-shrink-0">
-                  {appointment.id_car.images && appointment.id_car.images.length > 0 && getImageUrl(appointment.id_car.images[0]) ? (
+                  {appointment.id_car && appointment.id_car.images && appointment.id_car.images.length > 0 && getImageUrl(appointment.id_car.images[0]) ? (
                     <Image
                       src={getImageUrl(appointment.id_car.images[0])!}
-                      alt={`${appointment.id_car.brand} ${appointment.id_car.model}`}
+                      alt={appointment.id_car ? `${appointment.id_car.brand} ${appointment.id_car.model}` : 'Image de voiture'}
                       fill
                       className="object-cover"
                       unoptimized
@@ -452,7 +581,7 @@ export default function WorkshopAppointmentsPage() {
                   <div className="flex items-start justify-between mb-4">
                     <div>
                       <h3 className="text-xl font-bold text-gray-900 font-[var(--font-poppins)] mb-2">
-                        {appointment.id_car.brand} {appointment.id_car.model} {appointment.id_car.year}
+                        {appointment.id_car ? `${appointment.id_car.brand} ${appointment.id_car.model} ${appointment.id_car.year}` : 'Voiture non disponible'}
                       </h3>
                       <div className="flex items-center gap-4 mb-3">
                         <span className={`px-3 py-1.5 rounded-full text-xs font-bold border ${getStatusColor(appointment.status)}`}>
@@ -534,21 +663,27 @@ export default function WorkshopAppointmentsPage() {
                     )}
                     {appointment.status === 'en_cours' && (
                       <>
-                        <button
-                          onClick={() => {
-                            setSelectedAppointment(appointment);
-                            setShowUploadModal(true);
-                          }}
-                          className="px-6 py-2.5 bg-purple-500 hover:bg-purple-600 text-white rounded-lg font-semibold transition-colors text-sm"
-                        >
-                          Ajouter images/PDF
-                        </button>
-                        <button
-                          onClick={() => handleStatusChange(appointment._id || appointment.id!, 'finish')}
-                          className="px-6 py-2.5 bg-green-500 hover:bg-green-600 text-white rounded-lg font-semibold transition-colors text-sm"
-                        >
-                          Terminer
-                        </button>
+                        {/* Only show button if both images and PDF are not uploaded */}
+                        {(!appointment.images || appointment.images.length === 0 || !appointment.rapport_pdf) && (
+                          <button
+                            onClick={() => {
+                              setSelectedAppointment(appointment);
+                              setShowUploadModal(true);
+                            }}
+                            className="px-6 py-2.5 bg-purple-500 hover:bg-purple-600 text-white rounded-lg font-semibold transition-colors text-sm"
+                          >
+                            Ajouter images/PDF
+                          </button>
+                        )}
+                        {/* Only show "Terminer" button if both images and PDF are uploaded */}
+                        {appointment.images && appointment.images.length > 0 && appointment.rapport_pdf && (
+                          <button
+                            onClick={() => handleStatusChange(appointment._id || appointment.id!, 'finish')}
+                            className="px-6 py-2.5 bg-green-500 hover:bg-green-600 text-white rounded-lg font-semibold transition-colors text-sm"
+                          >
+                            Terminer
+                          </button>
+                        )}
                       </>
                     )}
                     {appointment.status === 'finish' && (

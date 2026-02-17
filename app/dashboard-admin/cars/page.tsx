@@ -28,6 +28,8 @@ interface Car {
   price: number;
   status: 'no_proccess' | 'en_attente' | 'actif' | 'sold';
   images: string[];
+  vin?: string;
+  vinRemark?: string;
   owner: {
     id: string;
     firstName: string;
@@ -420,6 +422,19 @@ export default function CarsPage() {
                   </div>
                 </div>
               </div>
+
+              {/* VIN Information - On separate line */}
+              {selectedCar.vin && (
+                <div className="mt-4 w-full">
+                  <p className="text-sm font-semibold text-teal-800 mb-2">Numéro VIN</p>
+                  <div className="p-3 bg-teal-50 rounded-lg border border-teal-200">
+                    <p className="text-base font-mono text-teal-900">{selectedCar.vin}</p>
+                    {selectedCar.vinRemark && (
+                      <p className="text-sm text-teal-700 italic mt-1">{selectedCar.vinRemark}</p>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* Owner Information */}
               {selectedCar.owner && (

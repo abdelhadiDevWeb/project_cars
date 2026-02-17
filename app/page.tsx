@@ -2,9 +2,12 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { useUser } from "@/contexts/UserContext";
-import { getImageUrl } from "@/utils/backend";
+import { getImageUrl, getBackendUrl } from "@/utils/backend";
+import ChatModal from "@/components/ChatModal";
+import { io, Socket } from 'socket.io-client';
 
 interface Car {
   _id: string;
@@ -16,6 +19,8 @@ interface Car {
   price: number;
   images: string[];
   status: string;
+  vin?: string;
+  vinRemark?: string;
   owner: {
     _id: string;
     firstName: string;
@@ -33,11 +38,17 @@ const heroCars = [
 
 
 // Scroll reveal hook
-function useScrollReveal() {
-  const [isVisible, setIsVisible] = useState(false);
+function useScrollReveal(initialVisible: boolean = false) {
+  const [isVisible, setIsVisible] = useState(initialVisible);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    // If initialVisible is true, set visible immediately
+    if (initialVisible) {
+      setIsVisible(true);
+      return;
+    }
+
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
@@ -52,20 +63,23 @@ function useScrollReveal() {
     }
 
     return () => observer.disconnect();
-  }, []);
+  }, [initialVisible]);
 
   return { ref, isVisible };
 }
 
 export default function Home() {
-  const { isLoading, isAuthenticated, user, userType, userRole } = useUser();
+  const router = useRouter();
+  const { isLoading, isAuthenticated, user, userType, userRole, token, refreshUser, logout } = useUser();
   const [cars, setCars] = useState<Car[]>([]);
   const [loadingCars, setLoadingCars] = useState(true);
+  const [pageLoading, setPageLoading] = useState(true);
   const [stats, setStats] = useState({
     activeCars: 0,
     verifiedUsers: 0,
     verifiedWorkshops: 0,
   });
+  const [statsLoading, setStatsLoading] = useState(true);
   const [currentHeroIndex, setCurrentHeroIndex] = useState(0);
   const [searchFilters, setSearchFilters] = useState({
     brand: '',
@@ -74,8 +88,16 @@ export default function Home() {
     maxKm: '',
   });
   const [isSearching, setIsSearching] = useState(false);
-  const heroRef = useScrollReveal();
+  const [showChatModal, setShowChatModal] = useState(false);
+  const [selectedCarOwner, setSelectedCarOwner] = useState<{ id: string; name: string; email: string } | null>(null);
+  const [totalUnreadMessages, setTotalUnreadMessages] = useState(0);
+  const [socket, setSocket] = useState<Socket | null>(null);
+  const [messageNotifications, setMessageNotifications] = useState<any[]>([]);
+  const heroRef = useScrollReveal(true); // Hero section should be visible immediately
   const statsRef = useRef<HTMLDivElement>(null);
+
+  // UserContext already handles authentication check on mount
+  // No need to check again here to avoid duplicate API calls
 
   // Hero carousel auto-rotate
   useEffect(() => {
@@ -138,6 +160,7 @@ export default function Home() {
   useEffect(() => {
     const fetchStats = async () => {
       try {
+        setStatsLoading(true);
         const res = await fetch('/api/stats');
         
         if (res.ok) {
@@ -152,16 +175,170 @@ export default function Home() {
         }
       } catch (error) {
         console.error('Error fetching stats:', error);
+      } finally {
+        setStatsLoading(false);
       }
     };
 
     fetchStats();
   }, []);
 
+  // Fetch unread messages count function
+  const fetchUnreadCount = useCallback(async () => {
+    if (!token) return;
+    try {
+      const res = await fetch('/api/chat/my-chats', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      const data = await res.json();
+      if (data.ok && data.chats) {
+        const total = data.chats.reduce((sum: number, chat: any) => sum + chat.unreadCount, 0);
+        setTotalUnreadMessages(total);
+      }
+    } catch (error) {
+      console.error('Error fetching unread count:', error);
+    }
+  }, [token]);
+
+  // Socket.IO setup for real-time message notifications
+  useEffect(() => {
+    if (!isAuthenticated || !user || !token) return;
+
+    const backendUrl = getBackendUrl();
+    const newSocket = io(backendUrl, {
+      auth: {
+        token: token,
+      },
+    });
+
+    newSocket.on('connect', () => {
+      console.log('Socket connected for home page');
+      newSocket.emit('join_user', user._id);
+      // Fetch initial unread count
+      fetchUnreadCount();
+    });
+
+    // Listen for new messages
+    newSocket.on('new_message', (message: any) => {
+      // Update unread count
+      fetchUnreadCount();
+    });
+
+    // Listen for notifications
+    newSocket.on('new_notification', (notification: any) => {
+      if (notification.type === 'message' && notification.id_receiver === user._id) {
+        // Update unread count when message notification arrives
+        fetchUnreadCount();
+        // Store notification to display it
+        setMessageNotifications(prev => {
+          // Check if notification already exists (avoid duplicates)
+          const exists = prev.some(n => n.id === notification.id);
+          if (exists) return prev;
+          return [notification, ...prev].slice(0, 5); // Keep only last 5 notifications
+        });
+      }
+    });
+
+    newSocket.on('disconnect', () => {
+      console.log('Socket disconnected');
+    });
+
+    setSocket(newSocket);
+
+    return () => {
+      if (newSocket) {
+        newSocket.emit('leave_user', user._id);
+        newSocket.disconnect();
+      }
+    };
+  }, [isAuthenticated, user, token, fetchUnreadCount]);
+
+  // Set page loading to false when all initial data is loaded
+  useEffect(() => {
+    // Wait for user context to finish loading, cars to load, and stats to load
+    if (!isLoading && !loadingCars && !statsLoading) {
+      // Small delay to ensure everything is ready
+      const timer = setTimeout(() => {
+        setPageLoading(false);
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [isLoading, loadingCars, statsLoading]);
+
+  const handleNotificationClick = (notification: any) => {
+    // Navigate to chats page with sender ID
+    router.push(`/chats?userId=${notification.id_sender}`);
+  };
+
+  // Show loading screen while page is loading
+  if (pageLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-cyan-50 to-teal-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="relative w-24 h-24 mx-auto mb-8">
+            <div className="absolute inset-0 border-4 border-teal-200/50 rounded-full"></div>
+            <div className="absolute inset-0 border-4 border-teal-500 rounded-full border-t-transparent animate-spin"></div>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="w-8 h-8 bg-gradient-to-br from-teal-500 to-cyan-500 rounded-full"></div>
+            </div>
+          </div>
+          <h2 className="text-3xl font-bold bg-gradient-to-r from-teal-600 to-cyan-600 bg-clip-text text-transparent font-[var(--font-poppins)] mb-3">
+            Chargement...
+          </h2>
+          <p className="text-gray-600 text-lg">Veuillez patienter</p>
+          <div className="mt-6 flex justify-center gap-2">
+            <div className="w-2 h-2 bg-teal-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+            <div className="w-2 h-2 bg-cyan-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+            <div className="w-2 h-2 bg-teal-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-white">
+      {/* Message Notifications Toast */}
+      {messageNotifications.length > 0 && (
+        <div className="fixed top-20 right-4 z-[9999] space-y-2 max-w-sm">
+          {messageNotifications.map((notification) => (
+            <div
+              key={notification.id}
+              onClick={() => handleNotificationClick(notification)}
+              className="bg-white rounded-xl shadow-2xl border-2 border-teal-200 p-4 cursor-pointer hover:shadow-3xl transition-all duration-300 hover:scale-105 animate-slide-in-right"
+            >
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 bg-gradient-to-br from-teal-500 to-cyan-500 rounded-full flex items-center justify-center text-white font-bold flex-shrink-0">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                  </svg>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-gray-900">Nouveau message</p>
+                  <p className="text-xs text-gray-600 truncate">{notification.message}</p>
+                </div>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setMessageNotifications(prev => prev.filter(n => n.id !== notification.id));
+                  }}
+                  className="text-gray-400 hover:text-gray-600 flex-shrink-0"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-gray-200/50 shadow-sm">
+      <header className="sticky top-0 z-50 bg-white/98 backdrop-blur-lg border-b border-gray-200/60 shadow-md transition-all duration-300">
         <nav className="container mx-auto px-4 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             {/* Logo */}
@@ -203,24 +380,66 @@ export default function Home() {
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
                 </div>
-              ) : isAuthenticated && (userType === 'workshop' || userType === 'user') ? (
-                userType === 'workshop' ? (
-                  <Link href="/dashboard-workshop" className="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl font-semibold transition-all duration-200 text-sm shadow-lg hover:shadow-xl">
-                    Tableau de bord
-                  </Link>
-                ) : userType === 'user' && userRole === 'admin' ? (
-                  <Link href="/dashboard-admin" className="px-6 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-xl font-semibold transition-all duration-200 text-sm shadow-lg hover:shadow-xl">
-                    Tableau de bord
-                  </Link>
-                ) : userType === 'user' && userRole !== 'admin' ? (
-                  <Link href="/dashboard-seller" className="px-6 py-2.5 bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-600 hover:to-cyan-600 text-white rounded-xl font-semibold transition-all duration-200 text-sm shadow-lg hover:shadow-xl">
-                    Tableau de bord
-                  </Link>
-                ) : null
               ) : (
-                <Link href="/login" className="px-6 py-2.5 bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-600 hover:to-cyan-600 text-white rounded-xl font-semibold transition-all duration-200 text-sm shadow-lg hover:shadow-xl">
-                  Se Connecter
-                </Link>
+                <>
+                  {/* Chat Icon - Only show if authenticated */}
+                  {isAuthenticated && (userType === 'workshop' || userType === 'user') && (
+                    <Link
+                      href="/chats"
+                      onClick={async (e) => {
+                        // Mark all message notifications as read when clicking chat icon
+                        if (token && totalUnreadMessages > 0) {
+                          try {
+                            await fetch('/api/notification/read-all-messages', {
+                              method: 'PUT',
+                              headers: {
+                                'Authorization': `Bearer ${token}`,
+                                'Content-Type': 'application/json',
+                              },
+                            });
+                            // Clear message notifications from state
+                            setMessageNotifications([]);
+                            // Refresh unread count
+                            fetchUnreadCount();
+                          } catch (error) {
+                            console.error('Error marking message notifications as read:', error);
+                          }
+                        }
+                      }}
+                      className="relative p-3 text-gray-700 hover:text-teal-600 transition-all duration-200 hover:bg-teal-50 rounded-xl"
+                      title="Mes chats"
+                    >
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                      </svg>
+                      {totalUnreadMessages > 0 && (
+                        <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs font-bold border-2 border-white animate-pulse">
+                          {totalUnreadMessages > 9 ? '9+' : totalUnreadMessages}
+                        </span>
+                      )}
+                    </Link>
+                  )}
+
+                  {isAuthenticated && (userType === 'workshop' || userType === 'user') ? (
+                    userType === 'workshop' ? (
+                      <Link href="/dashboard-workshop" className="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl font-semibold transition-all duration-200 text-sm shadow-lg hover:shadow-xl">
+                        Tableau de bord
+                      </Link>
+                    ) : userType === 'user' && userRole === 'admin' ? (
+                      <Link href="/dashboard-admin" className="px-6 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-xl font-semibold transition-all duration-200 text-sm shadow-lg hover:shadow-xl">
+                        Tableau de bord
+                      </Link>
+                    ) : userType === 'user' && userRole !== 'admin' ? (
+                      <Link href="/dashboard-seller" className="px-6 py-2.5 bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-600 hover:to-cyan-600 text-white rounded-xl font-semibold transition-all duration-200 text-sm shadow-lg hover:shadow-xl">
+                        Tableau de bord
+                      </Link>
+                    ) : null
+                  ) : (
+                    <Link href="/login" className="px-6 py-2.5 bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-600 hover:to-cyan-600 text-white rounded-xl font-semibold transition-all duration-200 text-sm shadow-lg hover:shadow-xl">
+                      Se Connecter
+                    </Link>
+                  )}
+                </>
               )}
             </div>
           </div>
@@ -229,6 +448,13 @@ export default function Home() {
 
       {/* Hero Section - Modern Design */}
       <section className="relative min-h-screen flex items-center overflow-hidden bg-gradient-to-br from-blue-50 via-cyan-50 to-teal-50 -mt-1">
+        {/* Grid Pattern Overlay */}
+        <div className="absolute inset-0 opacity-5">
+          <div className="absolute inset-0" style={{
+            backgroundImage: 'linear-gradient(to right, #000 1px, transparent 1px), linear-gradient(to bottom, #000 1px, transparent 1px)',
+            backgroundSize: '50px 50px'
+          }}></div>
+        </div>
         {/* Animated Background Elements */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute top-20 left-10 w-72 h-72 bg-teal-200 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob"></div>
@@ -241,11 +467,11 @@ export default function Home() {
             {/* Left Side - Text Content */}
             <div 
               ref={heroRef.ref}
-              className={`space-y-8 lg:space-y-10 ${heroRef.isVisible ? 'animate-slide-up-fade' : 'opacity-0'}`}
+              className={`space-y-8 lg:space-y-10 ${heroRef.isVisible ? 'animate-slide-up-fade' : 'opacity-100'}`}
             >
               <div className="space-y-5">
-                <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-teal-100 to-cyan-100 text-teal-700 rounded-full text-xs font-semibold shadow-md border border-teal-200/50">
-                  <span className="text-base">✨</span>
+                <div className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-teal-100 via-cyan-100 to-teal-100 text-teal-700 rounded-full text-sm font-semibold shadow-lg border border-teal-200/60 backdrop-blur-sm hover:shadow-xl transition-all duration-300 hover:scale-105">
+                  <span className="text-lg animate-pulse">✨</span>
                   <span>Plateforme de confiance</span>
                 </div>
                 
@@ -267,40 +493,41 @@ export default function Home() {
               </div>
 
               <div className="flex flex-wrap items-center gap-3">
-                <div className="flex items-center gap-2 px-4 py-2.5 bg-white/90 backdrop-blur-md rounded-lg shadow-md border border-white/50 hover:shadow-lg transition-all">
-                  <div className="w-9 h-9 bg-gradient-to-br from-green-400 to-emerald-500 rounded-lg flex items-center justify-center shadow-sm">
-                    <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                <div className="flex items-center gap-3 px-5 py-3 bg-white/95 backdrop-blur-md rounded-xl shadow-lg border border-white/60 hover:shadow-xl transition-all duration-300 hover:scale-105 hover:-translate-y-1 group">
+                  <div className="w-10 h-10 bg-gradient-to-br from-green-400 to-emerald-500 rounded-xl flex items-center justify-center shadow-md group-hover:scale-110 transition-transform">
+                    <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                     </svg>
                   </div>
-                  <span className="text-xs font-semibold text-gray-800">Vérifiés par des experts</span>
+                  <span className="text-sm font-bold text-gray-800">Vérifiés par des experts</span>
                 </div>
-                <div className="flex items-center gap-2 px-4 py-2.5 bg-white/90 backdrop-blur-md rounded-lg shadow-md border border-white/50 hover:shadow-lg transition-all">
-                  <div className="w-9 h-9 bg-gradient-to-br from-blue-400 to-cyan-500 rounded-lg flex items-center justify-center shadow-sm">
-                    <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                <div className="flex items-center gap-3 px-5 py-3 bg-white/95 backdrop-blur-md rounded-xl shadow-lg border border-white/60 hover:shadow-xl transition-all duration-300 hover:scale-105 hover:-translate-y-1 group">
+                  <div className="w-10 h-10 bg-gradient-to-br from-blue-400 to-cyan-500 rounded-xl flex items-center justify-center shadow-md group-hover:scale-110 transition-transform">
+                    <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                     </svg>
                   </div>
-                  <span className="text-xs font-semibold text-gray-800">100% Sécurisé</span>
+                  <span className="text-sm font-bold text-gray-800">100% Sécurisé</span>
                 </div>
               </div>
 
-              <div className="flex flex-col sm:flex-row gap-3 pt-1">
+              <div className="flex flex-col sm:flex-row gap-4 pt-2">
                 <a 
                   href="#search" 
-                  className="group px-6 py-3.5 bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-600 hover:to-cyan-600 text-white rounded-xl font-semibold transition-all duration-300 flex items-center justify-center gap-2 text-sm shadow-xl hover:shadow-2xl hover:scale-105 transform"
+                  className="group relative px-8 py-4 bg-gradient-to-r from-teal-500 via-cyan-500 to-teal-500 hover:from-teal-600 hover:via-cyan-600 hover:to-teal-600 text-white rounded-2xl font-bold transition-all duration-300 flex items-center justify-center gap-3 text-base shadow-2xl hover:shadow-teal-500/50 hover:scale-105 transform overflow-hidden"
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
+                  <svg className="w-5 h-5 relative z-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                   </svg>
-                  Trouver une voiture
-                  <svg className="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                  <span className="relative z-10">Trouver une voiture</span>
+                  <svg className="w-5 h-5 relative z-10 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                   </svg>
                 </a>
                 <Link 
                   href="/register" 
-                  className="px-6 py-3.5 bg-white hover:bg-gray-50 text-gray-800 rounded-xl font-semibold transition-all duration-300 text-sm text-center shadow-lg hover:shadow-xl border-2 border-gray-200 hover:border-teal-400 hover:scale-105 transform"
+                  className="px-8 py-4 bg-white hover:bg-gradient-to-r hover:from-gray-50 hover:to-white text-gray-800 rounded-2xl font-bold transition-all duration-300 text-base text-center shadow-xl hover:shadow-2xl border-2 border-gray-200 hover:border-teal-400 hover:scale-105 transform hover:-translate-y-1"
                 >
                   Déposer mon véhicule
                 </Link>
@@ -391,7 +618,7 @@ export default function Home() {
 
       {/* Search/Filter Section */}
       <section id="search" className="container mx-auto px-4 lg:px-8 py-8 -mt-20 relative z-20 mt-8">
-        <div className="bg-white/95 backdrop-blur-md rounded-3xl shadow-2xl p-6 lg:p-8 border border-gray-200/50">
+        <div className="bg-white/98 backdrop-blur-lg rounded-3xl shadow-2xl p-6 lg:p-8 border-2 border-gray-200/60 hover:shadow-3xl transition-all duration-300">
           <div className="mb-6">
             <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-900 to-teal-700 bg-clip-text text-transparent mb-2 font-[var(--font-poppins)]">
             Dernières Offres Certifiées
@@ -406,7 +633,7 @@ export default function Home() {
               onChange={(e) => handleFilterChange('brand', e.target.value)}
               placeholder="Marque"
               list="brands-list"
-              className="px-4 py-3 bg-gradient-to-br from-gray-50 to-white border-2 border-gray-200 rounded-xl focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20 transition-all font-medium text-gray-700 text-sm shadow-sm hover:shadow-md"
+              className="px-5 py-3.5 bg-gradient-to-br from-gray-50 to-white border-2 border-gray-200 rounded-xl focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30 transition-all font-medium text-gray-700 text-sm shadow-md hover:shadow-lg hover:border-teal-300 focus:scale-105"
             />
             <datalist id="brands-list">
               <option value="Volkswagen">Volkswagen</option>
@@ -431,7 +658,7 @@ export default function Home() {
               value={searchFilters.model}
               onChange={(e) => handleFilterChange('model', e.target.value)}
               placeholder="Modèle"
-              className="px-4 py-3 bg-gradient-to-br from-gray-50 to-white border-2 border-gray-200 rounded-xl focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20 transition-all font-medium text-gray-700 text-sm shadow-sm hover:shadow-md"
+              className="px-5 py-3.5 bg-gradient-to-br from-gray-50 to-white border-2 border-gray-200 rounded-xl focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30 transition-all font-medium text-gray-700 text-sm shadow-md hover:shadow-lg hover:border-teal-300 focus:scale-105"
             />
             
             <input
@@ -440,7 +667,7 @@ export default function Home() {
               onChange={(e) => handleFilterChange('maxPrice', e.target.value)}
               placeholder="Prix Maximum"
               min="0"
-              className="px-4 py-3 bg-gradient-to-br from-gray-50 to-white border-2 border-gray-200 rounded-xl focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20 transition-all font-medium text-gray-700 text-sm shadow-sm hover:shadow-md"
+              className="px-5 py-3.5 bg-gradient-to-br from-gray-50 to-white border-2 border-gray-200 rounded-xl focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30 transition-all font-medium text-gray-700 text-sm shadow-md hover:shadow-lg hover:border-teal-300 focus:scale-105"
             />
             
             <input
@@ -449,13 +676,13 @@ export default function Home() {
               onChange={(e) => handleFilterChange('maxKm', e.target.value)}
               placeholder="Km Maximum"
               min="0"
-              className="px-4 py-3 bg-gradient-to-br from-gray-50 to-white border-2 border-gray-200 rounded-xl focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20 transition-all font-medium text-gray-700 text-sm shadow-sm hover:shadow-md"
+              className="px-5 py-3.5 bg-gradient-to-br from-gray-50 to-white border-2 border-gray-200 rounded-xl focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30 transition-all font-medium text-gray-700 text-sm shadow-md hover:shadow-lg hover:border-teal-300 focus:scale-105"
             />
             
             <button 
               type="submit"
               disabled={isSearching}
-              className="px-6 py-3 bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-600 hover:to-cyan-600 text-white rounded-xl font-semibold transition-all duration-200 flex items-center justify-center gap-2 shadow-xl hover:shadow-2xl disabled:opacity-50 disabled:cursor-not-allowed hover:scale-105"
+              className="px-8 py-3.5 bg-gradient-to-r from-teal-500 via-cyan-500 to-teal-500 hover:from-teal-600 hover:via-cyan-600 hover:to-teal-600 text-white rounded-xl font-bold transition-all duration-300 flex items-center justify-center gap-2 shadow-xl hover:shadow-2xl hover:shadow-teal-500/50 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-105 transform hover:-translate-y-1"
             >
               {isSearching ? (
                 <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -478,21 +705,29 @@ export default function Home() {
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Car Listings */}
           <div className="lg:col-span-2">
-            <div className="mb-8">
-              <h2 className="text-4xl font-bold bg-gradient-to-r from-blue-900 to-teal-700 bg-clip-text text-transparent mb-2 font-[var(--font-poppins)]">
+            <div className="mb-10">
+              <h2 className="text-5xl font-bold bg-gradient-to-r from-blue-900 via-teal-700 to-cyan-600 bg-clip-text text-transparent mb-3 font-[var(--font-poppins)]">
               Dernières Offres Certifiées
             </h2>
-              <p className="text-gray-600">Découvrez notre sélection de véhicules vérifiés</p>
+              <p className="text-gray-600 text-lg">Découvrez notre sélection de véhicules vérifiés</p>
             </div>
             
             {loadingCars ? (
-              <div className="flex items-center justify-center py-20">
+              <div className="flex items-center justify-center py-24">
                 <div className="text-center">
-                  <svg className="animate-spin h-16 w-16 text-teal-500 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  <p className="mt-4 text-gray-600 font-medium">Chargement des véhicules...</p>
+                  <div className="relative w-20 h-20 mx-auto mb-6">
+                    <div className="absolute inset-0 border-4 border-teal-200/50 rounded-full"></div>
+                    <div className="absolute inset-0 border-4 border-teal-500 rounded-full border-t-transparent animate-spin"></div>
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="w-6 h-6 bg-gradient-to-br from-teal-500 to-cyan-500 rounded-full"></div>
+                    </div>
+                  </div>
+                  <p className="text-lg text-gray-700 font-semibold">Chargement des véhicules...</p>
+                  <div className="mt-4 flex justify-center gap-2">
+                    <div className="w-2 h-2 bg-teal-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                    <div className="w-2 h-2 bg-cyan-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                    <div className="w-2 h-2 bg-teal-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                  </div>
                 </div>
               </div>
             ) : cars.length === 0 ? (
@@ -508,7 +743,7 @@ export default function Home() {
               {cars.map((car, index) => (
                   <div
                     key={car._id || car.id}
-                    className="group bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden border-2 border-gray-100 hover:border-teal-300 hover:-translate-y-2"
+                    className="group bg-white rounded-3xl shadow-xl hover:shadow-2xl transition-all duration-500 overflow-hidden border-2 border-gray-100 hover:border-teal-400 hover:-translate-y-3 hover:scale-[1.02]"
                   style={{
                     animationDelay: `${index * 100}ms`,
                   }}
@@ -542,7 +777,7 @@ export default function Home() {
                     
                     <div className="p-6 space-y-4">
                       <Link href={`/cars/${car._id || car.id}`}>
-                        <h3 className="text-2xl font-bold bg-gradient-to-r from-blue-900 to-teal-700 bg-clip-text text-transparent font-[var(--font-poppins)] group-hover:from-teal-600 group-hover:to-cyan-600 transition-all">
+                        <h3 className="text-2xl font-bold bg-gradient-to-r from-blue-900 via-teal-700 to-cyan-600 bg-clip-text text-transparent font-[var(--font-poppins)] group-hover:from-teal-600 group-hover:via-cyan-500 group-hover:to-teal-600 transition-all duration-300">
                           {car.brand} {car.model}
                         </h3>
                       </Link>
@@ -565,24 +800,34 @@ export default function Home() {
                       </div>
                     )}
                   
-                      <div className="flex items-center gap-4 text-gray-600 text-sm bg-gray-50 rounded-xl p-3">
-                        <span className="flex items-center gap-2">
-                          <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                            <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <div className="flex items-center gap-4 text-gray-600 text-sm bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-4 border border-gray-200/50">
+                        <span className="flex items-center gap-2.5">
+                          <div className="w-10 h-10 bg-gradient-to-br from-blue-100 to-blue-200 rounded-xl flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
+                            <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                           </div>
-                          <span className="font-semibold">{car.km.toLocaleString()} km</span>
+                          <span className="font-bold text-gray-800">{car.km.toLocaleString()} km</span>
                       </span>
-                        <span className="flex items-center gap-2">
-                          <div className="w-8 h-8 bg-teal-100 rounded-lg flex items-center justify-center">
-                            <svg className="w-4 h-4 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <span className="flex items-center gap-2.5">
+                          <div className="w-10 h-10 bg-gradient-to-br from-teal-100 to-cyan-200 rounded-xl flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
+                            <svg className="w-5 h-5 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                           </div>
-                          <span className="font-semibold">{car.year}</span>
+                          <span className="font-bold text-gray-800">{car.year}</span>
                       </span>
                     </div>
+                    
+                    {/* VIN on separate line */}
+                    {car.vin && (
+                      <div className="flex items-center gap-2 text-teal-600 font-semibold text-sm pt-2 border-t border-gray-200">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        <span className="font-mono">VIN: {car.vin}</span>
+                      </div>
+                    )}
                     
                       <div className="flex items-center justify-between pt-2 border-t border-gray-200">
                         <div>
@@ -598,11 +843,34 @@ export default function Home() {
                         </div>
                     </div>
                     
-                      <Link href={`/cars/${car._id || car.id}`}>
-                        <div className="w-full py-3.5 bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-600 hover:to-cyan-600 text-white rounded-xl font-semibold transition-all duration-200 text-sm text-center cursor-pointer shadow-lg hover:shadow-xl group-hover:scale-105">
-                      Voir Détails
-                        </div>
-                      </Link>
+                      <div className="flex gap-2">
+                        <Link href={`/cars/${car._id || car.id}`} className="flex-1">
+                          <div className="w-full py-4 bg-gradient-to-r from-teal-500 via-cyan-500 to-teal-500 hover:from-teal-600 hover:via-cyan-600 hover:to-teal-600 text-white rounded-xl font-bold transition-all duration-300 text-sm text-center cursor-pointer shadow-lg hover:shadow-xl hover:shadow-teal-500/50 group-hover:scale-105 transform hover:-translate-y-1 relative overflow-hidden">
+                            <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
+                            <span className="relative z-10">Voir Détails</span>
+                          </div>
+                        </Link>
+                        {isAuthenticated && car.owner && typeof car.owner === 'object' && car.owner._id !== user?._id && (
+                          <button
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setSelectedCarOwner({
+                                id: car.owner._id,
+                                name: `${car.owner.firstName} ${car.owner.lastName}`,
+                                email: car.owner.email
+                              });
+                              setShowChatModal(true);
+                            }}
+                            className="px-4 py-4 bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white rounded-xl font-bold transition-all duration-300 text-sm shadow-lg hover:shadow-xl hover:shadow-blue-500/50 group-hover:scale-105 transform hover:-translate-y-1 flex items-center justify-center gap-2"
+                          >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                            </svg>
+                            <span className="hidden sm:inline">Chat</span>
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
               ))}
@@ -612,7 +880,7 @@ export default function Home() {
 
           {/* Statistics Sidebar */}
           <div ref={statsRef} id="stats-section" className="lg:col-span-1">
-            <div className="bg-white/95 backdrop-blur-md rounded-3xl shadow-2xl p-6 border border-gray-200/50 sticky top-24">
+            <div className="bg-white/98 backdrop-blur-lg rounded-3xl shadow-2xl p-6 border-2 border-gray-200/60 sticky top-24 hover:shadow-3xl transition-all duration-300">
               <div className="mb-6">
                 <h2 className="text-2xl font-bold bg-gradient-to-r from-teal-600 to-cyan-600 bg-clip-text text-transparent mb-2 font-[var(--font-poppins)]">
                   CarSure DZ
@@ -620,55 +888,55 @@ export default function Home() {
                 <p className="text-gray-600 text-sm">Votre plateforme de confiance</p>
               </div>
               
-              <div className="space-y-4">
-                <div className="group flex items-center gap-4 p-5 bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200 rounded-2xl hover:shadow-lg transition-all duration-200 hover:scale-105">
-                  <div className="w-14 h-14 bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl flex items-center justify-center text-white flex-shrink-0 shadow-lg">
-                    <svg className="w-7 h-7" fill="currentColor" viewBox="0 0 20 20">
+              <div className="space-y-5">
+                <div className="group flex items-center gap-5 p-6 bg-gradient-to-br from-green-50 via-emerald-50 to-green-50 border-2 border-green-200/60 rounded-2xl hover:shadow-xl transition-all duration-300 hover:scale-105 hover:-translate-y-1 hover:border-green-300">
+                  <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl flex items-center justify-center text-white flex-shrink-0 shadow-xl group-hover:scale-110 group-hover:rotate-6 transition-all duration-300">
+                    <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                     </svg>
                   </div>
                   <div>
-                    <p className="text-3xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent font-[var(--font-poppins)]">
+                    <p className="text-4xl font-bold bg-gradient-to-r from-green-600 via-emerald-600 to-green-600 bg-clip-text text-transparent font-[var(--font-poppins)]">
                       {stats.activeCars.toLocaleString()}
                     </p>
-                    <p className="text-gray-700 text-sm font-medium">Véhicules certifiés</p>
+                    <p className="text-gray-700 text-sm font-semibold">Véhicules certifiés</p>
                   </div>
                 </div>
                 
-                <div className="group flex items-center gap-4 p-5 bg-gradient-to-br from-blue-50 to-cyan-50 border-2 border-blue-200 rounded-2xl hover:shadow-lg transition-all duration-200 hover:scale-105">
-                  <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-2xl flex items-center justify-center text-white flex-shrink-0 shadow-lg">
-                    <svg className="w-7 h-7" fill="currentColor" viewBox="0 0 20 20">
+                <div className="group flex items-center gap-5 p-6 bg-gradient-to-br from-blue-50 via-cyan-50 to-blue-50 border-2 border-blue-200/60 rounded-2xl hover:shadow-xl transition-all duration-300 hover:scale-105 hover:-translate-y-1 hover:border-blue-300">
+                  <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-2xl flex items-center justify-center text-white flex-shrink-0 shadow-xl group-hover:scale-110 group-hover:rotate-6 transition-all duration-300">
+                    <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 20 20">
                       <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" />
                     </svg>
                   </div>
                   <div>
-                    <p className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent font-[var(--font-poppins)]">
+                    <p className="text-4xl font-bold bg-gradient-to-r from-blue-600 via-cyan-600 to-blue-600 bg-clip-text text-transparent font-[var(--font-poppins)]">
                       {stats.verifiedUsers.toLocaleString()}
                     </p>
-                    <p className="text-gray-700 text-sm font-medium">Utilisateurs vérifiés</p>
+                    <p className="text-gray-700 text-sm font-semibold">Utilisateurs vérifiés</p>
                   </div>
                 </div>
                 
-                <div className="group flex items-center gap-4 p-5 bg-gradient-to-br from-orange-50 to-amber-50 border-2 border-orange-200 rounded-2xl hover:shadow-lg transition-all duration-200 hover:scale-105">
-                  <div className="w-14 h-14 bg-gradient-to-br from-orange-500 to-amber-600 rounded-2xl flex items-center justify-center text-white flex-shrink-0 shadow-lg">
-                    <svg className="w-7 h-7" fill="currentColor" viewBox="0 0 20 20">
+                <div className="group flex items-center gap-5 p-6 bg-gradient-to-br from-orange-50 via-amber-50 to-orange-50 border-2 border-orange-200/60 rounded-2xl hover:shadow-xl transition-all duration-300 hover:scale-105 hover:-translate-y-1 hover:border-orange-300">
+                  <div className="w-16 h-16 bg-gradient-to-br from-orange-500 to-amber-600 rounded-2xl flex items-center justify-center text-white flex-shrink-0 shadow-xl group-hover:scale-110 group-hover:rotate-6 transition-all duration-300">
+                    <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
                     </svg>
                   </div>
                   <div>
-                    <p className="text-3xl font-bold bg-gradient-to-r from-orange-600 to-amber-600 bg-clip-text text-transparent font-[var(--font-poppins)]">
+                    <p className="text-4xl font-bold bg-gradient-to-r from-orange-600 via-amber-600 to-orange-600 bg-clip-text text-transparent font-[var(--font-poppins)]">
                       {stats.verifiedWorkshops.toLocaleString()}
                     </p>
-                    <p className="text-gray-700 text-sm font-medium">Ateliers partenaires</p>
+                    <p className="text-gray-700 text-sm font-semibold">Ateliers partenaires</p>
                   </div>
                 </div>
               </div>
               
               <div className="mt-6 pt-6 border-t border-gray-200">
-                <a href="#" className="group text-teal-600 hover:text-teal-700 font-semibold flex items-center gap-2 text-sm transition-all">
+                <a href="#" className="group text-teal-600 hover:text-teal-700 font-bold flex items-center gap-2 text-sm transition-all hover:gap-3">
                   <span>Comment ça fonctionne?</span>
-                  <svg className="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  <svg className="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
                   </svg>
                 </a>
               </div>
@@ -737,6 +1005,20 @@ export default function Home() {
           </div>
         </div>
       </footer>
+
+      {/* Chat Modal */}
+      {showChatModal && selectedCarOwner && (
+        <ChatModal
+          isOpen={showChatModal}
+          onClose={() => {
+            setShowChatModal(false);
+            setSelectedCarOwner(null);
+          }}
+          otherUserId={selectedCarOwner.id}
+          otherUserName={selectedCarOwner.name}
+          otherUserEmail={selectedCarOwner.email}
+        />
+      )}
     </div>
   );
 }

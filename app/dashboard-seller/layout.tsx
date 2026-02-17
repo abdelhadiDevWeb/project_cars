@@ -115,9 +115,10 @@ export default function SellerDashboardLayout({
       if (res.ok) {
         const data = await res.json();
         if (data.ok && data.notifications) {
-          // Backend already filters by is_read: false
-          setNotifications(data.notifications);
-          setUnreadCount(data.notifications.length);
+          // Filter out notifications with type "other"
+          const filteredNotifications = data.notifications.filter((notif: any) => notif.type !== 'other');
+          setNotifications(filteredNotifications);
+          setUnreadCount(filteredNotifications.length);
         }
       }
     } catch (error) {
