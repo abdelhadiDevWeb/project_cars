@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useUser } from "@/contexts/UserContext";
 import Image from "next/image";
 import { getImageUrl } from "@/utils/backend";
+import { QRCodeSVG } from "react-qr-code";
 
 interface Appointment {
   _id: string;
@@ -15,10 +16,14 @@ interface Appointment {
     phone: string;
   };
   id_car: {
+    _id: string;
     brand: string;
     model: string;
     year: number;
     images?: string[];
+    status_vin?: boolean;
+    vin?: string;
+    qr?: string;
   };
   date: string;
   time: string;
@@ -54,6 +59,11 @@ export default function TodayPage() {
   const [selectedPdf, setSelectedPdf] = useState<File | null>(null);
   const [successMessage, setSuccessMessage] = useState('');
   const [activeTab, setActiveTab] = useState<'accepted' | 'en_cours' | 'finish'>('accepted');
+  const [showServiceModal, setShowServiceModal] = useState(false);
+  const [pendingFinishAppointment, setPendingFinishAppointment] = useState<Appointment | null>(null);
+  const [selectedService, setSelectedService] = useState<'mécanique' | 'vérification peinture' | 'mécanique & peinture'>('mécanique');
+  const [showConfirmFactureModal, setShowConfirmFactureModal] = useState(false);
+  const [pendingFinishWithFacture, setPendingFinishWithFacture] = useState<{ appointmentId: string; service?: 'mécanique' | 'vérification peinture' | 'mécanique & peinture' } | null>(null);
 
   useEffect(() => {
     const fetchTodayAppointments = async () => {
@@ -93,6 +103,40 @@ export default function TodayPage() {
     }
   }, [user, token]);
 
+  // Listen for appointment status changes from appointments page
+  useEffect(() => {
+    const handleAppointmentStatusChange = () => {
+      // Refresh appointments when status changes
+      if (user && token) {
+        const fetchTodayAppointments = async () => {
+          try {
+            const res = await fetch('/api/workshop-stats/today', {
+              headers: {
+                'Authorization': `Bearer ${token}`,
+              },
+            });
+
+            if (res.ok) {
+              const data = await res.json();
+              if (data.ok && data.appointments) {
+                setAppointments(data.appointments || []);
+                setStats(data.stats || { total: 0, completed: 0, pending: 0, progress: 0 });
+              }
+            }
+          } catch (error) {
+            console.error('Error refreshing today appointments:', error);
+          }
+        };
+        fetchTodayAppointments();
+      }
+    };
+
+    window.addEventListener('appointmentStatusChanged', handleAppointmentStatusChange);
+    return () => {
+      window.removeEventListener('appointmentStatusChanged', handleAppointmentStatusChange);
+    };
+  }, [user, token]);
+
   const getStatusLabel = (status: string) => {
     const statusMap: { [key: string]: string } = {
       'en_attente': 'En attente',
@@ -114,11 +158,45 @@ export default function TodayPage() {
 
   const handleStatusChange = async (appointmentId: string, newStatus: 'en_attente' | 'accepted' | 'refused' | 'en_cours' | 'finish') => {
     try {
-      if (!token) {
+      if (!token || !user) {
         setError("Token d'authentification manquant");
         return;
       }
 
+      // If finishing, show confirmation modal for facture
+      if (newStatus === 'finish') {
+        // If workshop is mechanic_paint_inspector, show service selection modal first
+        if (user.workshopType === 'mechanic_paint_inspector') {
+          const appointment = appointments.find(apt => (apt._id || apt.id) === appointmentId);
+          if (appointment) {
+            setPendingFinishAppointment(appointment);
+            setShowServiceModal(true);
+            return;
+          }
+        } else {
+          // For other workshop types, show confirmation modal directly
+          setPendingFinishWithFacture({ appointmentId });
+          setShowConfirmFactureModal(true);
+          return;
+        }
+      }
+
+      // Proceed with status change (not finishing)
+      await finishAppointment(appointmentId, newStatus, undefined, false);
+    } catch (error) {
+      console.error('Error updating appointment status:', error);
+      setError("Erreur de connexion. Veuillez réessayer.");
+    }
+  };
+
+  const finishAppointment = async (appointmentId: string, newStatus: 'en_attente' | 'accepted' | 'refused' | 'en_cours' | 'finish', service?: 'mécanique' | 'vérification peinture' | 'mécanique & peinture', createFacture: boolean = true) => {
+    try {
+      if (!token || !user) {
+        setError("Token d'authentification manquant");
+        return;
+      }
+
+      // Update appointment status
       const res = await fetch(`/api/rdv-workshop/${appointmentId}/status`, {
         method: 'PUT',
         headers: {
@@ -143,6 +221,77 @@ export default function TodayPage() {
         return;
       }
 
+      // If finishing, create facture only if createFacture is true
+      if (newStatus === 'finish' && createFacture) {
+        const appointment = appointments.find(apt => (apt._id || apt.id) === appointmentId);
+        if (appointment && appointment.id_owner_car) {
+          let factureService: 'mécanique' | 'vérification peinture' | 'mécanique & peinture';
+          let factureTotal: number = 0;
+          let userId: string;
+
+          // Get user ID from appointment
+          if (typeof appointment.id_owner_car === 'object' && appointment.id_owner_car._id) {
+            userId = appointment.id_owner_car._id;
+          } else if (typeof appointment.id_owner_car === 'string') {
+            userId = appointment.id_owner_car;
+          } else {
+            console.error('Invalid id_owner_car format');
+            return;
+          }
+
+          if (user.workshopType === 'mechanic') {
+            factureService = 'mécanique';
+            factureTotal = user.price_visit_mec || 0;
+          } else if (user.workshopType === 'paint_vehicle') {
+            factureService = 'vérification peinture';
+            factureTotal = user.price_visit_paint || 0;
+          } else if (user.workshopType === 'mechanic_paint_inspector') {
+            if (service) {
+              factureService = service;
+              if (service === 'mécanique') {
+                factureTotal = user.price_visit_mec || 0;
+              } else if (service === 'vérification peinture') {
+                factureTotal = user.price_visit_paint || 0;
+              } else if (service === 'mécanique & peinture') {
+                factureTotal = (user.price_visit_mec || 0) + (user.price_visit_paint || 0);
+              }
+            } else {
+              // Default to mécanique if no service selected
+              factureService = 'mécanique';
+              factureTotal = user.price_visit_mec || 0;
+            }
+          } else {
+            // Fallback
+            factureService = 'mécanique';
+            factureTotal = 0;
+          }
+
+          // Create facture
+          if (factureTotal > 0) {
+            try {
+              const factureRes = await fetch('/api/facture', {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${token}`,
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  id_user: userId,
+                  service: factureService,
+                  total: factureTotal,
+                }),
+              });
+
+              if (!factureRes.ok) {
+                console.error('Error creating facture:', await factureRes.json());
+              }
+            } catch (factureError) {
+              console.error('Error creating facture:', factureError);
+            }
+          }
+        }
+      }
+
       // Refresh appointments
       const refreshRes = await fetch('/api/workshop-stats/today', {
         headers: {
@@ -154,10 +303,22 @@ export default function TodayPage() {
         if (refreshData.ok && refreshData.appointments) {
           setAppointments(refreshData.appointments);
           setStats(refreshData.stats || { total: 0, completed: 0, pending: 0, progress: 0 });
+          
+          // Dispatch event to update sidebar badge count
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new Event('appointmentStatusChanged'));
+          }
         }
       }
+
+      // Close service modal if open
+      if (showServiceModal) {
+        setShowServiceModal(false);
+        setPendingFinishAppointment(null);
+        setSelectedService('mécanique');
+      }
     } catch (error) {
-      console.error('Error updating appointment status:', error);
+      console.error('Error finishing appointment:', error);
       setError("Erreur de connexion. Veuillez réessayer.");
     }
   };
@@ -208,6 +369,11 @@ export default function TodayPage() {
           );
           if (updatedAppointment) {
             setSelectedAppointment(updatedAppointment);
+          }
+          
+          // Dispatch event to update sidebar badge count
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new Event('appointmentStatusChanged'));
           }
         }
       }
@@ -283,6 +449,11 @@ export default function TodayPage() {
           if (updatedAppointment) {
             setSelectedAppointment(updatedAppointment);
           }
+          
+          // Dispatch event to update sidebar badge count
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new Event('appointmentStatusChanged'));
+          }
         }
       }
 
@@ -329,11 +500,35 @@ export default function TodayPage() {
 
   const today = new Date().toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
+  // Count today's appointments (excluding finished ones)
+  const todayAppointmentsCount = appointments.filter(a => a.status !== 'finish').length;
+  // Count only pending appointments (en_attente)
+  const pendingTodayCount = appointments.filter(a => a.status === 'en_attente').length;
+
   return (
     <div className="p-6 bg-gradient-to-br from-gray-50 via-blue-50/30 to-gray-100">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900 font-[var(--font-poppins)] mb-2">Liste du jour</h1>
-        <p className="text-gray-600">{today}</p>
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900 font-[var(--font-poppins)] mb-2 flex items-center gap-3">
+            Liste du jour
+            {todayAppointmentsCount > 0 && (
+              <span className="px-3 py-1 bg-blue-500 text-white rounded-full text-sm font-bold">
+                {todayAppointmentsCount}
+              </span>
+            )}
+          </h1>
+          <p className="text-gray-600">{today}</p>
+        </div>
+        {pendingTodayCount > 0 && (
+          <div className="px-4 py-2 bg-orange-100 border-2 border-orange-300 rounded-xl">
+            <p className="text-sm font-semibold text-orange-800 flex items-center gap-2">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              {pendingTodayCount} rendez-vous en attente
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Tab Buttons */}
@@ -502,7 +697,7 @@ export default function TodayPage() {
                           <h3 className="text-2xl font-bold text-gray-900 font-[var(--font-poppins)] mb-2">
                             {appointment.id_car?.brand} {appointment.id_car?.model} {appointment.id_car?.year}
                           </h3>
-                          <div className="flex items-center gap-4 mb-3">
+                          <div className="flex items-center gap-4 mb-3 flex-wrap">
                             <span className="px-4 py-2 rounded-full text-sm font-bold border-2 bg-blue-100 text-blue-700 border-blue-300">
                               {getStatusLabel(appointment.status)}
                             </span>
@@ -512,6 +707,29 @@ export default function TodayPage() {
                               </svg>
                               {appointment.time}
                             </span>
+                            {appointment.id_car?.status_vin !== undefined && (
+                              <span className={`px-4 py-2 rounded-full text-sm font-bold border-2 flex items-center gap-2 ${
+                                appointment.id_car.status_vin 
+                                  ? 'bg-green-100 text-green-700 border-green-300' 
+                                  : 'bg-red-100 text-red-700 border-red-300'
+                              }`}>
+                                {appointment.id_car.status_vin ? (
+                                  <>
+                                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                    </svg>
+                                    VIN Valide
+                                  </>
+                                ) : (
+                                  <>
+                                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                                    </svg>
+                                    VIN Non Valide
+                                  </>
+                                )}
+                              </span>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -641,10 +859,33 @@ export default function TodayPage() {
                           <h3 className="text-2xl font-bold text-gray-900 font-[var(--font-poppins)] mb-2">
                             {appointment.id_car?.brand} {appointment.id_car?.model} {appointment.id_car?.year}
                           </h3>
-                          <div className="flex items-center gap-4 mb-3">
+                          <div className="flex items-center gap-4 mb-3 flex-wrap">
                             <span className="px-4 py-2 rounded-full text-sm font-bold border-2 bg-green-100 text-green-700 border-green-300">
                               {getStatusLabel(appointment.status)}
                             </span>
+                            {appointment.id_car?.status_vin !== undefined && (
+                              <span className={`px-4 py-2 rounded-full text-sm font-bold border-2 flex items-center gap-2 ${
+                                appointment.id_car.status_vin 
+                                  ? 'bg-green-100 text-green-700 border-green-300' 
+                                  : 'bg-red-100 text-red-700 border-red-300'
+                              }`}>
+                                {appointment.id_car.status_vin ? (
+                                  <>
+                                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                    </svg>
+                                    VIN Valide
+                                  </>
+                                ) : (
+                                  <>
+                                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                                    </svg>
+                                    VIN Non Valide
+                                  </>
+                                )}
+                              </span>
+                            )}
                             <span className="text-lg font-semibold text-gray-700 flex items-center gap-2">
                               <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -763,10 +1004,33 @@ export default function TodayPage() {
                           <h3 className="text-2xl font-bold text-gray-900 font-[var(--font-poppins)] mb-2">
                             {appointment.id_car?.brand} {appointment.id_car?.model} {appointment.id_car?.year}
                           </h3>
-                          <div className="flex items-center gap-4 mb-3">
+                          <div className="flex items-center gap-4 mb-3 flex-wrap">
                             <span className="px-4 py-2 rounded-full text-sm font-bold border-2 bg-purple-100 text-purple-700 border-purple-300">
                               {getStatusLabel(appointment.status)}
                             </span>
+                            {appointment.id_car?.status_vin !== undefined && (
+                              <span className={`px-4 py-2 rounded-full text-sm font-bold border-2 flex items-center gap-2 ${
+                                appointment.id_car.status_vin 
+                                  ? 'bg-green-100 text-green-700 border-green-300' 
+                                  : 'bg-red-100 text-red-700 border-red-300'
+                              }`}>
+                                {appointment.id_car.status_vin ? (
+                                  <>
+                                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                    </svg>
+                                    VIN Valide
+                                  </>
+                                ) : (
+                                  <>
+                                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                                    </svg>
+                                    VIN Non Valide
+                                  </>
+                                )}
+                              </span>
+                            )}
                             <span className="text-lg font-semibold text-gray-700 flex items-center gap-2">
                               <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -840,6 +1104,49 @@ export default function TodayPage() {
                           )}
                         </div>
                       ) : null}
+
+                      {/* QR Code Section */}
+                      {appointment.id_car?._id && (
+                        <div className="bg-white rounded-lg p-4 mb-4 border border-purple-200">
+                          <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                            <svg className="w-5 h-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+                            </svg>
+                            Code QR de vérification
+                          </h4>
+                          <div className="flex items-center gap-4">
+                            {appointment.id_car.qr ? (
+                              <div className="flex flex-col items-center gap-2">
+                                <div className="bg-white p-3 rounded-lg border-2 border-purple-300">
+                                  <img 
+                                    src={appointment.id_car.qr} 
+                                    alt="QR Code" 
+                                    className="w-32 h-32"
+                                  />
+                                </div>
+                                <p className="text-xs text-gray-600 text-center">
+                                  Scannez ce code pour vérifier le statut
+                                </p>
+                              </div>
+                            ) : (
+                              <div className="flex flex-col items-center gap-2">
+                                <div className="bg-white p-3 rounded-lg border-2 border-purple-300">
+                                  <QRCodeSVG 
+                                    value={`${typeof window !== 'undefined' ? window.location.origin : ''}/verify-car/${appointment.id_car._id}`}
+                                    size={128}
+                                    level="M"
+                                    bgColor="#ffffff"
+                                    fgColor="#000000"
+                                  />
+                                </div>
+                                <p className="text-xs text-gray-600 text-center">
+                                  Code QR généré
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
 
                       {/* Actions */}
                       <div className="flex flex-wrap gap-3">
@@ -1060,6 +1367,271 @@ export default function TodayPage() {
                         {selectedAppointment.rapport_pdf ? 'Remplacer le PDF' : 'Uploader le PDF'}
                       </>
                     )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Service Selection Modal for mechanic_paint_inspector */}
+      {showServiceModal && pendingFinishAppointment && user && user.workshopType === 'mechanic_paint_inspector' && (
+        <>
+          <div 
+            className="fixed inset-0 bg-gray-500/60 backdrop-blur-sm z-50"
+            onClick={() => {
+              setShowServiceModal(false);
+              setPendingFinishAppointment(null);
+              setSelectedService('mécanique');
+            }}
+          ></div>
+          <div className="fixed inset-0 flex items-center justify-center z-50 p-4 animate-fadeIn">
+            <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full border border-gray-200 animate-slideUp">
+              <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-purple-500 via-purple-600 to-indigo-600 rounded-t-3xl">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+                      <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h2 className="text-2xl font-bold text-white font-[var(--font-poppins)]">
+                        Sélectionner le service
+                      </h2>
+                      <p className="text-sm text-purple-50 mt-1">
+                        Choisissez le service à facturer
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setShowServiceModal(false);
+                      setPendingFinishAppointment(null);
+                      setSelectedService('mécanique');
+                    }}
+                    className="text-white/80 hover:text-white hover:bg-white/20 transition-all p-2 rounded-lg"
+                  >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+
+              <div className="p-6 space-y-4">
+                <div className="space-y-3">
+                  <button
+                    onClick={() => setSelectedService('mécanique')}
+                    className={`w-full p-4 rounded-xl border-2 transition-all ${
+                      selectedService === 'mécanique'
+                        ? 'border-purple-500 bg-purple-50'
+                        : 'border-gray-200 bg-white hover:border-purple-300'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                          selectedService === 'mécanique'
+                            ? 'border-purple-500 bg-purple-500'
+                            : 'border-gray-300'
+                        }`}>
+                          {selectedService === 'mécanique' && (
+                            <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                            </svg>
+                          )}
+                        </div>
+                        <div className="text-left">
+                          <p className="font-semibold text-gray-900">Mécanique</p>
+                          <p className="text-sm text-gray-600">{user.price_visit_mec?.toLocaleString() || 0} DA</p>
+                        </div>
+                      </div>
+                    </div>
+                  </button>
+
+                  <button
+                    onClick={() => setSelectedService('vérification peinture')}
+                    className={`w-full p-4 rounded-xl border-2 transition-all ${
+                      selectedService === 'vérification peinture'
+                        ? 'border-purple-500 bg-purple-50'
+                        : 'border-gray-200 bg-white hover:border-purple-300'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                          selectedService === 'vérification peinture'
+                            ? 'border-purple-500 bg-purple-500'
+                            : 'border-gray-300'
+                        }`}>
+                          {selectedService === 'vérification peinture' && (
+                            <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                            </svg>
+                          )}
+                        </div>
+                        <div className="text-left">
+                          <p className="font-semibold text-gray-900">Vérification Peinture</p>
+                          <p className="text-sm text-gray-600">{user.price_visit_paint?.toLocaleString() || 0} DA</p>
+                        </div>
+                      </div>
+                    </div>
+                  </button>
+
+                  <button
+                    onClick={() => setSelectedService('mécanique & peinture')}
+                    className={`w-full p-4 rounded-xl border-2 transition-all ${
+                      selectedService === 'mécanique & peinture'
+                        ? 'border-purple-500 bg-purple-50'
+                        : 'border-gray-200 bg-white hover:border-purple-300'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                          selectedService === 'mécanique & peinture'
+                            ? 'border-purple-500 bg-purple-500'
+                            : 'border-gray-300'
+                        }`}>
+                          {selectedService === 'mécanique & peinture' && (
+                            <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                            </svg>
+                          )}
+                        </div>
+                        <div className="text-left">
+                          <p className="font-semibold text-gray-900">Mécanique & Peinture</p>
+                          <p className="text-sm text-gray-600">
+                            {((user.price_visit_mec || 0) + (user.price_visit_paint || 0)).toLocaleString()} DA
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </button>
+                </div>
+
+                <div className="pt-4 border-t border-gray-200">
+                  <button
+                    onClick={() => {
+                      if (pendingFinishAppointment) {
+                        // Close service modal and show confirmation modal
+                        setShowServiceModal(false);
+                        setPendingFinishWithFacture({ 
+                          appointmentId: pendingFinishAppointment._id || pendingFinishAppointment.id!,
+                          service: selectedService
+                        });
+                        setShowConfirmFactureModal(true);
+                      }
+                    }}
+                    className="w-full px-6 py-3 bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white rounded-lg font-semibold transition-all duration-200 shadow-xl hover:shadow-2xl flex items-center justify-center gap-2"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Terminer la vérification
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Confirmation Modal for Facture */}
+      {showConfirmFactureModal && pendingFinishWithFacture && (
+        <>
+          <div 
+            className="fixed inset-0 bg-gray-500/60 backdrop-blur-sm z-50"
+            onClick={() => {
+              setShowConfirmFactureModal(false);
+              setPendingFinishWithFacture(null);
+            }}
+          ></div>
+          <div className="fixed inset-0 flex items-center justify-center z-50 p-4 animate-fadeIn">
+            <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full border border-gray-200 animate-slideUp">
+              <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-blue-500 via-blue-600 to-indigo-600 rounded-t-3xl">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+                      <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h2 className="text-2xl font-bold text-white font-[var(--font-poppins)]">
+                        Créer une facture ?
+                      </h2>
+                      <p className="text-sm text-blue-50 mt-1">
+                        Voulez-vous créer une facture pour cette vérification ?
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setShowConfirmFactureModal(false);
+                      setPendingFinishWithFacture(null);
+                    }}
+                    className="text-white/80 hover:text-white hover:bg-white/20 transition-all p-2 rounded-lg"
+                  >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+
+              <div className="p-6 space-y-4">
+                <div className="bg-blue-50 rounded-xl p-4 border border-blue-200">
+                  <p className="text-sm text-gray-700">
+                    Si vous choisissez <strong>"Oui"</strong>, une facture sera automatiquement créée avec les détails de la vérification.
+                  </p>
+                  <p className="text-sm text-gray-600 mt-2">
+                    Si vous choisissez <strong>"Non"</strong>, la vérification sera terminée sans créer de facture.
+                  </p>
+                </div>
+
+                <div className="flex gap-3 pt-4">
+                  <button
+                    onClick={() => {
+                      setShowConfirmFactureModal(false);
+                      if (pendingFinishWithFacture) {
+                        finishAppointment(
+                          pendingFinishWithFacture.appointmentId,
+                          'finish',
+                          pendingFinishWithFacture.service,
+                          true // Create facture
+                        );
+                      }
+                      setPendingFinishWithFacture(null);
+                    }}
+                    className="flex-1 px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white rounded-lg font-semibold transition-all duration-200 shadow-xl hover:shadow-2xl flex items-center justify-center gap-2"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    Oui, créer la facture
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowConfirmFactureModal(false);
+                      if (pendingFinishWithFacture) {
+                        finishAppointment(
+                          pendingFinishWithFacture.appointmentId,
+                          'finish',
+                          pendingFinishWithFacture.service,
+                          false // Don't create facture
+                        );
+                      }
+                      setPendingFinishWithFacture(null);
+                    }}
+                    className="flex-1 px-6 py-3 bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 text-white rounded-lg font-semibold transition-all duration-200 shadow-xl hover:shadow-2xl flex items-center justify-center gap-2"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                    Non, ne pas créer
                   </button>
                 </div>
               </div>

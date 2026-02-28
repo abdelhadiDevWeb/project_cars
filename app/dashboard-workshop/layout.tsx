@@ -5,8 +5,8 @@ import Link from "next/link";
 import { useState, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useUser } from "@/contexts/UserContext";
+import { getImageUrl, getBackendUrl } from "@/utils/backend";
 import { io, Socket } from 'socket.io-client';
-import { getImageUrl } from "@/utils/backend";
 
 export default function WorkshopDashboardLayout({
   children,
@@ -18,57 +18,72 @@ export default function WorkshopDashboardLayout({
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
-  const [socket, setSocket] = useState<Socket | null>(null);
+  const [todayAppointmentsCount, setTodayAppointmentsCount] = useState(0);
   const [profileImage, setProfileImage] = useState<string | null>(null);
+  const [socket, setSocket] = useState<Socket | null>(null);
   const pathname = usePathname();
   const router = useRouter();
   const { user, token, userType, userRole, isLoading, isAuthenticated, logout } = useUser();
 
+  // Check if required prices are set based on workshop type, redirect to profile if not
   useEffect(() => {
-    // Security checks
-    if (isLoading) return; // Wait for auth to initialize
+    if (!isLoading && user && userType === 'workshop' && user.workshopType) {
+      let shouldRedirect = false;
+      
+      if (user.workshopType === 'mechanic') {
+        // For mechanic: need price_visit_mec
+        if (user.price_visit_mec === null || user.price_visit_mec === undefined || user.price_visit_mec === 0) {
+          shouldRedirect = true;
+        }
+      } else if (user.workshopType === 'paint_vehicle') {
+        // For paint_vehicle: need price_visit_paint
+        if (user.price_visit_paint === null || user.price_visit_paint === undefined || user.price_visit_paint === 0) {
+          shouldRedirect = true;
+        }
+      } else if (user.workshopType === 'mechanic_paint_inspector') {
+        // For mechanic_paint_inspector: need both prices
+        if ((user.price_visit_mec === null || user.price_visit_mec === undefined || user.price_visit_mec === 0) ||
+            (user.price_visit_paint === null || user.price_visit_paint === undefined || user.price_visit_paint === 0)) {
+          shouldRedirect = true;
+        }
+      }
+      
+      if (shouldRedirect && typeof window !== 'undefined' && !pathname?.includes('/profile')) {
+        router.push('/dashboard-workshop/profile');
+      }
+    }
+  }, [user, isLoading, router, pathname, userType]);
 
-    // Check if user is authenticated
+  useEffect(() => {
+    if (isLoading) return;
     if (!isAuthenticated || !token || !user) {
       router.push('/login');
       return;
     }
-
-    // Check if user is a workshop
-    if (userType !== 'workshop') {
+    if (userType !== 'workshop' || userRole === 'admin') {
       logout();
       router.push('/');
       return;
     }
-
-    // Check if user account is activated
     if (!user.status) {
       logout();
       router.push('/login');
       return;
     }
-
-    // Fetch profile image
-    if (user && (user._id || user.id)) {
+    if (user && user._id) {
       fetchProfileImage();
     }
-  }, [isLoading, isAuthenticated, token, user, userType, router, logout]);
+  }, [isLoading, isAuthenticated, token, user, userType, userRole, router, logout]);
 
-  // Fetch profile image
   const fetchProfileImage = async () => {
-    if (!user?._id && !user?.id) return;
-
+    if (!user?._id) return;
     try {
       const token = localStorage.getItem('token');
       if (!token) return;
-
-      const userId = user._id || user.id;
+      const userId = user._id;
       const res = await fetch(`/api/user-image/${userId}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
+        headers: { 'Authorization': `Bearer ${token}` },
       });
-
       if (res.ok) {
         const data = await res.json();
         if (data.ok && data.userImage) {
@@ -85,39 +100,30 @@ export default function WorkshopDashboardLayout({
     }
   };
 
-  // Listen for profile image updates
   useEffect(() => {
     const handleProfileImageUpdate = (event: CustomEvent) => {
       setProfileImage(event.detail.image);
     };
-
     window.addEventListener('profileImageUpdated', handleProfileImageUpdate as EventListener);
-
     return () => {
       window.removeEventListener('profileImageUpdated', handleProfileImageUpdate as EventListener);
     };
   }, []);
 
-  // Fetch notifications
   const fetchNotifications = async () => {
     if (!user || !user._id) return;
-
     try {
       const token = localStorage.getItem('token');
       if (!token) return;
-
       const res = await fetch('/api/notification', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
+        headers: { 'Authorization': `Bearer ${token}` },
       });
-
       if (res.ok) {
         const data = await res.json();
         if (data.ok && data.notifications) {
-          // Backend already filters by is_read: false, so we can use them directly
-          setNotifications(data.notifications);
-          setUnreadCount(data.notifications.length);
+          const filteredNotifications = data.notifications.filter((notif: any) => notif.type !== 'other');
+          setNotifications(filteredNotifications);
+          setUnreadCount(filteredNotifications.filter((n: any) => !n.is_read).length);
         }
       }
     } catch (error) {
@@ -125,68 +131,148 @@ export default function WorkshopDashboardLayout({
     }
   };
 
-  // Fetch notifications on mount and periodically
+  useEffect(() => {
+    if (user && user._id && userType === 'workshop') {
+      const backendUrl = getBackendUrl();
+      const token = localStorage.getItem('token');
+      if (!token) return;
+      const newSocket = io(backendUrl, {
+        auth: { token },
+        transports: ['websocket', 'polling'],
+      });
+      newSocket.on('connect', () => {
+        console.log('Socket connected for workshop');
+        const userId = user._id;
+        if (userId) {
+          newSocket.emit('join_workshop', userId);
+        }
+      });
+      newSocket.on('new_notification', (data: any) => {
+        // Handle different data structures from backend
+        // Backend sends: { id, id_sender, message, type, is_read, createdAt }
+        // Or sometimes: { notification: { ... } }
+        const notification = data?.notification || data;
+        
+        if (notification && (notification.id || notification._id)) {
+          const notificationId = notification._id || notification.id;
+          
+          // Check if notification already exists before adding
+          setNotifications((prev) => {
+            const exists = prev.some((n: any) => {
+              const nId = n._id || n.id;
+              return nId === notificationId;
+            });
+            
+            if (exists) {
+              console.log('⚠️ Notification already exists, skipping duplicate:', notificationId);
+              return prev;
+            }
+            
+            if (notification.type === 'other') return prev;
+            
+            // Add notification with proper structure
+            const newNotification = {
+              _id: notification._id || notification.id,
+              id: notification.id || notification._id,
+              id_sender: notification.id_sender,
+              message: notification.message,
+              type: notification.type,
+              is_read: notification.is_read || false,
+              createdAt: notification.createdAt || new Date(),
+            };
+            
+            console.log('✅ New notification added via Socket.IO:', newNotification.id);
+            return [newNotification, ...prev];
+          });
+          
+          // Only increment unread count if notification is not read
+          if (!notification.is_read) {
+            setUnreadCount((prev) => prev + 1);
+          }
+          
+          // Don't call fetchNotifications() here to avoid duplicates
+          // The notification is already added via Socket.IO in real-time
+        }
+      });
+      newSocket.on('new_appointment', (data: any) => {
+        fetchNotifications();
+      });
+      newSocket.on('disconnect', () => {
+        console.log('Socket disconnected');
+      });
+      setSocket(newSocket);
+      return () => {
+        const userId = user._id;
+        if (userId) {
+          newSocket.emit('leave_workshop', userId);
+        }
+        newSocket.close();
+      };
+    }
+  }, [user, userType]);
+
   useEffect(() => {
     if (user && user._id && userType === 'workshop') {
       fetchNotifications();
-      // Refresh notifications every 30 seconds
       const interval = setInterval(fetchNotifications, 30000);
       return () => clearInterval(interval);
     }
   }, [user, userType]);
 
-  // Setup Socket.IO connection
-  useEffect(() => {
-    if (!user || !user._id || userType !== 'workshop') return;
-
-    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 
-                      process.env.NEXT_PUBLIC_URLBACKEND || 
-                      'http://localhost:8001';
-    
-    const newSocket = io(backendUrl, {
-      transports: ['websocket', 'polling'],
-    });
-
-    newSocket.on('connect', () => {
-      console.log('Socket connected');
-      // Join workshop room
-      newSocket.emit('join_workshop', user._id || user.id);
-    });
-
-    newSocket.on('new_appointment', (data) => {
-      console.log('New appointment received:', data);
-      // Refresh notifications
-      fetchNotifications();
-    });
-
-    newSocket.on('disconnect', () => {
-      console.log('Socket disconnected');
-    });
-
-    setSocket(newSocket);
-
-    return () => {
-      if (newSocket) {
-        newSocket.emit('leave_workshop', user._id || user.id);
-        newSocket.disconnect();
+  const fetchTodayAppointmentsCount = async () => {
+    if (!user || !token) return;
+    try {
+      const res = await fetch('/api/workshop-stats/today', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.ok && data.appointments) {
+          // Count appointments that are not finished (accepted, en_cours, en_attente)
+          const count = data.appointments.filter((apt: any) => apt.status !== 'finish').length;
+          setTodayAppointmentsCount(count);
+        }
       }
+    } catch (error) {
+      console.error('Error fetching today appointments count:', error);
+    }
+  };
+
+  useEffect(() => {
+    if (user && token && userType === 'workshop') {
+      fetchTodayAppointmentsCount();
+      // Refresh every 30 seconds
+      const interval = setInterval(fetchTodayAppointmentsCount, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [user, token, userType]);
+
+  // Listen for appointment status changes
+  useEffect(() => {
+    const handleAppointmentStatusChange = () => {
+      fetchTodayAppointmentsCount();
     };
-  }, [user, userType, router]);
+    window.addEventListener('appointmentStatusChanged', handleAppointmentStatusChange);
+    return () => {
+      window.removeEventListener('appointmentStatusChanged', handleAppointmentStatusChange);
+    };
+  }, []);
 
   const markAsRead = async (notificationId: string) => {
     try {
       const token = localStorage.getItem('token');
       if (!token) return;
-
       const res = await fetch(`/api/notification/${notificationId}/read`, {
         method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
+        headers: { 'Authorization': `Bearer ${token}` },
       });
-
       if (res.ok) {
         fetchNotifications();
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new Event('notificationUpdated'));
+        }
       }
     } catch (error) {
       console.error('Error marking notification as read:', error);
@@ -197,23 +283,21 @@ export default function WorkshopDashboardLayout({
     try {
       const token = localStorage.getItem('token');
       if (!token) return;
-
       const res = await fetch('/api/notification/read-all', {
         method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
+        headers: { 'Authorization': `Bearer ${token}` },
       });
-
       if (res.ok) {
         fetchNotifications();
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new Event('notificationUpdated'));
+        }
       }
     } catch (error) {
       console.error('Error marking all notifications as read:', error);
     }
   };
 
-  // Show loading state while checking authentication
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
@@ -228,15 +312,15 @@ export default function WorkshopDashboardLayout({
     );
   }
 
-  // Don't render dashboard if not authenticated (redirect will happen)
   if (!isAuthenticated || !user) {
     return null;
   }
 
   const navItems = [
     { name: 'Tableau de bord', icon: 'dashboard', path: '/dashboard-workshop' },
-    { name: 'Liste du jour', icon: 'today', path: '/dashboard-workshop/today' },
     { name: 'Rendez-vous', icon: 'appointment', path: '/dashboard-workshop/appointments' },
+    { name: "Aujourd'hui", icon: 'today', path: '/dashboard-workshop/today' },
+    { name: 'Factures', icon: 'facture', path: '/dashboard-workshop/factures' },
     { name: 'Statistiques', icon: 'stats', path: '/dashboard-workshop/statistics' },
     { name: 'Profil', icon: 'profile', path: '/dashboard-workshop/profile' },
   ];
@@ -244,9 +328,7 @@ export default function WorkshopDashboardLayout({
   return (
     <div className="min-h-screen bg-gray-100 flex">
       <div className={`${sidebarOpen ? 'w-64' : 'w-20'} flex-shrink-0`}></div>
-      {/* Left Sidebar */}
       <aside className={`${sidebarOpen ? 'w-64' : 'w-20'} fixed left-0 top-0 h-screen text-white transition-all duration-300 flex flex-col overflow-hidden z-50`}>
-        {/* Background Image with Gradient Overlay */}
         <div className="absolute inset-0 overflow-hidden">
           <div className="relative w-full h-full">
             <Image
@@ -260,27 +342,22 @@ export default function WorkshopDashboardLayout({
           </div>
           <div className="absolute inset-0 bg-gradient-to-br from-blue-900/95 via-blue-800/90 to-indigo-900/95"></div>
         </div>
-
-        {/* Content */}
         <div className="relative z-10 flex flex-col h-full">
-          {/* Dashboard Header with Animation */}
           <div className="p-6 border-b border-white/20 backdrop-blur-sm">
             <div className={`flex items-center justify-center gap-3 transition-all duration-300 ${sidebarOpen ? 'opacity-100' : 'opacity-0'}`}>
               <div className="relative w-12 h-12 flex-shrink-0 bg-white/20 backdrop-blur-sm rounded-xl p-2 border border-white/30 animate-pulse">
                 <svg className="w-full h-full text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                 </svg>
               </div>
               {sidebarOpen && (
-                <div className="animate-slide-in">
+                <div>
                   <h2 className="text-lg font-bold font-[var(--font-poppins)] text-white drop-shadow-lg">Espace Atelier</h2>
                   <p className="text-xs text-blue-200 mt-0.5">Gérez vos rendez-vous</p>
                 </div>
               )}
             </div>
           </div>
-
-          {/* Navigation */}
           <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
             {navItems.map((item) => {
               const isActive = pathname === item.path || (item.path !== '/dashboard-workshop' && pathname?.startsWith(item.path));
@@ -305,6 +382,11 @@ export default function WorkshopDashboardLayout({
                         <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
                       </svg>
                     )}
+                    {item.icon === 'today' && (
+                      <svg fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
+                      </svg>
+                    )}
                     {item.icon === 'stats' && (
                       <svg fill="currentColor" viewBox="0 0 20 20">
                         <path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z" />
@@ -315,33 +397,46 @@ export default function WorkshopDashboardLayout({
                         <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
                       </svg>
                     )}
-                    {item.icon === 'today' && (
+                    {item.icon === 'facture' && (
                       <svg fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
+                        <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
                       </svg>
                     )}
                   </div>
-                  {sidebarOpen && <span className="text-sm font-medium">{item.name}</span>}
+                  {sidebarOpen && (
+                    <span className="text-sm font-medium flex items-center gap-2 flex-1">
+                      {item.name}
+                      {item.icon === 'appointment' && unreadCount > 0 && (
+                        <span className="px-2 py-0.5 bg-red-500 text-white rounded-full text-xs font-bold ml-auto">
+                          {unreadCount > 9 ? '9+' : unreadCount}
+                        </span>
+                      )}
+                      {item.icon === 'today' && todayAppointmentsCount > 0 && (
+                        <span className="px-2 py-0.5 bg-blue-500 text-white rounded-full text-xs font-bold ml-auto">
+                          {todayAppointmentsCount > 9 ? '9+' : todayAppointmentsCount}
+                        </span>
+                      )}
+                    </span>
+                  )}
                 </Link>
               );
             })}
           </nav>
-
-          {/* Bottom Earnings Card */}
           {sidebarOpen && (
             <div className="p-4 border-t border-white/20 backdrop-blur-sm">
               <div className="bg-white/10 backdrop-blur-md rounded-xl p-5 border border-white/20 shadow-xl">
-                <p className="text-2xl font-bold mb-1 text-white drop-shadow-md">1,245</p>
-                <p className="text-xs text-blue-100">Vérifications effectuées</p>
+                <p className="text-lg font-bold mb-1 text-white drop-shadow-md">
+                  {user.name || 'Atelier'}
+                </p>
+                <p className="text-xs text-blue-100">
+                  {user.price_visite ? `${user.price_visite} DA/visite` : 'Prix non défini'}
+                </p>
               </div>
             </div>
           )}
         </div>
       </aside>
-
-      {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden relative">
-        {/* Top Header */}
         <header className="bg-white border-b border-gray-200 shadow-sm px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button
@@ -353,9 +448,7 @@ export default function WorkshopDashboardLayout({
               </svg>
             </button>
           </div>
-
           <div className="flex items-center gap-4">
-            {/* Notifications */}
             <div className="relative">
               <button 
                 onClick={() => setShowNotifications(!showNotifications)}
@@ -370,8 +463,6 @@ export default function WorkshopDashboardLayout({
                   </span>
                 )}
               </button>
-
-              {/* Notifications Dropdown */}
               {showNotifications && (
                 <>
                   <div 
@@ -409,12 +500,10 @@ export default function WorkshopDashboardLayout({
                                 !notification.is_read ? 'bg-blue-50/50' : ''
                               }`}
                               onClick={async () => {
-                                // Mark as read when clicked
                                 if (!notification.is_read) {
                                   await markAsRead(notification._id || notification.id);
                                 }
-                                // Navigate based on type
-                                if (notification.type === 'rdv_workshop') {
+                                if (notification.type === 'rdv_workshop' || notification.type === 'new_rdv_workshop') {
                                   router.push('/dashboard-workshop/appointments');
                                   setShowNotifications(false);
                                 }
@@ -426,9 +515,9 @@ export default function WorkshopDashboardLayout({
                                 }`}></div>
                                 <div className="flex-1 min-w-0">
                                   <p className="text-sm font-medium text-gray-900 mb-1">
-                                    {notification.id_sender?.firstName && notification.id_sender?.lastName
-                                      ? `${notification.id_sender.firstName} ${notification.id_sender.lastName}`
-                                      : notification.id_sender?.name || 'Utilisateur'}
+                                    {notification.id_sender?.name || notification.id_sender?.firstName 
+                                      ? (notification.id_sender.name || `${notification.id_sender.firstName} ${notification.id_sender.lastName || ''}`)
+                                      : 'Client'}
                                   </p>
                                   <p className="text-sm text-gray-600 mb-2">{notification.message}</p>
                                   <p className="text-xs text-gray-400">
@@ -451,15 +540,13 @@ export default function WorkshopDashboardLayout({
                 </>
               )}
             </div>
-            
-            {/* User Profile Dropdown */}
             <div className="relative">
               <button
                 onClick={() => setShowUserMenu(!showUserMenu)}
                 className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-gray-50 transition-colors cursor-pointer"
               >
                 {profileImage ? (
-                  <div className="relative w-11 h-11 rounded-full overflow-hidden border-2 border-blue-500 shadow-lg">
+                  <div className="relative w-11 h-11 rounded-full overflow-hidden border-2 border-blue-500 shadow-lg hover:shadow-xl transition-shadow">
                     <Image
                       src={getImageUrl(profileImage) || '/images/default-avatar.png'}
                       alt={user?.name || 'Atelier'}
@@ -470,23 +557,22 @@ export default function WorkshopDashboardLayout({
                   </div>
                 ) : (
                   <div className="w-11 h-11 bg-gradient-to-br from-blue-600 to-indigo-500 rounded-full flex items-center justify-center text-white font-semibold shadow-lg hover:shadow-xl transition-shadow">
-                    {user ? (
-                      user.name ? (
-                        user.name.substring(0, 2).toUpperCase()
-                      ) : 'W'
-                    ) : 'W'}
+                    {user?.name ? user.name.substring(0, 2).toUpperCase() : 'AT'}
                   </div>
                 )}
                 <div className="hidden md:block">
                   <p className="text-sm font-semibold text-gray-900">
-                    {user ? (user.name || 'Atelier') : 'Atelier'}
+                    {user?.name || 'Atelier'}
                   </p>
                   <p className="text-xs text-gray-500">
                     {user?.email || 'Email'}
                   </p>
-                  {user?.type && (
-                    <p className="text-xs text-blue-600 font-medium mt-0.5">
-                      {user.type === 'mechanic' ? 'Mécanicien' : 'Technicien en carrosserie automobile'}
+                  {user?.workshopType && (
+                    <p className="text-xs font-medium text-teal-600 mt-0.5">
+                      {user.workshopType === 'mechanic' ? 'Mécanique' : 
+                       user.workshopType === 'paint_vehicle' ? 'Peinture véhicule' : 
+                       user.workshopType === 'mechanic_paint_inspector' ? 'Mécanique & Peinture Inspecteur' : 
+                       user.workshopType}
                     </p>
                   )}
                 </div>
@@ -494,24 +580,16 @@ export default function WorkshopDashboardLayout({
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
               </button>
-              
-              {/* Dropdown Menu */}
               {showUserMenu && (
                 <>
-                  {/* Backdrop */}
                   <div 
                     className="fixed inset-0 z-40" 
                     onClick={() => setShowUserMenu(false)}
                   ></div>
-                  
-                  {/* Menu */}
-                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-gray-200 z-50">
+                  <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-gray-200 z-50">
                     <div className="py-2">
                       <button
-                        onClick={() => {
-                          setShowUserMenu(false);
-                          logout();
-                        }}
+                        onClick={logout}
                         className="w-full text-left px-4 py-3 text-sm text-red-600 hover:bg-red-50 transition-colors flex items-center gap-2"
                       >
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -526,8 +604,6 @@ export default function WorkshopDashboardLayout({
             </div>
           </div>
         </header>
-
-        {/* Page Content */}
         <main className="flex-1 overflow-y-auto">
           {children}
         </main>

@@ -681,7 +681,8 @@ export default function RegisterPage() {
                 >
                   <option value="">Sélectionner un type</option>
                   <option value="mechanic">Mécanique</option>
-                  <option value="car_cover">Inspecteur de véhicules</option>
+                  <option value="paint_vehicle">Peinture véhicule</option>
+                  <option value="mechanic_paint_inspector">Mécanique & Peinture Inspecteur</option>
                 </select>
               </div>
 

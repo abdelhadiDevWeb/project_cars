@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { getImageUrl, getBackendUrl } from "@/utils/backend";
 import { io, Socket } from 'socket.io-client';
+import { QRCodeSVG } from "react-qr-code";
 
 interface Appointment {
   _id: string;
@@ -17,6 +18,7 @@ interface Appointment {
     lastName?: string;
     email: string;
     phone: string;
+    certifie?: boolean;
   };
   id_car: {
     _id: string;
@@ -24,6 +26,7 @@ interface Appointment {
     model: string;
     year: number;
     images?: string[];
+    qr?: string;
   } | null;
   date: string;
   time: string;
@@ -180,6 +183,13 @@ export default function WorkshopAppointmentsPage() {
   }, [user, token, filter]);
 
   const handleStatusChange = async (appointmentId: string, newStatus: 'en_attente' | 'accepted' | 'refused' | 'en_cours' | 'finish') => {
+    // Check if the appointment is for today before status change
+    const appointment = appointments.find(apt => (apt._id || apt.id) === appointmentId);
+    const isToday = appointment && appointment.date ? (() => {
+      const appointmentDate = new Date(appointment.date);
+      const today = new Date();
+      return appointmentDate.toDateString() === today.toDateString();
+    })() : false;
     try {
       if (!token) {
         setError("Token d'authentification manquant");
@@ -229,6 +239,14 @@ export default function WorkshopAppointmentsPage() {
         const refreshData = await refreshRes.json();
         if (refreshData.ok && refreshData.appointments) {
           setAppointments(refreshData.appointments);
+        }
+      }
+      
+      // If appointment was accepted and is for today, update the badge in sidebar
+      if (newStatus === 'accepted' && isToday) {
+        // Dispatch event to update today count badge in layout
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new Event('appointmentStatusChanged'));
         }
       }
     } catch (error) {
@@ -602,6 +620,14 @@ export default function WorkshopAppointmentsPage() {
                         <span className="text-gray-600">
                           {appointment.id_owner_car.firstName} {appointment.id_owner_car.lastName}
                         </span>
+                        {appointment.id_owner_car.certifie && (
+                          <span className="inline-flex items-center px-2 py-0.5 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-md text-xs font-bold shadow-sm">
+                            <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                            </svg>
+                            Certifié
+                          </span>
+                        )}
               </div>
               <div className="flex items-center gap-2">
                         <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -687,15 +713,52 @@ export default function WorkshopAppointmentsPage() {
                       </>
                     )}
                     {appointment.status === 'finish' && (
-                      <button
-                        onClick={() => {
-                          setSelectedAppointment(appointment);
-                          setShowUploadModal(true);
-                        }}
-                        className="px-6 py-2.5 bg-purple-500 hover:bg-purple-600 text-white rounded-lg font-semibold transition-colors text-sm"
-                      >
-                        Voir/Gérer images/PDF
-                      </button>
+                      <>
+                        <button
+                          onClick={() => {
+                            setSelectedAppointment(appointment);
+                            setShowUploadModal(true);
+                          }}
+                          className="px-6 py-2.5 bg-purple-500 hover:bg-purple-600 text-white rounded-lg font-semibold transition-colors text-sm"
+                        >
+                          Voir/Gérer images/PDF
+                        </button>
+                        {/* QR Code Display for Finished Appointments */}
+                        {appointment.id_car?._id && (
+                          <div className="mt-4 w-full bg-gradient-to-br from-purple-50 to-indigo-50 rounded-xl p-4 border-2 border-purple-200">
+                            <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                              <svg className="w-4 h-4 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+                              </svg>
+                              Code QR de vérification
+                            </h4>
+                            <div className="flex flex-col items-center gap-2">
+                              {appointment.id_car.qr ? (
+                                <div className="bg-white p-3 rounded-lg border-2 border-purple-300">
+                                  <img 
+                                    src={appointment.id_car.qr} 
+                                    alt="QR Code" 
+                                    className="w-32 h-32"
+                                  />
+                                </div>
+                              ) : (
+                                <div className="bg-white p-3 rounded-lg border-2 border-purple-300">
+                                  <QRCodeSVG 
+                                    value={`${typeof window !== 'undefined' ? window.location.origin : ''}/verify-car/${appointment.id_car._id}`}
+                                    size={128}
+                                    level="M"
+                                    bgColor="#ffffff"
+                                    fgColor="#000000"
+                                  />
+                                </div>
+                              )}
+                              <p className="text-xs text-gray-600 text-center">
+                                Scannez pour vérifier le statut
+                              </p>
+                            </div>
+                          </div>
+                        )}
+                      </>
                     )}
                     {appointment.status === 'refused' && (
                       <>

@@ -4,6 +4,19 @@ import type { NextRequest } from 'next/server';
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // Get token and user data from cookies
+  const token = request.cookies.get('token')?.value;
+  const userType = request.cookies.get('userType')?.value;
+  const userRole = request.cookies.get('userRole')?.value;
+
+  // Block admin access to home page and chats page
+  if (token && userType === 'user' && userRole === 'admin') {
+    if (pathname === '/' || pathname === '/chats') {
+      const adminUrl = new URL('/dashboard-admin', request.url);
+      return NextResponse.redirect(adminUrl);
+    }
+  }
+
   // Public routes that don't require authentication
   const publicRoutes = ['/', '/login', '/register', '/forgot-password'];
   const publicCarRoutes = pathname.startsWith('/cars/');
@@ -18,10 +31,7 @@ export function middleware(request: NextRequest) {
   const sellerRoutes = pathname.startsWith('/dashboard-seller');
   const workshopRoutes = pathname.startsWith('/dashboard-workshop');
 
-  // Get token and user data from cookies (we'll also check localStorage on client side)
-  const token = request.cookies.get('token')?.value;
-  const userType = request.cookies.get('userType')?.value;
-  const userRole = request.cookies.get('userRole')?.value;
+  // Token and user data already retrieved above
 
   // If accessing a dashboard without token, redirect to home (not login, as per requirement)
   if ((adminRoutes || sellerRoutes || workshopRoutes) && !token) {

@@ -13,8 +13,13 @@ interface User {
   status: boolean;
   role?: string;
   type?: string; // 'user' or 'workshop'
+  workshopType?: string; // For workshops: 'mechanic', 'paint_vehicle', or 'mechanic_paint_inspector'
   adr?: string; // For workshops
   verfie?: boolean; // For workshops
+  certifie?: boolean; // For workshops and users - certification status
+  price_visite?: number | null; // For workshops - price for car visit
+  price_visit_mec?: number | null; // For workshops - price for mechanic visit
+  price_visit_paint?: number | null; // For workshops - price for paint visit
 }
 
 interface UserContextType {

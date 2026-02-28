@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useUser } from "@/contexts/UserContext";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { getImageUrl } from "@/utils/backend";
 
@@ -35,7 +36,8 @@ interface RecentAppointment {
 }
 
 export default function WorkshopDashboardPage() {
-  const { user, token } = useUser();
+  const { user, token, isLoading } = useUser();
+  const router = useRouter();
   const [stats, setStats] = useState<Stats>({
     pendingAppointments: 0,
     totalAppointments: 0,
@@ -45,6 +47,7 @@ export default function WorkshopDashboardPage() {
   });
   const [recentAppointments, setRecentAppointments] = useState<RecentAppointment[]>([]);
   const [loading, setLoading] = useState(true);
+
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -284,32 +287,32 @@ export default function WorkshopDashboardPage() {
             <p>Aucun rendez-vous récent</p>
           </div>
         ) : (
-          <div className="space-y-4">
+        <div className="space-y-4">
             {recentAppointments.map((appointment) => (
               <div key={appointment._id || appointment.id} className="flex items-center gap-4 p-4 rounded-xl hover:bg-gray-50 transition-colors border border-gray-100">
                 <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${getStatusColor(appointment.status)}`}>
                   <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
                   </svg>
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-center justify-between">
-                    <div>
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center justify-between">
+                  <div>
                       <p className="font-semibold text-gray-900">
                         {appointment.id_car?.brand} {appointment.id_car?.model} {appointment.id_car?.year}
                       </p>
                       <p className="text-sm text-gray-500">
                         {appointment.id_owner_car?.firstName} {appointment.id_owner_car?.lastName} • {formatTimeAgo(appointment.createdAt)}
                       </p>
-                    </div>
+                  </div>
                     <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(appointment.status)}`}>
                       {getStatusLabel(appointment.status)}
-                    </span>
-                  </div>
+                  </span>
                 </div>
               </div>
-            ))}
-          </div>
+            </div>
+          ))}
+        </div>
         )}
       </div>
     </div>

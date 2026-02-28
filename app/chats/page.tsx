@@ -45,10 +45,12 @@ export default function ChatsPage() {
   const [totalUnread, setTotalUnread] = useState(0);
   const [search, setSearch] = useState('');
 
-  // Redirect if not authenticated
+  // Redirect if not authenticated or if admin
   useEffect(() => {
     if (!isAuthenticated && !user) {
       router.push('/login');
+    } else if (user && user.role === 'admin') {
+      router.push('/dashboard-admin');
     }
   }, [isAuthenticated, user, router]);
 
@@ -231,7 +233,7 @@ export default function ChatsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-teal-50/30 to-gray-100 flex items-center justify-center">
+      <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
           <svg className="animate-spin h-12 w-12 text-teal-500 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -244,7 +246,7 @@ export default function ChatsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/50 to-indigo-50/30">
+    <div className="min-h-screen bg-white">
       {/* Floating Back Button */}
       <Link 
         href="/" 

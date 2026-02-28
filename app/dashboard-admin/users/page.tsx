@@ -11,6 +11,7 @@ interface User {
   role: string;
   status: boolean;
   verfie: boolean;
+  certifie?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -24,6 +25,7 @@ interface Workshop {
   type: string;
   status: boolean;
   verfie: boolean;
+  certifie?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -36,6 +38,7 @@ export default function UsersPage() {
   const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
   const [filteredWorkshops, setFilteredWorkshops] = useState<Workshop[]>([]);
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
+  const [updatingCertifie, setUpdatingCertifie] = useState<string | null>(null);
 
   useEffect(() => {
     fetchUsersAndWorkshops();
@@ -186,6 +189,128 @@ export default function UsersPage() {
       alert(errorMessage);
     } finally {
       setUpdatingStatus(null);
+    }
+  };
+
+  const updateUserCertifie = async (userId: string | undefined, newCertifie: boolean) => {
+    try {
+      if (!userId) {
+        console.error('❌ User ID is missing');
+        alert('Erreur: ID utilisateur manquant');
+        return;
+      }
+
+      setUpdatingCertifie(userId);
+      const token = localStorage.getItem('token');
+      
+      if (!token) {
+        throw new Error('Token d\'authentification manquant');
+      }
+
+      const response = await fetch(`/api/admin/users/${userId}/certifie`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ certifie: newCertifie }),
+      });
+
+      let data;
+      try {
+        data = await response.json();
+      } catch (jsonError) {
+        console.error('Error parsing JSON response:', jsonError);
+        throw new Error('Erreur lors de la lecture de la réponse du serveur');
+      }
+      
+      if (!response.ok) {
+        const errorMessage = data?.message || `Erreur HTTP: ${response.status} ${response.statusText}`;
+        throw new Error(errorMessage);
+      }
+
+      if (!data.ok) {
+        const errorMessage = data?.message || 'Erreur lors de la mise à jour du statut certifié';
+        throw new Error(errorMessage);
+      }
+
+      // Update local state
+      setUsers(prevUsers =>
+        prevUsers.map(user =>
+          user.id === userId ? { ...user, certifie: newCertifie } : user
+        )
+      );
+      setFilteredUsers(prevUsers =>
+        prevUsers.map(user =>
+          user.id === userId ? { ...user, certifie: newCertifie } : user
+        )
+      );
+    } catch (error: any) {
+      console.error('Error updating user certifie:', error);
+      alert(error?.message || 'Erreur lors de la mise à jour du statut certifié');
+    } finally {
+      setUpdatingCertifie(null);
+    }
+  };
+
+  const updateWorkshopCertifie = async (workshopId: string | undefined, newCertifie: boolean) => {
+    try {
+      if (!workshopId) {
+        console.error('❌ Workshop ID is missing');
+        alert('Erreur: ID atelier manquant');
+        return;
+      }
+
+      setUpdatingCertifie(workshopId);
+      const token = localStorage.getItem('token');
+      
+      if (!token) {
+        throw new Error('Token d\'authentification manquant');
+      }
+
+      const response = await fetch(`/api/admin/workshops/${workshopId}/certifie`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ certifie: newCertifie }),
+      });
+
+      let data;
+      try {
+        data = await response.json();
+      } catch (jsonError) {
+        console.error('Error parsing JSON response:', jsonError);
+        throw new Error('Erreur lors de la lecture de la réponse du serveur');
+      }
+      
+      if (!response.ok) {
+        const errorMessage = data?.message || `Erreur HTTP: ${response.status} ${response.statusText}`;
+        throw new Error(errorMessage);
+      }
+
+      if (!data.ok) {
+        const errorMessage = data?.message || 'Erreur lors de la mise à jour du statut certifié';
+        throw new Error(errorMessage);
+      }
+
+      // Update local state
+      setWorkshops(prevWorkshops =>
+        prevWorkshops.map(workshop =>
+          workshop.id === workshopId ? { ...workshop, certifie: newCertifie } : workshop
+        )
+      );
+      setFilteredWorkshops(prevWorkshops =>
+        prevWorkshops.map(workshop =>
+          workshop.id === workshopId ? { ...workshop, certifie: newCertifie } : workshop
+        )
+      );
+    } catch (error: any) {
+      console.error('Error updating workshop certifie:', error);
+      alert(error?.message || 'Erreur lors de la mise à jour du statut certifié');
+    } finally {
+      setUpdatingCertifie(null);
     }
   };
 
@@ -352,13 +477,14 @@ export default function UsersPage() {
                     <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Rôle</th>
                     <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Inscription</th>
                     <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Statut</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Certifié</th>
                     <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {filteredUsers.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
+                      <td colSpan={8} className="px-6 py-8 text-center text-gray-500">
                         Aucun utilisateur trouvé
                       </td>
                     </tr>
@@ -401,6 +527,36 @@ export default function UsersPage() {
                           }`}>
                             {user.status ? 'Actif' : 'Inactif'}
                           </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <button
+                            onClick={() => {
+                              const userId = user.id || (user as any)._id?.toString() || (user as any)._id;
+                              if (!userId) {
+                                alert('Erreur: Impossible de trouver l\'ID de l\'utilisateur');
+                                return;
+                              }
+                              updateUserCertifie(userId, !user.certifie);
+                            }}
+                            disabled={updatingCertifie === (user.id || (user as any)._id?.toString() || (user as any)._id)}
+                            className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+                              user.certifie
+                                ? 'bg-teal-100 text-teal-700 hover:bg-teal-200'
+                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                            } disabled:opacity-50 disabled:cursor-not-allowed`}
+                          >
+                            {updatingCertifie === (user.id || (user as any)._id?.toString() || (user as any)._id) ? (
+                              <span className="flex items-center gap-1">
+                                <svg className="animate-spin h-3 w-3" fill="none" viewBox="0 0 24 24">
+                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                ...
+                              </span>
+                            ) : (
+                              user.certifie ? 'Certifié' : 'Non certifié'
+                            )}
+                          </button>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <button
@@ -465,13 +621,14 @@ export default function UsersPage() {
                     <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Adresse</th>
                     <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Inscription</th>
                     <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Statut</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Certifié</th>
                     <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {filteredWorkshops.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="px-6 py-8 text-center text-gray-500">
+                      <td colSpan={9} className="px-6 py-8 text-center text-gray-500">
                         Aucun atelier trouvé
                       </td>
                     </tr>
@@ -519,6 +676,36 @@ export default function UsersPage() {
                           }`}>
                             {workshop.status ? 'Actif' : 'Inactif'}
                           </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <button
+                            onClick={() => {
+                              const workshopId = workshop.id || (workshop as any)._id?.toString() || (workshop as any)._id;
+                              if (!workshopId) {
+                                alert('Erreur: Impossible de trouver l\'ID de l\'atelier');
+                                return;
+                              }
+                              updateWorkshopCertifie(workshopId, !workshop.certifie);
+                            }}
+                            disabled={updatingCertifie === (workshop.id || (workshop as any)._id?.toString() || (workshop as any)._id)}
+                            className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+                              workshop.certifie
+                                ? 'bg-teal-100 text-teal-700 hover:bg-teal-200'
+                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                            } disabled:opacity-50 disabled:cursor-not-allowed`}
+                          >
+                            {updatingCertifie === (workshop.id || (workshop as any)._id?.toString() || (workshop as any)._id) ? (
+                              <span className="flex items-center gap-1">
+                                <svg className="animate-spin h-3 w-3" fill="none" viewBox="0 0 24 24">
+                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                ...
+                              </span>
+                            ) : (
+                              workshop.certifie ? 'Certifié' : 'Non certifié'
+                            )}
+                          </button>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <button

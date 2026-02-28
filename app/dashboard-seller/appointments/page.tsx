@@ -17,6 +17,12 @@ interface Workshop {
   phone: string;
   adr: string;
   status: boolean;
+  type?: string; // 'mechanic', 'paint_vehicle', or 'mechanic_paint_inspector'
+  certifie?: boolean;
+  price_visit_mec?: number | null;
+  price_visit_paint?: number | null;
+  averageRating?: number; // Average rating from rates
+  totalRatings?: number; // Total number of ratings
 }
 
 interface Car {
@@ -50,17 +56,21 @@ export default function AppointmentsPage() {
   const [myAppointments, setMyAppointments] = useState<any[]>([]);
   const [loadingMyAppointments, setLoadingMyAppointments] = useState(true);
   const [activeTab, setActiveTab] = useState<'book' | 'my-appointments'>('book');
-  const [appointmentFilter, setAppointmentFilter] = useState<'accepted' | 'en_cours' | 'finish'>('accepted');
+  const [appointmentFilter, setAppointmentFilter] = useState<'en_attente' | 'accepted' | 'en_cours' | 'finish'>('en_attente');
   const [socket, setSocket] = useState<Socket | null>(null);
+  const [rdvNotificationCount, setRdvNotificationCount] = useState(0);
   const [newNotifications, setNewNotifications] = useState<{
+    en_attente: boolean;
     accepted: boolean;
     en_cours: boolean;
     finish: boolean;
   }>({
+    en_attente: false,
     accepted: false,
     en_cours: false,
     finish: false,
   });
+  const [addressFilter, setAddressFilter] = useState('');
 
   // Check URL parameter for tab
   useEffect(() => {
@@ -80,7 +90,23 @@ export default function AppointmentsPage() {
         if (res.ok) {
           const data = await res.json();
           if (data.ok && data.workshops) {
-            setWorkshops(data.workshops);
+            // Filter workshops: only show those with at least one price defined
+            const filteredWorkshops = data.workshops.filter((workshop: Workshop) => {
+              const hasMecPrice = workshop.price_visit_mec !== null && workshop.price_visit_mec !== undefined && workshop.price_visit_mec > 0;
+              const hasPaintPrice = workshop.price_visit_paint !== null && workshop.price_visit_paint !== undefined && workshop.price_visit_paint > 0;
+              return hasMecPrice || hasPaintPrice;
+            });
+            
+            // Sort workshops: prioritize those with both prices, then by name
+            const sortedWorkshops = filteredWorkshops.sort((a: Workshop, b: Workshop) => {
+              const aHasBoth = (a.price_visit_mec && a.price_visit_mec > 0) && (a.price_visit_paint && a.price_visit_paint > 0);
+              const bHasBoth = (b.price_visit_mec && b.price_visit_mec > 0) && (b.price_visit_paint && b.price_visit_paint > 0);
+              
+              if (aHasBoth && !bHasBoth) return -1;
+              if (!aHasBoth && bHasBoth) return 1;
+              return a.name.localeCompare(b.name);
+            });
+            setWorkshops(sortedWorkshops);
           }
         }
       } catch (error) {
@@ -93,7 +119,7 @@ export default function AppointmentsPage() {
     fetchWorkshops();
   }, []);
 
-  // Fetch user's cars
+  // Fetch user's cars (filtered by selected workshop if one is selected)
   useEffect(() => {
     const fetchCars = async () => {
       if (!user) return;
@@ -106,7 +132,12 @@ export default function AppointmentsPage() {
           return;
         }
 
-        const res = await fetch('/api/car/my-cars', {
+        // If a workshop is selected, filter out cars that already have appointments with this workshop
+        const url = selectedWorkshop 
+          ? `/api/car/my-cars?excludeWorkshop=${selectedWorkshop._id || selectedWorkshop.id}`
+          : '/api/car/my-cars';
+
+        const res = await fetch(url, {
           headers: {
             'Authorization': `Bearer ${token}`,
           },
@@ -116,6 +147,15 @@ export default function AppointmentsPage() {
           const data = await res.json();
           if (data.ok && data.cars) {
             setCars(data.cars);
+            // Reset selected car if it's no longer in the filtered list
+            if (selectedCar) {
+              const carStillAvailable = data.cars.some((car: Car) => 
+                (car._id || car.id) === (selectedCar._id || selectedCar.id)
+              );
+              if (!carStillAvailable) {
+                setSelectedCar(null);
+              }
+            }
           }
         }
       } catch (error) {
@@ -128,7 +168,45 @@ export default function AppointmentsPage() {
     if (user) {
       fetchCars();
     }
-  }, [user, router]);
+  }, [user, router, selectedWorkshop]);
+
+  // Fetch RDV notifications count
+  const fetchRdvNotifications = async () => {
+    if (!user) return;
+
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      const res = await fetch('/api/notification', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.ok && data.notifications) {
+          // Filter out notifications with type "other"
+          const filteredNotifications = data.notifications.filter((notif: any) => notif.type !== 'other');
+          
+          // Count RDV-specific notifications
+          const rdvNotifications = filteredNotifications.filter((notif: any) => 
+            notif.type === 'rdv_workshop' || 
+            notif.type === 'new_rdv_workshop' ||
+            notif.type === 'done_rdv_workshop' ||
+            notif.type === 'cancel_rdv_workshop' ||
+            notif.type === 'accept_rdv' ||
+            notif.message?.toLowerCase().includes('rendez-vous') ||
+            notif.message?.toLowerCase().includes('rdv')
+          );
+          setRdvNotificationCount(rdvNotifications.length);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching RDV notifications:', error);
+    }
+  };
 
   // Fetch user's appointments
   const fetchMyAppointments = async () => {
@@ -177,8 +255,26 @@ export default function AppointmentsPage() {
   useEffect(() => {
     if (user) {
       fetchMyAppointments();
+      fetchRdvNotifications();
+      // Refresh notifications every 30 seconds
+      const interval = setInterval(() => {
+        fetchRdvNotifications();
+      }, 30000);
+      return () => clearInterval(interval);
     }
   }, [user, router]);
+
+  // Listen for notification updates from layout
+  useEffect(() => {
+    const handleNotificationUpdate = () => {
+      fetchRdvNotifications();
+    };
+
+    window.addEventListener('notificationUpdated', handleNotificationUpdate);
+    return () => {
+      window.removeEventListener('notificationUpdated', handleNotificationUpdate);
+    };
+  }, []);
 
   // Initialize Socket.io connection for real-time updates
   useEffect(() => {
@@ -204,10 +300,29 @@ export default function AppointmentsPage() {
     newSocket.on('new_notification', (data: any) => {
       console.log('New notification received:', data);
       
-      // Determine which section this notification is for
-      let targetStatus: 'accepted' | 'en_cours' | 'finish' | null = null;
+      // Check if it's an RDV notification
+      const isRdvNotification = 
+        data.type === 'rdv_workshop' || 
+        data.type === 'new_rdv_workshop' ||
+        data.type === 'done_rdv_workshop' ||
+        data.type === 'cancel_rdv_workshop' ||
+        data.type === 'accept_rdv' ||
+        data.message?.toLowerCase().includes('rendez-vous') ||
+        data.message?.toLowerCase().includes('rdv');
       
-      if (data.type === 'rdv_workshop' || data.type === 'accept_rdv' || data.message?.toLowerCase().includes('accepté') || data.message?.toLowerCase().includes('accept')) {
+      // Update RDV notification count if it's an RDV notification
+      if (isRdvNotification) {
+        setRdvNotificationCount((prev) => prev + 1);
+        // Also refresh from API to ensure consistency
+        fetchRdvNotifications();
+      }
+      
+      // Determine which section this notification is for
+      let targetStatus: 'en_attente' | 'accepted' | 'en_cours' | 'finish' | null = null;
+      
+      if (data.type === 'rdv_workshop' && (data.message?.toLowerCase().includes('demandé') || data.message?.toLowerCase().includes('nouveau'))) {
+        targetStatus = 'en_attente';
+      } else if (data.type === 'rdv_workshop' || data.type === 'accept_rdv' || data.message?.toLowerCase().includes('accepté') || data.message?.toLowerCase().includes('accept')) {
         targetStatus = 'accepted';
       } else if (data.message?.toLowerCase().includes('en cours') || data.message?.toLowerCase().includes('commencé')) {
         targetStatus = 'en_cours';
@@ -245,13 +360,21 @@ export default function AppointmentsPage() {
       if (!selectedWorkshop || !appointmentDate) {
         setAvailableTimes([]);
         setUnavailableTimes([]);
+        setLoadingTimes(false);
         return;
       }
 
       try {
         setLoadingTimes(true);
         const token = localStorage.getItem('token');
-        if (!token) return;
+        if (!token) {
+          setLoadingTimes(false);
+          return;
+        }
+
+        // Start timer for minimum 3 seconds loading
+        const startTime = Date.now();
+        const minLoadingTime = 3000; // 3 seconds
 
         const res = await fetch(
           `/api/rdv-workshop/available-times?id_workshop=${selectedWorkshop._id || selectedWorkshop.id}&date=${appointmentDate}`,
@@ -269,8 +392,24 @@ export default function AppointmentsPage() {
             setUnavailableTimes(data.unavailableTimes || []);
           }
         }
+
+        // Ensure minimum loading time of 3 seconds
+        const elapsedTime = Date.now() - startTime;
+        const remainingTime = Math.max(0, minLoadingTime - elapsedTime);
+        
+        if (remainingTime > 0) {
+          await new Promise(resolve => setTimeout(resolve, remainingTime));
+        }
       } catch (error) {
         console.error('Error fetching available times:', error);
+        // Even on error, show loading for minimum 3 seconds
+        const startTime = Date.now();
+        const minLoadingTime = 3000;
+        const elapsedTime = Date.now() - startTime;
+        const remainingTime = Math.max(0, minLoadingTime - elapsedTime);
+        if (remainingTime > 0) {
+          await new Promise(resolve => setTimeout(resolve, remainingTime));
+        }
       } finally {
         setLoadingTimes(false);
       }
@@ -285,6 +424,7 @@ export default function AppointmentsPage() {
       return;
     }
     setSelectedWorkshop(workshop);
+    setSelectedCar(null); // Reset selected car when changing workshop
     setShowBookingModal(true);
     setError('');
     setSuccess('');
@@ -446,13 +586,22 @@ export default function AppointmentsPage() {
         </button>
         <button
           onClick={() => setActiveTab('my-appointments')}
-          className={`px-6 py-2 rounded-lg font-semibold transition-colors ${
+          className={`px-6 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2 relative ${
             activeTab === 'my-appointments'
               ? 'bg-teal-500 text-white'
               : 'bg-transparent text-gray-700 hover:bg-gray-100'
           }`}
         >
-          Mes rendez-vous
+          <span>Mes rendez-vous</span>
+          {rdvNotificationCount > 0 && (
+            <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+              activeTab === 'my-appointments'
+                ? 'bg-white/30 text-white'
+                : 'bg-red-500 text-white'
+            }`}>
+              {rdvNotificationCount > 9 ? '9+' : rdvNotificationCount}
+            </span>
+          )}
         </button>
       </div>
 
@@ -482,6 +631,50 @@ export default function AppointmentsPage() {
       {/* Book Appointment Section */}
       {activeTab === 'book' && (
         <>
+          {/* Address Filter */}
+          {!loadingWorkshops && workshops.length > 0 && (
+            <div className="mb-6 bg-white rounded-2xl shadow-lg p-4 border border-gray-200">
+              <label htmlFor="address-filter" className="block text-sm font-medium text-gray-700 mb-2">
+                Filtrer par adresse
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  id="address-filter"
+                  value={addressFilter}
+                  onChange={(e) => setAddressFilter(e.target.value)}
+                  placeholder="Rechercher par adresse (ex: Alger, Oran, Constantine...)"
+                  className="w-full px-4 py-3 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                />
+                <svg 
+                  className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                {addressFilter && (
+                  <button
+                    onClick={() => setAddressFilter('')}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                )}
+              </div>
+              {addressFilter && (
+                <p className="mt-2 text-sm text-gray-600">
+                  {workshops.filter((w) => 
+                    w.adr && w.adr.toLowerCase().includes(addressFilter.toLowerCase())
+                  ).length} atelier(s) trouvé(s)
+                </p>
+              )}
+            </div>
+          )}
+
           {/* Workshops List */}
           {loadingWorkshops ? (
         <div className="flex items-center justify-center py-12">
@@ -498,55 +691,250 @@ export default function AppointmentsPage() {
           <p className="text-gray-600">Aucun atelier disponible pour le moment</p>
         </div>
       ) : (
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {workshops.map((workshop) => (
-            <div key={workshop._id || workshop.id} className="bg-white rounded-2xl shadow-lg p-6 border border-gray-200 hover:shadow-xl transition-all">
-              <div className="flex items-start gap-4 mb-4">
-                <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-indigo-500 rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-lg">
-                  {workshop.name.substring(0, 2).toUpperCase()}
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-xl font-bold text-gray-900 font-[var(--font-poppins)] mb-1">
-                    {workshop.name}
-                  </h3>
-                  <p className="text-sm text-gray-600 mb-2">{workshop.adr}</p>
-                </div>
-              </div>
-
-              <div className="space-y-2 mb-4">
-                <div className="flex items-center gap-2 text-sm text-gray-600">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                  </svg>
-                  <a href={`tel:${workshop.phone}`} className="text-teal-600 hover:text-teal-700 font-medium">
-                    {workshop.phone}
-                  </a>
-                </div>
-                <div className="flex items-center gap-2 text-sm text-gray-600">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                  </svg>
-                  <a href={`mailto:${workshop.email}`} className="text-teal-600 hover:text-teal-700 font-medium">
-                    {workshop.email}
-                  </a>
-                </div>
-              </div>
-
+        <>
+          {addressFilter && workshops.filter((w) => 
+            w.adr && w.adr.toLowerCase().includes(addressFilter.toLowerCase())
+          ).length === 0 ? (
+            <div className="text-center py-12 bg-white rounded-2xl shadow-lg border border-gray-200">
+              <svg className="mx-auto w-16 h-16 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              <p className="text-gray-600 mb-2">Aucun atelier trouvé pour cette adresse</p>
               <button
-                onClick={() => handleBookAppointment(workshop)}
-                className="w-full px-6 py-3 bg-teal-500 hover:bg-teal-600 text-white rounded-lg font-semibold transition-colors"
+                onClick={() => setAddressFilter('')}
+                className="text-teal-600 hover:text-teal-700 font-medium"
               >
-                Prendre un rendez-vous
+                Réinitialiser le filtre
               </button>
             </div>
+          ) : (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {workshops
+                .filter((workshop) => 
+                  !addressFilter || 
+                  (workshop.adr && workshop.adr.toLowerCase().includes(addressFilter.toLowerCase()))
+                )
+                .map((workshop) => (
+            <div 
+              key={workshop._id || workshop.id} 
+              className={`group relative bg-white rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 flex flex-col overflow-hidden border-2 ${
+                ((workshop.price_visit_mec && workshop.price_visit_mec > 0) || (workshop.price_visit_paint && workshop.price_visit_paint > 0))
+                  ? 'border-teal-500 hover:border-teal-600' 
+                  : 'border-gray-200 hover:border-gray-300'
+              }`}
+            >
+              {/* Decorative Top Border */}
+              <div className={`absolute top-0 left-0 right-0 h-0.5 ${
+                ((workshop.price_visit_mec && workshop.price_visit_mec > 0) || (workshop.price_visit_paint && workshop.price_visit_paint > 0))
+                  ? 'bg-gradient-to-r from-teal-500 via-teal-400 to-teal-500' 
+                  : 'bg-gradient-to-r from-gray-300 via-gray-200 to-gray-300'
+              }`}></div>
+
+              <div className="p-4 flex flex-col flex-1">
+                {/* Header Section */}
+                <div className="flex items-start gap-3 mb-3">
+                  {/* Avatar with gradient */}
+                  <div className="relative flex-shrink-0">
+                    <div className="w-14 h-14 bg-gradient-to-br from-blue-600 via-indigo-500 to-purple-600 rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-lg transform group-hover:scale-105 transition-transform duration-300">
+                      {workshop.name.substring(0, 2).toUpperCase()}
+                    </div>
+                    {workshop.certifie && (
+                      <div className="absolute -bottom-0.5 -right-0.5 w-5 h-5 bg-teal-500 rounded-full border-2 border-white flex items-center justify-center shadow-md">
+                        <svg className="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+                    {/* Name and Type */}
+                    <div className="flex flex-col gap-1.5 mb-2">
+                      <div className="flex items-center gap-2">
+                        <Link 
+                          href={`/workshops/${workshop._id || workshop.id}`}
+                          className="text-base font-bold text-gray-900 font-[var(--font-poppins)] truncate group-hover:text-teal-600 transition-colors hover:underline"
+                        >
+                          {workshop.name}
+                        </Link>
+                        {workshop.certifie && (
+                          <span className="inline-flex items-center px-2 py-0.5 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-md text-xs font-bold shadow-sm flex-shrink-0">
+                            <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                            </svg>
+                            Certifié
+                          </span>
+                        )}
+                      </div>
+                      {workshop.type && (
+                        <span className="inline-flex items-center px-2 py-0.5 bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 rounded-md text-xs font-semibold border border-blue-200 w-fit">
+                          <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                          </svg>
+                          {workshop.type === 'mechanic' ? 'Mécanique' : 
+                           workshop.type === 'paint_vehicle' ? 'Peinture véhicule' : 
+                           workshop.type === 'mechanic_paint_inspector' ? 'Mécanique & Peinture' : 
+                           workshop.type}
+                        </span>
+                      )}
+                      {/* Rating Display */}
+                      {workshop.averageRating !== undefined && workshop.averageRating > 0 && (
+                        <div className="flex items-center gap-1.5 mt-1">
+                          <div className="flex items-center gap-0.5">
+                            {[1, 2, 3, 4, 5].map((star) => (
+                              <svg
+                                key={star}
+                                className={`w-3.5 h-3.5 ${star <= Math.round(workshop.averageRating || 0) ? 'text-yellow-400' : 'text-gray-300'}`}
+                                fill="currentColor"
+                                viewBox="0 0 20 20"
+                              >
+                                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.363 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.363-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                              </svg>
+                            ))}
+                          </div>
+                          <span className="text-xs font-semibold text-gray-700">
+                            {workshop.averageRating.toFixed(1)}
+                          </span>
+                          {workshop.totalRatings && workshop.totalRatings > 0 && (
+                            <span className="text-xs text-gray-500">
+                              ({workshop.totalRatings} avis{workshop.totalRatings > 1 ? 's' : ''})
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Location */}
+                    {workshop.adr && (
+                      <div className="flex items-start gap-1.5 text-xs text-gray-600 mb-2 bg-gray-50 rounded-md px-2 py-1.5 border border-gray-100">
+                        <svg className="w-3.5 h-3.5 text-teal-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                        <span className="break-words text-gray-700 font-medium text-xs leading-tight">{workshop.adr}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Price Section */}
+                <div className="mb-3 space-y-1.5">
+                  {workshop.type === 'mechanic' && workshop.price_visit_mec && workshop.price_visit_mec > 0 && (
+                    <div className="flex items-center gap-2 text-xs font-bold text-white bg-gradient-to-r from-teal-500 to-teal-600 px-3 py-2 rounded-lg shadow-sm border border-teal-400">
+                      <div className="w-6 h-6 bg-white/20 rounded-md flex items-center justify-center flex-shrink-0">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      </div>
+                      <div className="flex-1">
+                        <span className="text-[10px] text-teal-100 block leading-tight">Mécanique</span>
+                        <span className="text-sm leading-tight">{workshop.price_visit_mec} DA</span>
+                      </div>
+                    </div>
+                  )}
+                  {workshop.type === 'paint_vehicle' && workshop.price_visit_paint && workshop.price_visit_paint > 0 && (
+                    <div className="flex items-center gap-2 text-xs font-bold text-white bg-gradient-to-r from-teal-500 to-teal-600 px-3 py-2 rounded-lg shadow-sm border border-teal-400">
+                      <div className="w-6 h-6 bg-white/20 rounded-md flex items-center justify-center flex-shrink-0">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      </div>
+                      <div className="flex-1">
+                        <span className="text-[10px] text-teal-100 block leading-tight">Peinture</span>
+                        <span className="text-sm leading-tight">{workshop.price_visit_paint} DA</span>
+                      </div>
+                    </div>
+                  )}
+                  {workshop.type === 'mechanic_paint_inspector' && (
+                    <>
+                      {workshop.price_visit_mec && workshop.price_visit_mec > 0 && (
+                        <div className="flex items-center gap-2 text-xs font-bold text-white bg-gradient-to-r from-teal-500 to-teal-600 px-3 py-2 rounded-lg shadow-sm border border-teal-400">
+                          <div className="w-6 h-6 bg-white/20 rounded-md flex items-center justify-center flex-shrink-0">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                          </div>
+                          <div className="flex-1">
+                            <span className="text-[10px] text-teal-100 block leading-tight">Mécanique</span>
+                            <span className="text-sm leading-tight">{workshop.price_visit_mec} DA</span>
+                          </div>
+                        </div>
+                      )}
+                      {workshop.price_visit_paint && workshop.price_visit_paint > 0 && (
+                        <div className="flex items-center gap-2 text-xs font-bold text-white bg-gradient-to-r from-teal-500 to-teal-600 px-3 py-2 rounded-lg shadow-sm border border-teal-400">
+                          <div className="w-6 h-6 bg-white/20 rounded-md flex items-center justify-center flex-shrink-0">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                          </div>
+                          <div className="flex-1">
+                            <span className="text-[10px] text-teal-100 block leading-tight">Peinture</span>
+                            <span className="text-sm leading-tight">{workshop.price_visit_paint} DA</span>
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+
+                {/* Contact Information */}
+                <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg p-2.5 mb-3 space-y-2 border border-gray-200">
+                  <div className="flex items-center gap-2 text-xs">
+                    <div className="w-7 h-7 bg-white rounded-md flex items-center justify-center shadow-sm flex-shrink-0">
+                      <svg className="w-4 h-4 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                      </svg>
+                    </div>
+                    <a href={`tel:${workshop.phone}`} className="text-gray-700 hover:text-teal-600 font-medium transition-colors truncate flex-1 text-xs">
+                      {workshop.phone}
+                    </a>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs">
+                    <div className="w-7 h-7 bg-white rounded-md flex items-center justify-center shadow-sm flex-shrink-0">
+                      <svg className="w-4 h-4 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                      </svg>
+                    </div>
+                    <a href={`mailto:${workshop.email}`} className="text-gray-700 hover:text-teal-600 font-medium transition-colors truncate flex-1 text-xs">
+                      {workshop.email}
+                    </a>
+                  </div>
+                </div>
+
+                {/* Action Button - Customized */}
+                <button
+                  onClick={() => handleBookAppointment(workshop)}
+                  className="relative w-full px-4 py-2.5 bg-gradient-to-r from-teal-500 via-teal-500 to-teal-600 hover:from-teal-600 hover:via-teal-600 hover:to-teal-700 text-white rounded-lg font-semibold text-sm shadow-md hover:shadow-lg transform hover:scale-[1.01] transition-all duration-200 flex items-center justify-center gap-2 mt-auto overflow-hidden group"
+                >
+                  {/* Shine effect */}
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
+                  
+                  {/* Icon */}
+                  <svg className="w-4 h-4 relative z-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  
+                  {/* Text */}
+                  <span className="relative z-10">Réserver</span>
+                  
+                  {/* Arrow icon on hover */}
+                  <svg className="w-4 h-4 relative z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              </div>
+            </div>
           ))}
-        </div>
+            </div>
+          )}
+        </>
       )}
 
           {/* Booking Modal */}
       {showBookingModal && selectedWorkshop && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-5xl w-full p-6 my-8">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-bold text-gray-900 font-[var(--font-poppins)]">
                 Réserver un rendez-vous
@@ -614,7 +1002,10 @@ export default function AppointmentsPage() {
                 <input
                   type="date"
                   value={appointmentDate}
-                  onChange={(e) => setAppointmentDate(e.target.value)}
+                  onChange={(e) => {
+                    setAppointmentDate(e.target.value);
+                    setAppointmentTime(''); // Reset time when date changes
+                  }}
                   min={getMinDate()}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
                   required
@@ -642,27 +1033,68 @@ export default function AppointmentsPage() {
                     <select
                       value={appointmentTime}
                       onChange={(e) => setAppointmentTime(e.target.value)}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 bg-white"
                       required
                       disabled={!appointmentDate || availableTimes.length === 0}
                     >
-                      <option value="">Sélectionner une heure</option>
+                      <option value="">Sélectionner une heure dans la liste ci-dessous</option>
                       {availableTimes.map((time) => (
                         <option key={time} value={time}>
                           {time}
                         </option>
                       ))}
                     </select>
+                    {appointmentTime && (
+                      <p className="mt-2 text-sm text-teal-600 flex items-center gap-2">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                        Heure sélectionnée : <span className="font-bold">{appointmentTime}</span>
+                      </p>
+                    )}
+                    
+                    {/* Display available times below the input */}
+                    {availableTimes.length > 0 && (
+                      <div className="mt-3 p-4 bg-green-50 border border-green-200 rounded-lg">
+                        <p className="text-sm font-semibold text-green-800 mb-3 flex items-center gap-2">
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          Créneaux disponibles ({availableTimes.length}) - Cliquez pour sélectionner :
+                        </p>
+                        <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-10 lg:grid-cols-12 gap-2">
+                          {availableTimes.map((time) => (
+                            <button
+                              key={time}
+                              type="button"
+                              className={`px-3 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer border-2 ${
+                                appointmentTime === time
+                                  ? 'bg-teal-500 text-white border-teal-600 shadow-md transform scale-105'
+                                  : 'bg-white text-green-700 border-green-300 hover:bg-green-100 hover:border-green-400 hover:shadow-sm'
+                              }`}
+                              onClick={() => setAppointmentTime(time)}
+                            >
+                              {time}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Display unavailable times */}
                     {unavailableTimes.length > 0 && (
-                      <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                        <p className="text-xs font-medium text-yellow-800 mb-1">
-                          Créneaux non disponibles pour cette date :
+                      <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                        <p className="text-xs font-medium text-yellow-800 mb-2 flex items-center gap-2">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          Créneaux non disponibles ({unavailableTimes.length}) :
                         </p>
                         <div className="flex flex-wrap gap-2">
                           {unavailableTimes.map((time) => (
                             <span
                               key={time}
-                              className="px-2 py-1 bg-yellow-100 text-yellow-700 rounded text-xs font-medium"
+                              className="px-2 py-1 bg-yellow-100 text-yellow-700 rounded text-xs font-medium opacity-75"
                             >
                               {time}
                             </span>
@@ -706,8 +1138,53 @@ export default function AppointmentsPage() {
       {/* My Appointments Section */}
       {activeTab === 'my-appointments' && (
         <div>
+          {/* Section Header with Badge */}
+          <div className="mb-6 flex items-center justify-between">
+            <h2 className="text-2xl font-bold text-gray-900 font-[var(--font-poppins)] flex items-center gap-3">
+              Mes rendez-vous
+              {myAppointments.length > 0 && (
+                <span className="px-3 py-1 bg-teal-500 text-white rounded-full text-sm font-bold">
+                  {myAppointments.length}
+                </span>
+              )}
+              {rdvNotificationCount > 0 && (
+                <span className="px-3 py-1 bg-red-500 text-white rounded-full text-sm font-bold flex items-center gap-2">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                  </svg>
+                  {rdvNotificationCount > 9 ? '9+' : rdvNotificationCount} notification{rdvNotificationCount > 1 ? 's' : ''}
+                </span>
+              )}
+            </h2>
+          </div>
+          
           {/* Filter Buttons */}
           <div className="mb-6 flex gap-4 bg-white rounded-2xl shadow-lg p-2 border border-gray-200">
+            <button
+              onClick={() => {
+                setAppointmentFilter('en_attente');
+                setNewNotifications(prev => ({ ...prev, en_attente: false }));
+              }}
+              className={`flex-1 px-6 py-4 rounded-xl font-semibold transition-all duration-300 flex items-center justify-center gap-3 relative ${
+                appointmentFilter === 'en_attente'
+                  ? 'bg-gradient-to-r from-yellow-500 to-yellow-600 text-white shadow-lg transform scale-105'
+                  : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
+              }`}
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span>En attente</span>
+              <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                appointmentFilter === 'en_attente' ? 'bg-white/30 text-white' : 'bg-yellow-100 text-yellow-700'
+              }`}>
+                {myAppointments.filter(a => a.status === 'en_attente').length}
+              </span>
+              {newNotifications.en_attente && appointmentFilter !== 'en_attente' && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>
+              )}
+            </button>
+            
             <button
               onClick={() => {
                 setAppointmentFilter('accepted');
@@ -804,7 +1281,7 @@ export default function AppointmentsPage() {
               <svg className="mx-auto w-16 h-16 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
-              <p className="text-gray-600">Aucun rendez-vous {appointmentFilter === 'accepted' ? 'accepté' : appointmentFilter === 'en_cours' ? 'en cours' : 'terminé'} trouvé</p>
+              <p className="text-gray-600">Aucun rendez-vous {appointmentFilter === 'en_attente' ? 'en attente' : appointmentFilter === 'accepted' ? 'accepté' : appointmentFilter === 'en_cours' ? 'en cours' : 'terminé'} trouvé</p>
             </div>
           ) : (
         <div className="space-y-4">

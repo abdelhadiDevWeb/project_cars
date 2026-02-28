@@ -18,8 +18,14 @@ export default function SellerDashboardLayout({
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [rdvNotificationCount, setRdvNotificationCount] = useState(0);
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [socket, setSocket] = useState<Socket | null>(null);
+  const [showExpiredRdvModal, setShowExpiredRdvModal] = useState(false);
+  const [expiredRdvs, setExpiredRdvs] = useState<any[]>([]);
+  const [showPriceWarningModal, setShowPriceWarningModal] = useState(false);
+  const [warningCarId, setWarningCarId] = useState<string | null>(null);
+  const [warningMessage, setWarningMessage] = useState<string>('');
   const pathname = usePathname();
   const router = useRouter();
   const { user, token, userType, userRole, isLoading, isAuthenticated, logout } = useUser();
@@ -51,6 +57,11 @@ export default function SellerDashboardLayout({
     // Fetch profile image
     if (user && (user._id || user.id)) {
       fetchProfileImage();
+    }
+
+    // Check expired appointments when user enters dashboard
+    if (user && token && userType === 'user' && userRole !== 'admin') {
+      checkExpiredAppointments();
     }
   }, [isLoading, isAuthenticated, token, user, userType, userRole, router, logout]);
 
@@ -98,6 +109,30 @@ export default function SellerDashboardLayout({
     };
   }, []);
 
+  // Check expired appointments
+  const checkExpiredAppointments = async () => {
+    if (!user || !token) return;
+
+    try {
+      const res = await fetch('/api/rdv-workshop/check-expired-seller', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.ok && data.deletedAppointments && data.deletedAppointments.length > 0) {
+          setExpiredRdvs(data.deletedAppointments);
+          setShowExpiredRdvModal(true);
+        }
+      }
+    } catch (error) {
+      console.error('Error checking expired appointments:', error);
+    }
+  };
+
   // Fetch notifications
   const fetchNotifications = async () => {
     if (!user || !user._id) return;
@@ -119,6 +154,18 @@ export default function SellerDashboardLayout({
           const filteredNotifications = data.notifications.filter((notif: any) => notif.type !== 'other');
           setNotifications(filteredNotifications);
           setUnreadCount(filteredNotifications.length);
+          
+          // Count RDV-specific notifications
+          const rdvNotifications = filteredNotifications.filter((notif: any) => 
+            notif.type === 'rdv_workshop' || 
+            notif.type === 'new_rdv_workshop' ||
+            notif.type === 'done_rdv_workshop' ||
+            notif.type === 'cancel_rdv_workshop' ||
+            notif.type === 'accept_rdv' ||
+            notif.message?.toLowerCase().includes('rendez-vous') ||
+            notif.message?.toLowerCase().includes('rdv')
+          );
+          setRdvNotificationCount(rdvNotifications.length);
         }
       }
     } catch (error) {
@@ -148,7 +195,49 @@ export default function SellerDashboardLayout({
 
       newSocket.on('new_notification', (data: any) => {
         console.log('New notification received:', data);
-        // Refresh notifications when a new one arrives
+        // Handle different data structures from backend
+        const notification = data?.notification || data;
+        
+        if (notification && (notification.id || notification._id)) {
+          // Check if notification already exists to avoid duplicates
+          setNotifications((prev) => {
+            const notificationId = notification._id || notification.id;
+            const exists = prev.some((n: any) => 
+              (n._id || n.id) === notificationId
+            );
+            if (exists) return prev;
+            // Filter out "other" type notifications
+            if (notification.type === 'other') return prev;
+            // Add new notification at the beginning
+            return [notification, ...prev];
+          });
+          setUnreadCount((prev) => prev + 1);
+          
+          // Check if it's a price warning notification
+          if (notification.type === 'car_price_warning' || notification.message?.includes('corriger le prix')) {
+            const carId = notification.carId || data?.carId;
+            if (carId) {
+              setWarningCarId(carId);
+              setWarningMessage(notification.message || 'Veuillez corriger le prix de votre véhicule dans les 24 heures, sinon il sera supprimé.');
+              setShowPriceWarningModal(true);
+            }
+          }
+          
+          // Update RDV count if it's an RDV notification
+          const isRdvNotification = 
+            notification.type === 'rdv_workshop' || 
+            notification.type === 'new_rdv_workshop' ||
+            notification.type === 'done_rdv_workshop' ||
+            notification.type === 'cancel_rdv_workshop' ||
+            notification.type === 'accept_rdv' ||
+            notification.message?.toLowerCase().includes('rendez-vous') ||
+            notification.message?.toLowerCase().includes('rdv');
+          
+          if (isRdvNotification) {
+            setRdvNotificationCount((prev) => prev + 1);
+          }
+        }
+        // Also refresh from API to ensure consistency
         fetchNotifications();
       });
 
@@ -178,6 +267,26 @@ export default function SellerDashboardLayout({
     }
   }, [user, userType]);
 
+  // Check for price warning notifications when notifications are loaded
+  useEffect(() => {
+    if (notifications.length > 0) {
+      const priceWarning = notifications.find((notif: any) => 
+        notif.type === 'car_price_warning' || 
+        notif.message?.includes('corriger le prix')
+      );
+      
+      if (priceWarning && !showPriceWarningModal) {
+        // Try to extract carId from notification data
+        const carId = priceWarning.carId || (priceWarning as any).carId;
+        if (carId) {
+          setWarningCarId(carId);
+          setWarningMessage(priceWarning.message || 'Veuillez corriger le prix de votre véhicule dans les 24 heures, sinon il sera supprimé.');
+          setShowPriceWarningModal(true);
+        }
+      }
+    }
+  }, [notifications, showPriceWarningModal]);
+
   const markAsRead = async (notificationId: string) => {
     try {
       const token = localStorage.getItem('token');
@@ -192,6 +301,10 @@ export default function SellerDashboardLayout({
 
       if (res.ok) {
         fetchNotifications();
+        // Dispatch event to update notifications in child components
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new Event('notificationUpdated'));
+        }
       }
     } catch (error) {
       console.error('Error marking notification as read:', error);
@@ -212,6 +325,10 @@ export default function SellerDashboardLayout({
 
       if (res.ok) {
         fetchNotifications();
+        // Dispatch event to update notifications in child components
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new Event('notificationUpdated'));
+        }
       }
     } catch (error) {
       console.error('Error marking all notifications as read:', error);
@@ -340,7 +457,16 @@ export default function SellerDashboardLayout({
                       </svg>
                     )}
                   </div>
-                  {sidebarOpen && <span className="text-sm font-medium">{item.name}</span>}
+                  {sidebarOpen && (
+                    <span className="text-sm font-medium flex items-center gap-2 flex-1">
+                      {item.name}
+                      {item.icon === 'appointment' && rdvNotificationCount > 0 && (
+                        <span className="px-2 py-0.5 bg-red-500 text-white rounded-full text-xs font-bold ml-auto">
+                          {rdvNotificationCount > 9 ? '9+' : rdvNotificationCount}
+                        </span>
+                      )}
+                    </span>
+                  )}
                 </Link>
               );
             })}
@@ -563,6 +689,172 @@ export default function SellerDashboardLayout({
           {children}
         </main>
       </div>
+
+      {/* Expired RDV Modal */}
+      {showExpiredRdvModal && expiredRdvs.length > 0 && (
+        <>
+          <div
+            className="fixed inset-0 bg-gray-500/60 backdrop-blur-sm z-50"
+            onClick={() => setShowExpiredRdvModal(false)}
+          ></div>
+          <div className="fixed inset-0 flex items-center justify-center z-50 p-4 animate-fadeIn">
+            <div className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full border border-gray-200 animate-slideUp">
+              <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-orange-500 via-orange-600 to-red-600 rounded-t-3xl">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+                      <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h2 className="text-2xl font-bold text-white font-[var(--font-poppins)]">
+                        Rendez-vous expirés supprimés
+                      </h2>
+                      <p className="text-sm text-orange-50 mt-1">
+                        {expiredRdvs.length} rendez-vous {expiredRdvs.length > 1 ? 'ont été' : 'a été'} automatiquement supprimé{expiredRdvs.length > 1 ? 's' : ''}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setShowExpiredRdvModal(false)}
+                    className="text-white/80 hover:text-white hover:bg-white/20 transition-all p-2 rounded-lg"
+                  >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+
+              <div className="p-6 max-h-[60vh] overflow-y-auto">
+                <div className="space-y-4">
+                  {expiredRdvs.map((rdv, index) => (
+                    <div key={index} className="bg-gray-50 rounded-xl p-4 border border-gray-200">
+                      <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                          <svg className="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-semibold text-gray-900 mb-1">{rdv.carName}</p>
+                          <p className="text-sm text-gray-600 mb-1">Atelier: {rdv.workshopName}</p>
+                          <p className="text-sm text-gray-600">
+                            Date: {new Date(rdv.date).toLocaleDateString('fr-FR', {
+                              weekday: 'long',
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric'
+                            })} à {rdv.time}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="p-6 border-t border-gray-200 bg-gray-50 rounded-b-3xl">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                  <p className="text-sm text-blue-800 flex items-start gap-2">
+                    <svg className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span>
+                      Les rendez-vous dont la date est passée et qui sont en statut "En attente" ou "Accepté" sont automatiquement supprimés. 
+                      Les ateliers concernés ont été notifiés de cette annulation.
+                    </span>
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowExpiredRdvModal(false);
+                    setExpiredRdvs([]);
+                  }}
+                  className="w-full px-6 py-3 bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-600 hover:to-cyan-600 text-white rounded-lg font-semibold transition-all duration-200 shadow-lg hover:shadow-xl"
+                >
+                  J'ai compris
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Price Warning Modal */}
+      {showPriceWarningModal && warningCarId && (
+        <>
+          <div
+            className="fixed inset-0 bg-gray-500/60 backdrop-blur-sm z-50"
+            onClick={() => setShowPriceWarningModal(false)}
+          ></div>
+          <div className="fixed inset-0 flex items-center justify-center z-50 p-4 animate-fadeIn">
+            <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full border border-gray-200 animate-slideUp">
+              <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-orange-500 via-red-500 to-red-600 rounded-t-3xl">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+                      <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h2 className="text-2xl font-bold text-white font-[var(--font-poppins)]">
+                        ⚠️ Avertissement Important
+                      </h2>
+                      <p className="text-sm text-orange-50 mt-1">
+                        Action requise dans les 24 heures
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setShowPriceWarningModal(false)}
+                    className="text-white/80 hover:text-white hover:bg-white/20 transition-all p-2 rounded-lg"
+                  >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+
+              <div className="p-6 space-y-4">
+                <div className="bg-orange-50 border-l-4 border-orange-500 p-4 rounded-lg">
+                  <p className="text-gray-800 font-semibold mb-2">
+                    {warningMessage}
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    Vous devez corriger le prix de votre véhicule dans les <strong>24 heures</strong>, sinon il sera automatiquement supprimé de la plateforme.
+                  </p>
+                </div>
+                
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => {
+                      setShowPriceWarningModal(false);
+                      // Navigate to my-cars page with carId in URL to trigger edit modal
+                      router.push(`/dashboard-seller/my-cars?editCar=${warningCarId}`);
+                    }}
+                    className="flex-1 px-6 py-3 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white rounded-lg font-semibold transition-all duration-200 shadow-xl hover:shadow-2xl flex items-center justify-center gap-2"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                    Corriger le Prix
+                  </button>
+                  <button
+                    onClick={() => setShowPriceWarningModal(false)}
+                    className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg font-semibold hover:bg-gray-300 transition-all"
+                  >
+                    Plus tard
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

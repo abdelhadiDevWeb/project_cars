@@ -7,6 +7,7 @@ import { useState, useEffect } from "react";
 import { getImageUrl } from "@/utils/backend";
 import ChatModal from "@/components/ChatModal";
 import { useUser } from "@/contexts/UserContext";
+import { QRCodeSVG } from "react-qr-code";
 
 interface Car {
   _id: string;
@@ -19,12 +20,22 @@ interface Car {
   images: string[];
   vin?: string;
   vinRemark?: string;
+  color?: string;
+  ports?: number;
+  boite?: 'manuelle' | 'auto' | 'semi-auto';
+  type_gaz?: 'diesel' | 'gaz' | 'essence' | 'electrique';
+  type_enegine?: string;
+  description?: string;
+  accident?: boolean;
+  usedby?: string;
+  qr?: string;
   owner: {
     _id: string;
     firstName: string;
     lastName: string;
     email: string;
     phone: string;
+    certifie?: boolean;
   } | string;
   createdAt?: string;
   updatedAt?: string;
@@ -52,6 +63,8 @@ export default function CarDetailsPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [carAppointments, setCarAppointments] = useState<any[]>([]);
   const [showChatModal, setShowChatModal] = useState(false);
+  const [ownerImage, setOwnerImage] = useState<string | null>(null);
+  const [workshopImages, setWorkshopImages] = useState<Record<string, string>>({});
   const { user, isAuthenticated } = useUser();
 
   // Fetch car data
@@ -86,6 +99,48 @@ export default function CarDetailsPage() {
           const appointmentsData = await appointmentsRes.json();
           if (appointmentsData.ok && appointmentsData.appointments) {
             setCarAppointments(appointmentsData.appointments);
+            
+            // Fetch workshop images
+            const workshopIds = appointmentsData.appointments
+              .map((apt: any) => apt.id_workshop?._id || apt.id_workshop?.id)
+              .filter(Boolean);
+            
+            const workshopImagesMap: Record<string, string> = {};
+            await Promise.all(
+              workshopIds.map(async (workshopId: string) => {
+                try {
+                  const imgRes = await fetch(`/api/user-image/${workshopId}`);
+                  if (imgRes.ok) {
+                    const imgData = await imgRes.json();
+                    if (imgData.ok && imgData.userImage && imgData.userImage.image) {
+                      workshopImagesMap[workshopId] = imgData.userImage.image;
+                    }
+                  }
+                } catch (error) {
+                  console.error(`Error fetching image for workshop ${workshopId}:`, error);
+                }
+              })
+            );
+            setWorkshopImages(workshopImagesMap);
+          }
+        }
+        
+        // Fetch owner image
+        if (data.car.owner) {
+          const ownerId = typeof data.car.owner === 'string' 
+            ? data.car.owner 
+            : data.car.owner._id;
+          
+          try {
+            const imageRes = await fetch(`/api/user-image/${ownerId}`);
+            if (imageRes.ok) {
+              const imageData = await imageRes.json();
+              if (imageData.ok && imageData.userImage && imageData.userImage.image) {
+                setOwnerImage(imageData.userImage.image);
+              }
+            }
+          } catch (error) {
+            console.error('Error fetching owner image:', error);
           }
         }
         
@@ -501,6 +556,104 @@ export default function CarDetailsPage() {
                 </div>
               )}
 
+              {/* Additional Information */}
+              {(car.color || car.ports || car.boite || car.type_gaz || car.type_enegine || car.description || car.accident !== undefined || car.usedby) && (
+                <div className="mt-6 bg-gradient-to-br from-gray-50 to-gray-100 rounded-3xl shadow-xl p-8 border-2 border-gray-200">
+                  <h2 className="text-2xl font-bold text-gray-900 mb-6 font-[var(--font-poppins)] flex items-center gap-3">
+                    <svg className="w-6 h-6 text-teal-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Informations supplémentaires
+                  </h2>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {car.color && (
+                      <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
+                        <p className="text-xs text-gray-500 mb-1 font-medium">Couleur</p>
+                        <p className="text-base font-semibold text-gray-900">{car.color}</p>
+                      </div>
+                    )}
+                    {car.ports && (
+                      <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
+                        <p className="text-xs text-gray-500 mb-1 font-medium">Nombre de portes</p>
+                        <p className="text-base font-semibold text-gray-900">{car.ports}</p>
+                      </div>
+                    )}
+                    {car.boite && (
+                      <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
+                        <p className="text-xs text-gray-500 mb-1 font-medium">Boîte de vitesses</p>
+                        <p className="text-base font-semibold text-gray-900">
+                          {car.boite === 'manuelle' ? 'Manuelle' : car.boite === 'auto' ? 'Automatique' : 'Semi-automatique'}
+                        </p>
+                      </div>
+                    )}
+                    {car.type_gaz && (
+                      <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
+                        <p className="text-xs text-gray-500 mb-1 font-medium">Type de carburant</p>
+                        <p className="text-base font-semibold text-gray-900">
+                          {car.type_gaz === 'diesel' ? 'Diesel' : car.type_gaz === 'gaz' ? 'Gaz' : car.type_gaz === 'essence' ? 'Essence' : 'Électrique'}
+                        </p>
+                      </div>
+                    )}
+                    {car.type_enegine && (
+                      <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
+                        <p className="text-xs text-gray-500 mb-1 font-medium">Type de moteur</p>
+                        <p className="text-base font-semibold text-gray-900">{car.type_enegine}</p>
+                      </div>
+                    )}
+                    {car.usedby && (
+                      <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
+                        <p className="text-xs text-gray-500 mb-1 font-medium">Utilisé par</p>
+                        <p className="text-base font-semibold text-gray-900">{car.usedby}</p>
+                      </div>
+                    )}
+                    {car.accident !== undefined && (
+                      <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
+                        <p className="text-xs text-gray-500 mb-1 font-medium">Accident</p>
+                        <p className="text-base font-semibold">
+                          {car.accident ? (
+                            <span className="text-red-600">Oui</span>
+                          ) : (
+                            <span className="text-green-600">Non</span>
+                          )}
+                        </p>
+                      </div>
+                    )}
+                    {car.description && (
+                      <div className="md:col-span-2 lg:col-span-3 bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
+                        <p className="text-xs text-gray-500 mb-2 font-medium">Description</p>
+                        <p className="text-sm text-gray-900 whitespace-pre-wrap leading-relaxed">{car.description}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* QR Code Section */}
+              {car.qr && (
+                <div className="bg-gradient-to-br from-teal-50 via-cyan-50 to-blue-50 rounded-3xl shadow-2xl p-8 border-2 border-teal-200/50 mt-6">
+                  <h2 className="text-3xl font-bold bg-gradient-to-r from-teal-600 to-cyan-600 bg-clip-text text-transparent mb-6 font-[var(--font-poppins)] flex items-center gap-3">
+                    <div className="w-12 h-12 bg-gradient-to-br from-teal-500 to-cyan-500 rounded-2xl flex items-center justify-center shadow-lg">
+                      <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+                      </svg>
+                    </div>
+                    Code QR de vérification
+                  </h2>
+                  <div className="flex flex-col items-center gap-4">
+                    <div className="bg-white p-4 rounded-2xl border-2 border-teal-300 shadow-lg">
+                      <img 
+                        src={car.qr} 
+                        alt="QR Code de vérification" 
+                        className="w-48 h-48"
+                      />
+                    </div>
+                    <p className="text-sm text-gray-600 text-center max-w-md">
+                      Scannez ce code QR pour vérifier le statut de vérification de ce véhicule
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {/* Show finished appointments with images and PDF */}
               {carAppointments.length > 0 && (
                 <div className="bg-gradient-to-br from-purple-50 via-indigo-50 to-pink-50 rounded-3xl shadow-2xl p-8 border-2 border-purple-200/50 mt-6">
@@ -518,7 +671,37 @@ export default function CarDetailsPage() {
                       {appointment.id_workshop && (
                         <div className="mb-4 p-4 bg-gradient-to-r from-purple-100 to-indigo-100 rounded-xl border border-purple-200">
                           <p className="text-xs text-gray-600 mb-1 font-medium">Atelier de vérification</p>
-                          <p className="text-lg font-bold text-gray-900">{appointment.id_workshop.name || 'Atelier'}</p>
+                          <div className="flex items-center gap-3">
+                            {workshopImages[appointment.id_workshop._id || appointment.id_workshop.id] ? (
+                              <div className="relative w-10 h-10 rounded-xl overflow-hidden border-2 border-purple-400">
+                                <Image
+                                  src={getImageUrl(workshopImages[appointment.id_workshop._id || appointment.id_workshop.id]) || '/images/default-avatar.png'}
+                                  alt={appointment.id_workshop.name || 'Atelier'}
+                                  fill
+                                  className="object-cover"
+                                  unoptimized
+                                />
+                              </div>
+                            ) : (
+                              <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-indigo-500 rounded-xl flex items-center justify-center text-white font-bold text-sm">
+                                {(appointment.id_workshop.name || 'A')[0]}
+                              </div>
+                            )}
+                            <Link 
+                              href={`/workshops/${appointment.id_workshop._id || appointment.id_workshop.id}`}
+                              className="text-lg font-bold text-gray-900 hover:text-purple-600 transition-colors"
+                            >
+                              {appointment.id_workshop.name || 'Atelier'}
+                            </Link>
+                            {appointment.id_workshop.certifie && (
+                              <span className="inline-flex items-center px-2 py-0.5 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-md text-xs font-bold shadow-sm">
+                                <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                </svg>
+                                Certifié
+                              </span>
+                            )}
+                          </div>
               </div>
                       )}
                       
@@ -597,13 +780,38 @@ export default function CarDetailsPage() {
                 </h3>
                 <div className="space-y-3">
                     <div className="flex items-center gap-4 p-4 bg-gradient-to-br from-gray-50 to-white rounded-2xl border-2 border-gray-200 hover:shadow-lg transition-all">
-                      <div className="w-14 h-14 bg-gradient-to-br from-teal-500 to-cyan-500 rounded-2xl flex items-center justify-center text-white font-bold text-lg shadow-lg">
-                        {owner.firstName[0]}{owner.lastName[0]}
-                    </div>
-                    <div>
-                        <p className="font-bold text-gray-900 text-lg">
-                          {owner.firstName} {owner.lastName}
-                        </p>
+                      {ownerImage ? (
+                        <div className="relative w-14 h-14 rounded-2xl overflow-hidden border-2 border-teal-500 shadow-lg">
+                          <Image
+                            src={getImageUrl(ownerImage) || '/images/default-avatar.png'}
+                            alt={`${owner.firstName} ${owner.lastName}`}
+                            fill
+                            className="object-cover"
+                            unoptimized
+                          />
+                        </div>
+                      ) : (
+                        <div className="w-14 h-14 bg-gradient-to-br from-teal-500 to-cyan-500 rounded-2xl flex items-center justify-center text-white font-bold text-lg shadow-lg">
+                          {owner.firstName[0]}{owner.lastName[0]}
+                        </div>
+                      )}
+                    <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Link 
+                            href={`/users/${owner._id}`}
+                            className="font-bold text-gray-900 text-lg hover:text-teal-600 transition-colors"
+                          >
+                            {owner.firstName} {owner.lastName}
+                          </Link>
+                          {owner.certifie && (
+                            <span className="inline-flex items-center px-2 py-0.5 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-md text-xs font-bold shadow-sm">
+                              <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                              </svg>
+                              Certifié
+                            </span>
+                          )}
+                        </div>
                         <p className="text-sm text-gray-600">Vendeur vérifié</p>
                         </div>
                     </div>

@@ -78,6 +78,11 @@ export default function CarsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCar, setSelectedCar] = useState<Car | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showWarningModal, setShowWarningModal] = useState(false);
+  const [warningMessage, setWarningMessage] = useState('');
+  const [carToDelete, setCarToDelete] = useState<Car | null>(null);
+  const [carToWarn, setCarToWarn] = useState<Car | null>(null);
 
   useEffect(() => {
     fetchCars();
@@ -288,8 +293,8 @@ export default function CarsPage() {
                             </p>
                           </div>
 
-                          {/* Details Button */}
-                          <div className="mt-4">
+                          {/* Action Buttons */}
+                          <div className="mt-4 space-y-2">
                             <button
                               onClick={(e) => {
                                 e.preventDefault();
@@ -301,6 +306,37 @@ export default function CarsPage() {
                             >
                               Voir les Détails
                             </button>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  setCarToWarn(car);
+                                  setWarningMessage(`Veuillez corriger le prix de votre véhicule "${car.brand} ${car.model}" dans les 24 heures, sinon il sera supprimé.`);
+                                  setShowWarningModal(true);
+                                }}
+                                className="flex-1 px-3 py-2 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-lg font-semibold text-sm hover:from-orange-600 hover:to-red-600 transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2"
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                </svg>
+                                Avertir
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  setCarToDelete(car);
+                                  setShowDeleteModal(true);
+                                }}
+                                className="flex-1 px-3 py-2 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-lg font-semibold text-sm hover:from-red-600 hover:to-red-700 transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2"
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                                Supprimer
+                              </button>
+                            </div>
                           </div>
                         </div>
                       </Link>
@@ -572,6 +608,228 @@ export default function CarsPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && carToDelete && (
+        <>
+          <div
+            className="fixed inset-0 bg-gray-500/60 backdrop-blur-sm z-50"
+            onClick={() => {
+              setShowDeleteModal(false);
+              setCarToDelete(null);
+            }}
+          ></div>
+          <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full border border-gray-200">
+              <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-red-500 to-red-600 rounded-t-2xl">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+                      <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-bold text-white font-[var(--font-poppins)]">
+                        Confirmer la suppression
+                      </h2>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setShowDeleteModal(false);
+                      setCarToDelete(null);
+                    }}
+                    className="text-white/80 hover:text-white hover:bg-white/20 transition-all p-2 rounded-lg"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+
+              <div className="p-6">
+                <p className="text-gray-700 mb-4">
+                  Êtes-vous sûr de vouloir supprimer <strong>"{carToDelete.brand} {carToDelete.model}"</strong> ?
+                </p>
+                <p className="text-sm text-red-600 mb-6 flex items-start gap-2">
+                  <svg className="w-5 h-5 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                  <span>Cette action est irréversible. La voiture et toutes ses données associées seront définitivement supprimées.</span>
+                </p>
+                <div className="flex gap-3">
+                  <button
+                    onClick={async () => {
+                      try {
+                        const token = localStorage.getItem('token');
+                        const res = await fetch(`/api/admin/cars/${carToDelete.id}`, {
+                          method: 'DELETE',
+                          headers: {
+                            'Authorization': `Bearer ${token}`,
+                          },
+                        });
+                        if (res.ok) {
+                          alert('Voiture supprimée avec succès');
+                          fetchCars();
+                          setShowDeleteModal(false);
+                          setCarToDelete(null);
+                          if (selectedCar && selectedCar.id === carToDelete.id) {
+                            setShowDetailsModal(false);
+                            setSelectedCar(null);
+                          }
+                        } else {
+                          const data = await res.json();
+                          alert(data.message || 'Erreur lors de la suppression');
+                        }
+                      } catch (error) {
+                        console.error('Error deleting car:', error);
+                        alert('Erreur lors de la suppression');
+                      }
+                    }}
+                    className="flex-1 px-6 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-lg font-semibold hover:from-red-600 hover:to-red-700 transition-all shadow-md hover:shadow-lg"
+                  >
+                    Confirmer la suppression
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowDeleteModal(false);
+                      setCarToDelete(null);
+                    }}
+                    className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg font-semibold hover:bg-gray-300 transition-all"
+                  >
+                    Annuler
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Warning Modal */}
+      {showWarningModal && carToWarn && (
+        <>
+          <div
+            className="fixed inset-0 bg-gray-500/60 backdrop-blur-sm z-50"
+            onClick={() => {
+              setShowWarningModal(false);
+              setCarToWarn(null);
+              setWarningMessage('');
+            }}
+          ></div>
+          <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full border border-gray-200">
+              <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-orange-500 to-red-500 rounded-t-2xl">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+                      <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-bold text-white font-[var(--font-poppins)]">
+                        Envoyer un avertissement
+                      </h2>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setShowWarningModal(false);
+                      setCarToWarn(null);
+                      setWarningMessage('');
+                    }}
+                    className="text-white/80 hover:text-white hover:bg-white/20 transition-all p-2 rounded-lg"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+
+              <div className="p-6">
+                <div className="mb-4">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Véhicule concerné
+                  </label>
+                  <p className="text-gray-900 font-medium">
+                    {carToWarn.brand} {carToWarn.model} ({carToWarn.year})
+                  </p>
+                </div>
+                <div className="mb-4">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Message d'avertissement
+                  </label>
+                  <textarea
+                    value={warningMessage}
+                    onChange={(e) => setWarningMessage(e.target.value)}
+                    placeholder="Écrivez votre message d'avertissement..."
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 resize-none"
+                    rows={4}
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Le propriétaire recevra ce message et aura 24 heures pour corriger le prix.
+                  </p>
+                </div>
+                <div className="flex gap-3">
+                  <button
+                    onClick={async () => {
+                      if (!warningMessage.trim()) {
+                        alert('Veuillez saisir un message d\'avertissement');
+                        return;
+                      }
+                      try {
+                        const token = localStorage.getItem('token');
+                        const res = await fetch(`/api/admin/cars/${carToWarn.id}/warning`, {
+                          method: 'POST',
+                          headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json',
+                          },
+                          body: JSON.stringify({ message: warningMessage.trim() }),
+                        });
+                        if (res.ok) {
+                          alert('Avertissement envoyé avec succès');
+                          fetchCars();
+                          setShowWarningModal(false);
+                          setCarToWarn(null);
+                          setWarningMessage('');
+                          if (selectedCar && selectedCar.id === carToWarn.id) {
+                            setShowDetailsModal(false);
+                            setSelectedCar(null);
+                          }
+                        } else {
+                          const data = await res.json();
+                          alert(data.message || 'Erreur lors de l\'envoi de l\'avertissement');
+                        }
+                      } catch (error) {
+                        console.error('Error sending warning:', error);
+                        alert('Erreur lors de l\'envoi de l\'avertissement');
+                      }
+                    }}
+                    className="flex-1 px-6 py-3 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-lg font-semibold hover:from-orange-600 hover:to-red-600 transition-all shadow-md hover:shadow-lg"
+                  >
+                    Envoyer l'avertissement
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowWarningModal(false);
+                      setCarToWarn(null);
+                      setWarningMessage('');
+                    }}
+                    className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg font-semibold hover:bg-gray-300 transition-all"
+                  >
+                    Annuler
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
       )}
     </div>
   );

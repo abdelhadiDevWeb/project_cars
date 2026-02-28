@@ -27,6 +27,7 @@ interface Car {
     lastName: string;
     email: string;
     phone: string;
+    certifie?: boolean;
   };
 }
 
@@ -85,19 +86,38 @@ export default function Home() {
     brand: '',
     model: '',
     maxPrice: '',
+    minPrice: '',
     maxKm: '',
+    minKm: '',
+    minYear: '',
+    maxYear: '',
+    color: '',
+    ports: '',
+    boite: '',
+    type_gaz: '',
+    type_enegine: '',
+    accident: '',
+    usedby: '',
   });
   const [isSearching, setIsSearching] = useState(false);
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [showChatModal, setShowChatModal] = useState(false);
   const [selectedCarOwner, setSelectedCarOwner] = useState<{ id: string; name: string; email: string } | null>(null);
   const [totalUnreadMessages, setTotalUnreadMessages] = useState(0);
   const [socket, setSocket] = useState<Socket | null>(null);
   const [messageNotifications, setMessageNotifications] = useState<any[]>([]);
+  const [userImages, setUserImages] = useState<Record<string, string>>({}); // Store user images by user ID
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const [currentUserImage, setCurrentUserImage] = useState<string | null>(null);
   const heroRef = useScrollReveal(true); // Hero section should be visible immediately
   const statsRef = useRef<HTMLDivElement>(null);
 
-  // UserContext already handles authentication check on mount
-  // No need to check again here to avoid duplicate API calls
+  // Redirect admin to dashboard-admin
+  useEffect(() => {
+    if (!isLoading && isAuthenticated && user && userType === 'user' && userRole === 'admin') {
+      router.push('/dashboard-admin');
+    }
+  }, [isLoading, isAuthenticated, user, userType, userRole, router]);
 
   // Hero carousel auto-rotate
   useEffect(() => {
@@ -118,8 +138,19 @@ export default function Home() {
       if (filters) {
         if (filters.brand) params.append('brand', filters.brand);
         if (filters.model) params.append('model', filters.model);
+        if (filters.minPrice) params.append('minPrice', filters.minPrice);
         if (filters.maxPrice) params.append('maxPrice', filters.maxPrice);
+        if (filters.minKm) params.append('minKm', filters.minKm);
         if (filters.maxKm) params.append('maxKm', filters.maxKm);
+        if (filters.minYear) params.append('minYear', filters.minYear);
+        if (filters.maxYear) params.append('maxYear', filters.maxYear);
+        if (filters.color) params.append('color', filters.color);
+        if (filters.ports) params.append('ports', filters.ports);
+        if (filters.boite) params.append('boite', filters.boite);
+        if (filters.type_gaz) params.append('type_gaz', filters.type_gaz);
+        if (filters.type_enegine) params.append('type_enegine', filters.type_enegine);
+        if (filters.accident) params.append('accident', filters.accident);
+        if (filters.usedby) params.append('usedby', filters.usedby);
       }
       
       const queryString = params.toString();
@@ -144,6 +175,63 @@ export default function Home() {
     fetchActiveCars();
   }, []);
 
+  // Fetch current user image
+  useEffect(() => {
+    const fetchCurrentUserImage = async () => {
+      if (!user || !user._id) return;
+      
+      try {
+        const res = await fetch(`/api/user-image/${user._id}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.ok && data.userImage && data.userImage.image) {
+            setCurrentUserImage(data.userImage.image);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching current user image:', error);
+      }
+    };
+
+    if (isAuthenticated && user) {
+      fetchCurrentUserImage();
+    }
+  }, [isAuthenticated, user]);
+
+  // Fetch user images for all car owners
+  useEffect(() => {
+    const fetchUserImages = async () => {
+      const imagesMap: Record<string, string> = {};
+      
+      // Get unique user IDs from cars
+      const userIds = [...new Set(cars.map(car => car.owner && typeof car.owner === 'object' ? car.owner._id : null).filter(Boolean))];
+      
+      // Fetch images for each user
+      await Promise.all(
+        userIds.map(async (userId) => {
+          if (!userId) return;
+          try {
+            const res = await fetch(`/api/user-image/${userId}`);
+            if (res.ok) {
+              const data = await res.json();
+              if (data.ok && data.userImage && data.userImage.image) {
+                imagesMap[userId] = data.userImage.image;
+              }
+            }
+          } catch (error) {
+            console.error(`Error fetching image for user ${userId}:`, error);
+          }
+        })
+      );
+      
+      setUserImages(imagesMap);
+    };
+
+    if (cars.length > 0) {
+      fetchUserImages();
+    }
+  }, [cars]);
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     fetchActiveCars(searchFilters);
@@ -154,6 +242,25 @@ export default function Home() {
       ...prev,
       [field]: value,
     }));
+  };
+
+  // Count active advanced filters (excluding brand and model which are in main form)
+  const countActiveAdvancedFilters = () => {
+    let count = 0;
+    if (searchFilters.minPrice) count++;
+    if (searchFilters.maxPrice) count++;
+    if (searchFilters.minKm) count++;
+    if (searchFilters.maxKm) count++;
+    if (searchFilters.minYear) count++;
+    if (searchFilters.maxYear) count++;
+    if (searchFilters.color) count++;
+    if (searchFilters.ports) count++;
+    if (searchFilters.boite) count++;
+    if (searchFilters.type_gaz) count++;
+    if (searchFilters.type_enegine) count++;
+    if (searchFilters.accident) count++;
+    if (searchFilters.usedby) count++;
+    return count;
   };
 
   // Fetch statistics
@@ -359,16 +466,37 @@ export default function Home() {
 
             {/* Navigation Links */}
             <div className="hidden lg:flex items-center gap-6">
-              {['Achéteurs Certifiés', 'Vendeurs Certifiés', 'Ateliers', 'FAQ', 'Blog'].map((link, i) => (
-                <a 
-                  key={i}
-                  href="#" 
+              <Link
+                href="/vendeurs-certifies"
+                className="text-gray-700 hover:text-teal-600 transition-all duration-200 font-medium text-sm relative group"
+              >
+                Vendeurs Certifiés
+                <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-teal-600 transition-all duration-200 group-hover:w-full"></span>
+              </Link>
+              <Link
+                href="/ateliers"
+                className="text-gray-700 hover:text-teal-600 transition-all duration-200 font-medium text-sm relative group"
+              >
+                Ateliers
+                <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-teal-600 transition-all duration-200 group-hover:w-full"></span>
+              </Link>
+              <Link
+                href="/faq"
+                className="text-gray-700 hover:text-teal-600 transition-all duration-200 font-medium text-sm relative group"
+              >
+                FAQ
+                <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-teal-600 transition-all duration-200 group-hover:w-full"></span>
+              </Link>
+              {/* Dashboard Link - Only show if authenticated */}
+              {isAuthenticated && (userType === 'workshop' || (userType === 'user' && userRole !== 'admin')) && (
+                <Link
+                  href={userType === 'workshop' ? '/dashboard-workshop' : '/dashboard-seller'}
                   className="text-gray-700 hover:text-teal-600 transition-all duration-200 font-medium text-sm relative group"
                 >
-                  {link}
+                  Dashboard
                   <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-teal-600 transition-all duration-200 group-hover:w-full"></span>
-                </a>
-              ))}
+                </Link>
+              )}
             </div>
 
             {/* User Actions */}
@@ -382,8 +510,8 @@ export default function Home() {
                 </div>
               ) : (
                 <>
-                  {/* Chat Icon - Only show if authenticated */}
-                  {isAuthenticated && (userType === 'workshop' || userType === 'user') && (
+                  {/* Chat Icon - Only show if authenticated and not admin */}
+                  {isAuthenticated && (userType === 'workshop' || (userType === 'user' && userRole !== 'admin')) && (
                     <Link
                       href="/chats"
                       onClick={async (e) => {
@@ -420,20 +548,117 @@ export default function Home() {
                     </Link>
                   )}
 
-                  {isAuthenticated && (userType === 'workshop' || userType === 'user') ? (
-                    userType === 'workshop' ? (
-                      <Link href="/dashboard-workshop" className="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl font-semibold transition-all duration-200 text-sm shadow-lg hover:shadow-xl">
-                        Tableau de bord
-                      </Link>
-                    ) : userType === 'user' && userRole === 'admin' ? (
-                      <Link href="/dashboard-admin" className="px-6 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-xl font-semibold transition-all duration-200 text-sm shadow-lg hover:shadow-xl">
-                        Tableau de bord
-                      </Link>
-                    ) : userType === 'user' && userRole !== 'admin' ? (
-                      <Link href="/dashboard-seller" className="px-6 py-2.5 bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-600 hover:to-cyan-600 text-white rounded-xl font-semibold transition-all duration-200 text-sm shadow-lg hover:shadow-xl">
-                        Tableau de bord
-                      </Link>
-                    ) : null
+                  {/* User Dropdown - Only show if authenticated */}
+                  {isAuthenticated && user ? (
+                    <div className="relative">
+                      <button
+                        onClick={() => setShowUserMenu(!showUserMenu)}
+                        className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-gray-50 transition-colors cursor-pointer"
+                      >
+                        {currentUserImage ? (
+                          <div className="relative w-10 h-10 rounded-full overflow-hidden border-2 border-teal-500 shadow-lg">
+                            <Image
+                              src={getImageUrl(currentUserImage) || '/images/default-avatar.png'}
+                              alt={user.firstName ? `${user.firstName} ${user.lastName}` : user.name || 'User'}
+                              fill
+                              className="object-cover"
+                              unoptimized
+                            />
+                          </div>
+                        ) : (
+                          <div className="w-10 h-10 bg-gradient-to-br from-teal-600 to-cyan-500 rounded-full flex items-center justify-center text-white font-semibold shadow-lg">
+                            {user.firstName ? (
+                              `${user.firstName.charAt(0)}${user.lastName?.charAt(0) || ''}`
+                            ) : user.name ? (
+                              user.name.substring(0, 2).toUpperCase()
+                            ) : 'U'}
+                          </div>
+                        )}
+                        <svg className={`w-5 h-5 text-gray-400 hidden md:block transition-transform ${showUserMenu ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </button>
+                      
+                      {/* Dropdown Menu */}
+                      {showUserMenu && (
+                        <>
+                          {/* Backdrop */}
+                          <div 
+                            className="fixed inset-0 z-40" 
+                            onClick={() => setShowUserMenu(false)}
+                          ></div>
+                          
+                          {/* Menu */}
+                          <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-gray-200 z-50">
+                            <div className="py-2">
+                              {/* User Info */}
+                              <div className="px-4 py-3 border-b border-gray-200">
+                                <p className="font-semibold text-gray-900 text-sm">
+                                  {user.firstName ? `${user.firstName} ${user.lastName}` : user.name || 'Utilisateur'}
+                                </p>
+                                <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                              </div>
+                              
+                              {/* Dashboard Link */}
+                              {userType === 'workshop' ? (
+                                <Link
+                                  href="/dashboard-workshop"
+                                  onClick={() => setShowUserMenu(false)}
+                                  className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors flex items-center gap-2"
+                                >
+                                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                                  </svg>
+                                  Tableau de bord
+                                </Link>
+                              ) : userType === 'user' && userRole !== 'admin' ? (
+                                <Link
+                                  href="/dashboard-seller"
+                                  onClick={() => setShowUserMenu(false)}
+                                  className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors flex items-center gap-2"
+                                >
+                                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                                  </svg>
+                                  Tableau de bord
+                                </Link>
+                              ) : null}
+                              
+                              {/* Profile Link */}
+                              {userType === 'user' && userRole !== 'admin' && (
+                                <Link
+                                  href={`/users/${user._id}`}
+                                  onClick={() => setShowUserMenu(false)}
+                                  className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors flex items-center gap-2"
+                                >
+                                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                  </svg>
+                                  Mon profil
+                                </Link>
+                              )}
+                              
+                              {/* Divider */}
+                              <div className="border-t border-gray-200 my-2"></div>
+                              
+                              {/* Logout */}
+                              <button
+                                onClick={() => {
+                                  setShowUserMenu(false);
+                                  logout();
+                                }}
+                                className="w-full text-left px-4 py-3 text-sm text-red-600 hover:bg-red-50 transition-colors flex items-center gap-2"
+                              >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                                </svg>
+                                Déconnexion
+                              </button>
+                            </div>
+                          </div>
+                        </>
+                      )}
+                    </div>
                   ) : (
                     <Link href="/login" className="px-6 py-2.5 bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-600 hover:to-cyan-600 text-white rounded-xl font-semibold transition-all duration-200 text-sm shadow-lg hover:shadow-xl">
                       Se Connecter
@@ -447,7 +672,7 @@ export default function Home() {
       </header>
 
       {/* Hero Section - Modern Design */}
-      <section className="relative min-h-screen flex items-center overflow-hidden bg-gradient-to-br from-blue-50 via-cyan-50 to-teal-50 -mt-1">
+      <section className="relative min-h-screen flex items-center overflow-hidden bg-white -mt-1">
         {/* Grid Pattern Overlay */}
         <div className="absolute inset-0 opacity-5">
           <div className="absolute inset-0" style={{
@@ -619,11 +844,28 @@ export default function Home() {
       {/* Search/Filter Section */}
       <section id="search" className="container mx-auto px-4 lg:px-8 py-8 -mt-20 relative z-20 mt-8">
         <div className="bg-white/98 backdrop-blur-lg rounded-3xl shadow-2xl p-6 lg:p-8 border-2 border-gray-200/60 hover:shadow-3xl transition-all duration-300">
-          <div className="mb-6">
-            <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-900 to-teal-700 bg-clip-text text-transparent mb-2 font-[var(--font-poppins)]">
-            Dernières Offres Certifiées
-          </h2>
-            <p className="text-gray-600">Recherchez parmi nos véhicules vérifiés</p>
+          <div className="mb-6 flex items-center justify-between">
+            <div>
+              <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-900 to-teal-700 bg-clip-text text-transparent mb-2 font-[var(--font-poppins)]">
+                Dernières Offres Certifiées
+              </h2>
+              <p className="text-gray-600">Recherchez parmi nos véhicules vérifiés</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowAdvancedFilters(true)}
+              className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-all duration-200 shadow-sm hover:shadow-md text-sm flex items-center gap-2 relative"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+              </svg>
+              Filtres avancés
+              {countActiveAdvancedFilters() > 0 && (
+                <span className="absolute -top-2 -right-2 bg-purple-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                  {countActiveAdvancedFilters()}
+                </span>
+              )}
+            </button>
           </div>
           
           <form onSubmit={handleSearch} className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-5 gap-4">
@@ -700,6 +942,390 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Advanced Filters Modal */}
+      {showAdvancedFilters && (
+        <div 
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[9999] flex items-center justify-center p-4"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowAdvancedFilters(false);
+            }
+          }}
+        >
+          <div 
+            className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col border-2 border-gray-200/60 animate-scale-in"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="bg-gradient-to-r from-purple-500 via-indigo-500 to-purple-600 p-6 rounded-t-3xl flex items-center justify-between flex-shrink-0">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-white/20 backdrop-blur-md rounded-xl flex items-center justify-center">
+                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-2xl font-bold text-white font-[var(--font-poppins)]">Filtres avancés</h3>
+                  <p className="text-white/80 text-sm">Affinez votre recherche</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowAdvancedFilters(false)}
+                className="w-10 h-10 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center text-white transition-colors"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Filters Content */}
+            <form 
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleSearch(e);
+                setShowAdvancedFilters(false);
+              }}
+              className="p-6 space-y-6 overflow-y-auto flex-1 modal-scroll"
+            >
+              {/* Brand and Model */}
+              <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl p-6 border border-gray-200">
+                <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <svg className="w-5 h-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                  Recherche de base
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Marque</label>
+                    <input
+                      type="text"
+                      value={searchFilters.brand}
+                      onChange={(e) => handleFilterChange('brand', e.target.value)}
+                      placeholder="Marque"
+                      list="brands-list-modal"
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/30 transition-all"
+                    />
+                    <datalist id="brands-list-modal">
+                      <option value="Volkswagen">Volkswagen</option>
+                      <option value="Hyundai">Hyundai</option>
+                      <option value="BMW">BMW</option>
+                      <option value="Mercedes">Mercedes</option>
+                      <option value="Peugeot">Peugeot</option>
+                      <option value="Renault">Renault</option>
+                      <option value="Toyota">Toyota</option>
+                      <option value="Ford">Ford</option>
+                      <option value="Audi">Audi</option>
+                      <option value="Nissan">Nissan</option>
+                      <option value="Citroën">Citroën</option>
+                      <option value="Opel">Opel</option>
+                      <option value="Fiat">Fiat</option>
+                      <option value="Chevrolet">Chevrolet</option>
+                      <option value="Dacia">Dacia</option>
+                    </datalist>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Modèle</label>
+                    <input
+                      type="text"
+                      value={searchFilters.model}
+                      onChange={(e) => handleFilterChange('model', e.target.value)}
+                      placeholder="Modèle"
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/30 transition-all"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Price Range */}
+              <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl p-6 border border-gray-200">
+                <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <svg className="w-5 h-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Prix (DA)
+                </h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Prix minimum</label>
+                    <input
+                      type="number"
+                      value={searchFilters.minPrice}
+                      onChange={(e) => handleFilterChange('minPrice', e.target.value)}
+                      placeholder="Min"
+                      min="0"
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/30 transition-all"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Prix maximum</label>
+                    <input
+                      type="number"
+                      value={searchFilters.maxPrice}
+                      onChange={(e) => handleFilterChange('maxPrice', e.target.value)}
+                      placeholder="Max"
+                      min="0"
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/30 transition-all"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Kilométrage Range */}
+              <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl p-6 border border-gray-200">
+                <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <svg className="w-5 h-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Kilométrage (km)
+                </h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Km minimum</label>
+                    <input
+                      type="number"
+                      value={searchFilters.minKm}
+                      onChange={(e) => handleFilterChange('minKm', e.target.value)}
+                      placeholder="Min"
+                      min="0"
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/30 transition-all"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Km maximum</label>
+                    <input
+                      type="number"
+                      value={searchFilters.maxKm}
+                      onChange={(e) => handleFilterChange('maxKm', e.target.value)}
+                      placeholder="Max"
+                      min="0"
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/30 transition-all"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Year Range */}
+              <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl p-6 border border-gray-200">
+                <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <svg className="w-5 h-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  Année
+                </h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Année minimum</label>
+                    <input
+                      type="number"
+                      value={searchFilters.minYear}
+                      onChange={(e) => handleFilterChange('minYear', e.target.value)}
+                      placeholder="Min"
+                      min="1990"
+                      max={new Date().getFullYear() + 1}
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/30 transition-all"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Année maximum</label>
+                    <input
+                      type="number"
+                      value={searchFilters.maxYear}
+                      onChange={(e) => handleFilterChange('maxYear', e.target.value)}
+                      placeholder="Max"
+                      min="1990"
+                      max={new Date().getFullYear() + 1}
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/30 transition-all"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Additional Filters */}
+              <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl p-6 border border-gray-200">
+                <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <svg className="w-5 h-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Caractéristiques
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Couleur</label>
+                    <input
+                      type="text"
+                      value={searchFilters.color}
+                      onChange={(e) => handleFilterChange('color', e.target.value)}
+                      placeholder="Ex: Noir, Blanc, Rouge"
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/30 transition-all"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Nombre de portes</label>
+                    <div className="relative">
+                      <select
+                        value={searchFilters.ports}
+                        onChange={(e) => handleFilterChange('ports', e.target.value)}
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/30 transition-all bg-white appearance-none cursor-pointer hover:border-gray-300"
+                      >
+                        <option value="">Tous</option>
+                        <option value="2">2 portes</option>
+                        <option value="3">3 portes</option>
+                        <option value="4">4 portes</option>
+                        <option value="5">5 portes</option>
+                        <option value="6">6 portes</option>
+                      </select>
+                      <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                        <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Boîte de vitesses</label>
+                    <div className="relative">
+                      <select
+                        value={searchFilters.boite}
+                        onChange={(e) => handleFilterChange('boite', e.target.value)}
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/30 transition-all bg-white appearance-none cursor-pointer hover:border-gray-300"
+                      >
+                        <option value="">Tous</option>
+                        <option value="manuelle">Manuelle</option>
+                        <option value="auto">Automatique</option>
+                        <option value="semi-auto">Semi-automatique</option>
+                      </select>
+                      <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                        <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Type de carburant</label>
+                    <div className="relative">
+                      <select
+                        value={searchFilters.type_gaz}
+                        onChange={(e) => handleFilterChange('type_gaz', e.target.value)}
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/30 transition-all bg-white appearance-none cursor-pointer hover:border-gray-300"
+                      >
+                        <option value="">Tous</option>
+                        <option value="diesel">Diesel</option>
+                        <option value="gaz">Gaz</option>
+                        <option value="essence">Essence</option>
+                        <option value="electrique">Électrique</option>
+                      </select>
+                      <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                        <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Type de moteur</label>
+                    <input
+                      type="text"
+                      value={searchFilters.type_enegine}
+                      onChange={(e) => handleFilterChange('type_enegine', e.target.value)}
+                      placeholder="Ex: 1.6L, 2.0L Turbo"
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/30 transition-all"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Utilisé par</label>
+                    <div className="relative">
+                      <select
+                        value={searchFilters.usedby}
+                        onChange={(e) => handleFilterChange('usedby', e.target.value)}
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/30 transition-all bg-white appearance-none cursor-pointer hover:border-gray-300"
+                      >
+                        <option value="">Tous</option>
+                        <option value="Particulier">Particulier</option>
+                        <option value="Professionnel">Professionnel</option>
+                      </select>
+                      <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                        <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Accident</label>
+                    <div className="relative">
+                      <select
+                        value={searchFilters.accident}
+                        onChange={(e) => handleFilterChange('accident', e.target.value)}
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/30 transition-all bg-white appearance-none cursor-pointer hover:border-gray-300"
+                      >
+                        <option value="">Tous</option>
+                        <option value="false">Sans accident</option>
+                        <option value="true">Avec accident</option>
+                      </select>
+                      <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                        <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-4 pt-4 border-t border-gray-200 flex-shrink-0">
+                <button
+                  type="submit"
+                  className="flex-1 px-6 py-3 bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white rounded-xl font-semibold transition-all shadow-lg hover:shadow-xl hover:scale-105 flex items-center justify-center gap-2"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                  Appliquer les filtres
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchFilters({
+                      brand: '',
+                      model: '',
+                      maxPrice: '',
+                      minPrice: '',
+                      maxKm: '',
+                      minKm: '',
+                      minYear: '',
+                      maxYear: '',
+                      color: '',
+                      ports: '',
+                      boite: '',
+                      type_gaz: '',
+                      type_enegine: '',
+                      accident: '',
+                      usedby: '',
+                    });
+                    fetchActiveCars();
+                    setShowAdvancedFilters(false);
+                  }}
+                  className="px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-semibold transition-all border border-gray-300"
+                >
+                  Réinitialiser
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowAdvancedFilters(false)}
+                  className="px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-semibold transition-all border border-gray-300"
+                >
+                  Annuler
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Main Content - Cars and Statistics */}
       <section className="container mx-auto px-4 lg:px-8 py-12 pt-16">
         <div className="grid lg:grid-cols-3 gap-8">
@@ -766,9 +1392,15 @@ export default function Home() {
                           </div>
                         )}
                         <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent"></div>
-                        <div className="absolute top-4 left-4 bg-gradient-to-r from-teal-500 to-cyan-500 text-white px-4 py-2 rounded-full text-xs font-bold shadow-lg backdrop-blur-sm">
-                          ✓ Certifié
-                        </div>
+                        {car.status === 'actif' ? (
+                          <div className="absolute top-4 left-4 bg-gradient-to-r from-teal-500 to-cyan-500 text-white px-4 py-2 rounded-full text-xs font-bold shadow-lg backdrop-blur-sm">
+                            ✓ Certifié
+                          </div>
+                        ) : (
+                          <div className="absolute top-4 left-4 bg-gradient-to-r from-gray-500 to-gray-600 text-white px-4 py-2 rounded-full text-xs font-bold shadow-lg backdrop-blur-sm">
+                            Non certifié
+                          </div>
+                        )}
                         <div className="absolute bottom-4 right-4 bg-white/90 backdrop-blur-sm text-gray-800 px-3 py-1.5 rounded-lg text-xs font-semibold shadow-md">
                           {car.year}
                         </div>
@@ -784,18 +1416,40 @@ export default function Home() {
                       
                       {car.owner && (
                         <div className="flex items-center gap-2 text-sm">
-                          <div className="w-8 h-8 bg-gradient-to-br from-teal-400 to-cyan-400 rounded-full flex items-center justify-center text-white font-bold text-xs">
-                            {car.owner.firstName[0]}{car.owner.lastName[0]}
-                          </div>
-                          <div>
+                          {userImages[car.owner._id] ? (
+                            <div className="relative w-8 h-8 rounded-full overflow-hidden border-2 border-teal-400">
+                              <Image
+                                src={getImageUrl(userImages[car.owner._id]) || '/images/default-avatar.png'}
+                                alt={`${car.owner.firstName} ${car.owner.lastName}`}
+                                fill
+                                className="object-cover"
+                                unoptimized
+                              />
+                            </div>
+                          ) : (
+                            <div className="w-8 h-8 bg-gradient-to-br from-teal-400 to-cyan-400 rounded-full flex items-center justify-center text-white font-bold text-xs">
+                              {car.owner.firstName[0]}{car.owner.lastName[0]}
+                            </div>
+                          )}
+                          <div className="flex-1">
                             <span className="text-gray-500 text-xs">Vendeur</span>
-                            <Link 
-                              href={`/users/${car.owner._id}`}
-                              className="block text-teal-600 hover:text-teal-700 font-semibold hover:underline"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              {car.owner.firstName} {car.owner.lastName}
-                            </Link>
+                            <div className="flex items-center gap-2">
+                              <Link 
+                                href={`/users/${car.owner._id}`}
+                                className="text-teal-600 hover:text-teal-700 font-semibold hover:underline"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                {car.owner.firstName} {car.owner.lastName}
+                              </Link>
+                              {car.owner.certifie && (
+                                <span className="inline-flex items-center px-2 py-0.5 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-md text-xs font-bold shadow-sm">
+                                  <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                  </svg>
+                                  Certifié
+                                </span>
+                              )}
+                            </div>
                           </div>
                       </div>
                     )}
@@ -835,12 +1489,14 @@ export default function Home() {
                             {car.price.toLocaleString()} DA
                       </span>
                         </div>
-                        <div className="flex items-center gap-1.5 bg-gradient-to-r from-green-400 to-emerald-500 text-white px-4 py-2 rounded-full text-xs font-bold shadow-md">
-                          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                          </svg>
-                          ACTIF
-                        </div>
+                        {car.status === 'actif' && (
+                          <div className="flex items-center gap-1.5 bg-gradient-to-r from-green-400 to-emerald-500 text-white px-4 py-2 rounded-full text-xs font-bold shadow-md">
+                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                            </svg>
+                            ACTIF
+                          </div>
+                        )}
                     </div>
                     
                       <div className="flex gap-2">

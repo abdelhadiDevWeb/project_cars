@@ -134,47 +134,47 @@ export default function StatisticsPage() {
         </div>
       </div>
 
-      {/* Stats Overview */}
+        {/* Stats Overview */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
-        <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl shadow-lg p-6 border border-blue-200/50">
-          <div className="flex items-center justify-between mb-2">
+          <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl shadow-lg p-6 border border-blue-200/50">
+            <div className="flex items-center justify-between mb-2">
             <p className="text-sm text-blue-700 font-medium">Véhicules Actifs</p>
-            <svg className="w-8 h-8 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+              <svg className="w-8 h-8 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
               <path d="M8 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM15 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z" />
               <path d="M3 4a1 1 0 00-1 1v10a1 1 0 001 1h1.05a2.5 2.5 0 014.9 0H10a1 1 0 001-1V5a1 1 0 00-1-1H3zM14 7a1 1 0 00-1 1v6.05A2.5 2.5 0 0115.95 16H17a1 1 0 001-1v-5a1 1 0 00-.293-.707l-2-2A1 1 0 0015 7h-1z" />
-            </svg>
-          </div>
+              </svg>
+            </div>
           <p className="text-3xl font-bold text-blue-900 font-[var(--font-poppins)]">{stats.activeCars}</p>
           <p className="text-xs text-blue-600 mt-2">{stats.totalCars} au total</p>
-        </div>
-
-        <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-2xl shadow-lg p-6 border border-purple-200/50">
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-sm text-purple-700 font-medium">Messages</p>
-            <svg className="w-8 h-8 text-purple-600" fill="currentColor" viewBox="0 0 20 20">
-              <path d="M2 5a2 2 0 012-2h7a2 2 0 012 2v4a2 2 0 01-2 2H9l-3 3v-3H4a2 2 0 01-2-2V5z" />
-              <path d="M15 7v2a4 4 0 01-4 4H9.828l-1.766 1.767c.28.149.599.233.938.233h2l3 3v-3h2a2 2 0 002-2V9a2 2 0 00-2-2h-1z" />
-            </svg>
           </div>
+
+          <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-2xl shadow-lg p-6 border border-purple-200/50">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-sm text-purple-700 font-medium">Messages</p>
+              <svg className="w-8 h-8 text-purple-600" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M2 5a2 2 0 012-2h7a2 2 0 012 2v4a2 2 0 01-2 2H9l-3 3v-3H4a2 2 0 01-2-2V5z" />
+                <path d="M15 7v2a4 4 0 01-4 4H9.828l-1.766 1.767c.28.149.599.233.938.233h2l3 3v-3h2a2 2 0 002-2V9a2 2 0 00-2-2h-1z" />
+              </svg>
+            </div>
           <p className="text-3xl font-bold text-purple-900 font-[var(--font-poppins)]">{stats.unreadNotifications}</p>
           <p className="text-xs text-purple-600 mt-2">{stats.totalNotifications} messages au total</p>
-        </div>
-
-        <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-2xl shadow-lg p-6 border border-green-200/50">
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-sm text-green-700 font-medium">Ventes</p>
-            <svg className="w-8 h-8 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-            </svg>
           </div>
-          <p className="text-3xl font-bold text-green-900 font-[var(--font-poppins)]">{stats.soldCars}</p>
-          <p className="text-xs text-green-600 mt-2">Taux de conversion: {stats.conversionRate}%</p>
-        </div>
-      </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-2xl shadow-lg p-6 border border-green-200/50">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-sm text-green-700 font-medium">Ventes</p>
+              <svg className="w-8 h-8 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+              </svg>
+            </div>
+          <p className="text-3xl font-bold text-green-900 font-[var(--font-poppins)]">{stats.soldCars}</p>
+            <p className="text-xs text-green-600 mt-2">Taux de conversion: {stats.conversionRate}%</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Top Cars */}
-        <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-200">
+          <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-200">
           <h2 className="text-xl font-bold text-gray-900 mb-6 font-[var(--font-poppins)]">Vos véhicules</h2>
           {topCars.length === 0 ? (
             <div className="text-center py-8 text-gray-500">
@@ -222,16 +222,16 @@ export default function StatisticsPage() {
           </div>
 
           {stats.averagePrice > 0 && (
-            <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-200">
-              <h3 className="text-lg font-bold text-gray-900 mb-4 font-[var(--font-poppins)]">Prix moyen</h3>
+          <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-200">
+            <h3 className="text-lg font-bold text-gray-900 mb-4 font-[var(--font-poppins)]">Prix moyen</h3>
               <p className="text-3xl font-bold text-orange-600 font-[var(--font-poppins)]">
                 {(stats.averagePrice / 1000000).toFixed(2)}M DA
               </p>
-              <p className="text-sm text-gray-600 mt-2">Par véhicule vendu</p>
+            <p className="text-sm text-gray-600 mt-2">Par véhicule vendu</p>
             </div>
           )}
+          </div>
         </div>
-      </div>
     </div>
   );
 }

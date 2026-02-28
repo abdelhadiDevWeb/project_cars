@@ -135,7 +135,7 @@ export default function MessagesPage() {
         const response = await fetch('/api/chat/my-chats', {
           headers: {
             'Authorization': `Bearer ${token}`,
-          },
+    },
         });
 
         const data = await response.json();
@@ -302,7 +302,7 @@ export default function MessagesPage() {
         </div>
       </div>
     );
-  }
+    }
 
   return (
     <div className="p-6 bg-gradient-to-br from-gray-50 via-teal-50/30 to-gray-100 min-h-screen">
@@ -311,18 +311,18 @@ export default function MessagesPage() {
         <p className="text-gray-600">Communiquez avec les acheteurs intéressés</p>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden" style={{ height: 'calc(100vh - 200px)' }}>
-        <div className="flex h-full">
-          {/* Conversations List */}
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden" style={{ height: 'calc(100vh - 200px)' }}>
+          <div className="flex h-full">
+            {/* Conversations List */}
           <div className="w-1/3 border-r border-gray-200 overflow-y-auto flex flex-col">
             <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-teal-50 to-cyan-50">
-              <input
-                type="text"
-                placeholder="Rechercher une conversation..."
+                <input
+                  type="text"
+                  placeholder="Rechercher une conversation..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-teal-500 bg-white"
-              />
+                />
             </div>
             
             {loading ? (
@@ -377,28 +377,28 @@ export default function MessagesPage() {
                 ))}
               </div>
             )}
-          </div>
+            </div>
 
-          {/* Messages Area */}
-          <div className="flex-1 flex flex-col">
+            {/* Messages Area */}
+            <div className="flex-1 flex flex-col">
             {selectedChat ? (
-              <>
-                {/* Messages Header */}
+                <>
+                  {/* Messages Header */}
                 <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-teal-50 to-cyan-50">
-                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-gradient-to-br from-teal-500 to-cyan-500 rounded-full flex items-center justify-center text-white font-bold shadow-lg">
                       {selectedChat.otherUser.firstName[0]}{selectedChat.otherUser.lastName[0]}
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-gray-900">
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-gray-900">
                         {selectedChat.otherUser.firstName} {selectedChat.otherUser.lastName}
-                      </h3>
+                        </h3>
                       <p className="text-sm text-gray-600">{selectedChat.otherUser.email}</p>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Messages List */}
+                  {/* Messages List */}
                 <div
                   ref={messagesContainerRef}
                   className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50"
@@ -415,10 +415,10 @@ export default function MessagesPage() {
                     messages.map((message) => {
                       const isMine = isMyMessage(message);
                       return (
-                        <div
+                      <div
                           key={message.id}
                           className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}
-                        >
+                      >
                           <div
                             className={`max-w-xs lg:max-w-md px-4 py-2 rounded-2xl ${
                               isMine
@@ -427,34 +427,34 @@ export default function MessagesPage() {
                             }`}
                           >
                             <p className="text-sm whitespace-pre-wrap break-words">{message.message}</p>
-                            <p className={`text-xs mt-1 ${
+                          <p className={`text-xs mt-1 ${
                               isMine ? 'text-white/70' : 'text-gray-500'
-                            }`}>
+                          }`}>
                               {new Date(message.createdAt).toLocaleTimeString('fr-FR', {
                                 hour: '2-digit',
                                 minute: '2-digit',
                               })}
-                            </p>
-                          </div>
+                          </p>
                         </div>
+                      </div>
                       );
                     })
                   )}
                   <div ref={messagesEndRef} />
-                </div>
+                  </div>
 
-                {/* Message Input */}
-                <div className="p-4 border-t border-gray-200 bg-white">
+                  {/* Message Input */}
+                  <div className="p-4 border-t border-gray-200 bg-white">
                   <form onSubmit={handleSendMessage} className="flex gap-2">
-                    <input
-                      type="text"
+                      <input
+                        type="text"
                       value={newMessage}
                       onChange={(e) => setNewMessage(e.target.value)}
-                      placeholder="Tapez votre message..."
+                        placeholder="Tapez votre message..."
                       className="flex-1 px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none"
                       disabled={sending}
-                    />
-                    <button
+                      />
+                      <button
                       type="submit"
                       disabled={sending || !newMessage.trim()}
                       className="px-6 py-3 bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-600 hover:to-cyan-600 text-white rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
@@ -466,26 +466,26 @@ export default function MessagesPage() {
                           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                           </svg>
-                          Envoyer
+                        Envoyer
                         </>
                       )}
-                    </button>
+                      </button>
                   </form>
+                  </div>
+                </>
+              ) : (
+                <div className="flex-1 flex items-center justify-center text-gray-500">
+                  <div className="text-center">
+                    <svg className="mx-auto w-16 h-16 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                    </svg>
+                    <p>Sélectionnez une conversation pour commencer</p>
+                  </div>
                 </div>
-              </>
-            ) : (
-              <div className="flex-1 flex items-center justify-center text-gray-500">
-                <div className="text-center">
-                  <svg className="mx-auto w-16 h-16 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                  </svg>
-                  <p>Sélectionnez une conversation pour commencer</p>
-                </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
-      </div>
     </div>
   );
 }

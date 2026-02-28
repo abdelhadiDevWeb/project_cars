@@ -3,8 +3,9 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { getImageUrl } from "@/utils/backend";
+import { QRCodeSVG } from "react-qr-code";
 
 interface Car {
   _id: string;
@@ -19,12 +20,22 @@ interface Car {
   owner: string;
   vin?: string;
   vinRemark?: string;
+  color?: string;
+  ports?: number;
+  boite?: 'manuelle' | 'auto' | 'semi-auto';
+  type_gaz?: 'diesel' | 'gaz' | 'essence' | 'electrique';
+  type_enegine?: string;
+  description?: string;
+  accident?: boolean;
+  usedby?: string;
+  qr?: string;
   createdAt?: string;
   updatedAt?: string;
 }
 
 export default function MyCarsPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [filter, setFilter] = useState('all');
   const [myCars, setMyCars] = useState<Car[]>([]);
   const [loading, setLoading] = useState(true);
@@ -36,6 +47,14 @@ export default function MyCarsPage() {
     year: '',
     km: '',
     price: '',
+    color: '',
+    ports: '',
+    boite: '',
+    type_gaz: '',
+    type_enegine: '',
+    description: '',
+    accident: false,
+    usedby: '',
   });
   const [isUpdating, setIsUpdating] = useState(false);
   const [deletingCarId, setDeletingCarId] = useState<string | null>(null);
@@ -98,6 +117,36 @@ export default function MyCarsPage() {
     fetchCars();
   }, [router]);
 
+  // Check if we need to open edit modal from URL parameter
+  useEffect(() => {
+    const editCarId = searchParams.get('editCar');
+    if (editCarId && myCars.length > 0) {
+      const carToEdit = myCars.find(car => (car._id || car.id) === editCarId);
+      if (carToEdit) {
+        setEditingCar(carToEdit);
+        setEditFormData({
+          brand: carToEdit.brand,
+          model: carToEdit.model,
+          year: carToEdit.year.toString(),
+          km: carToEdit.km.toString(),
+          price: carToEdit.price.toString(),
+          color: carToEdit.color || '',
+          ports: carToEdit.ports?.toString() || '',
+          boite: carToEdit.boite || '',
+          type_gaz: carToEdit.type_gaz || '',
+          type_enegine: carToEdit.type_enegine || '',
+          description: carToEdit.description || '',
+          accident: carToEdit.accident || false,
+          usedby: carToEdit.usedby || '',
+        });
+        setExistingImages(carToEdit.images || []);
+        setEditImagePreviews(carToEdit.images?.map(img => getImageUrl(img) || '') || []);
+        // Remove the query parameter from URL
+        router.replace('/dashboard-seller/my-cars', { scroll: false });
+      }
+    }
+  }, [searchParams, myCars, router]);
+
   // Fetch appointments for each car
   useEffect(() => {
     const fetchAppointments = async () => {
@@ -152,6 +201,14 @@ export default function MyCarsPage() {
       year: car.year.toString(),
       km: car.km.toString(),
       price: car.price.toString(),
+      color: car.color || '',
+      ports: car.ports?.toString() || '',
+      boite: car.boite || '',
+      type_gaz: car.type_gaz || '',
+      type_enegine: car.type_enegine || '',
+      description: car.description || '',
+      accident: car.accident || false,
+      usedby: car.usedby || '',
     });
     setEditImages([]);
     setEditImagePreviews([]);
@@ -204,6 +261,14 @@ export default function MyCarsPage() {
         formData.append('year', editFormData.year);
         formData.append('km', editFormData.km);
         formData.append('price', editFormData.price);
+        if (editFormData.color) formData.append('color', editFormData.color);
+        if (editFormData.ports) formData.append('ports', editFormData.ports);
+        if (editFormData.boite) formData.append('boite', editFormData.boite);
+        if (editFormData.type_gaz) formData.append('type_gaz', editFormData.type_gaz);
+        if (editFormData.type_enegine) formData.append('type_enegine', editFormData.type_enegine);
+        if (editFormData.description) formData.append('description', editFormData.description);
+        formData.append('accident', editFormData.accident ? 'true' : 'false');
+        if (editFormData.usedby) formData.append('usedby', editFormData.usedby);
         
         // Add new images
         editImages.forEach((image) => {
@@ -267,6 +332,14 @@ export default function MyCarsPage() {
           year: parseInt(editFormData.year),
           km: parseInt(editFormData.km),
           price: parseFloat(editFormData.price),
+          color: editFormData.color || null,
+          ports: editFormData.ports ? parseInt(editFormData.ports) : null,
+          boite: editFormData.boite || null,
+          type_gaz: editFormData.type_gaz || null,
+          type_enegine: editFormData.type_enegine || null,
+          description: editFormData.description || null,
+          accident: editFormData.accident,
+          usedby: editFormData.usedby || null,
         }),
       });
 
@@ -304,10 +377,11 @@ export default function MyCarsPage() {
     }
   };
 
-  const handleEditChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleEditChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value, type } = e.target;
     setEditFormData({
       ...editFormData,
-      [e.target.name]: e.target.value,
+      [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value,
     });
   };
 
@@ -726,6 +800,135 @@ export default function MyCarsPage() {
                         </div>
                       </div>
 
+                      {/* Additional Information */}
+                      <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Couleur
+                          </label>
+                          <input
+                            type="text"
+                            name="color"
+                            value={editFormData.color}
+                            onChange={handleEditChange}
+                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-all bg-white"
+                            placeholder="Ex: Noir, Blanc"
+                          />
+                        </div>
+
+                        <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Nombre de portes
+                          </label>
+                          <input
+                            type="number"
+                            name="ports"
+                            min="2"
+                            max="6"
+                            value={editFormData.ports}
+                            onChange={handleEditChange}
+                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-all bg-white"
+                            placeholder="Ex: 3, 4, 5"
+                          />
+                        </div>
+
+                        <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Boîte de vitesses
+                          </label>
+                          <select
+                            name="boite"
+                            value={editFormData.boite}
+                            onChange={handleEditChange}
+                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-all bg-white"
+                          >
+                            <option value="">Sélectionner</option>
+                            <option value="manuelle">Manuelle</option>
+                            <option value="auto">Automatique</option>
+                            <option value="semi-auto">Semi-automatique</option>
+                          </select>
+                        </div>
+
+                        <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Type de carburant
+                          </label>
+                          <select
+                            name="type_gaz"
+                            value={editFormData.type_gaz}
+                            onChange={handleEditChange}
+                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-all bg-white"
+                          >
+                            <option value="">Sélectionner</option>
+                            <option value="diesel">Diesel</option>
+                            <option value="gaz">Gaz</option>
+                            <option value="essence">Essence</option>
+                            <option value="electrique">Électrique</option>
+                          </select>
+                        </div>
+
+                        <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Type de moteur
+                          </label>
+                          <input
+                            type="text"
+                            name="type_enegine"
+                            value={editFormData.type_enegine}
+                            onChange={handleEditChange}
+                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-all bg-white"
+                            placeholder="Ex: 1.6L, 2.0L Turbo"
+                          />
+                        </div>
+
+                        <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Utilisé par
+                          </label>
+                          <input
+                            type="text"
+                            name="usedby"
+                            value={editFormData.usedby}
+                            onChange={handleEditChange}
+                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-all bg-white"
+                            placeholder="Ex: Particulier, Professionnel"
+                          />
+                        </div>
+
+                        <div className="md:col-span-2 bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
+                          <label className="flex items-center gap-3 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              name="accident"
+                              checked={editFormData.accident}
+                              onChange={handleEditChange}
+                              className="w-5 h-5 text-teal-600 border-gray-300 rounded focus:ring-teal-500"
+                            />
+                            <span className="text-sm font-medium text-gray-700">
+                              Le véhicule a été impliqué dans un accident
+                            </span>
+                          </label>
+                        </div>
+
+                        <div className="md:col-span-2 bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Description
+                          </label>
+                          <textarea
+                            name="description"
+                            value={editFormData.description}
+                            onChange={handleEditChange}
+                            rows={5}
+                            maxLength={2000}
+                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-all bg-white resize-none"
+                            placeholder="Décrivez votre véhicule (état, équipements, historique, etc.)"
+                          />
+                          <p className="mt-1 text-xs text-gray-500">
+                            {(editFormData.description || '').length}/2000 caractères
+                          </p>
+                        </div>
+                      </div>
+
                       {/* VIN Display (Read-only) */}
                       {editingCar.vin && (
                         <div className="mt-4 bg-teal-50 rounded-xl p-4 border-2 border-teal-200">
@@ -1048,6 +1251,78 @@ export default function MyCarsPage() {
                         </div>
                       )}
 
+                      {/* Additional Information */}
+                      {(viewingCar.color || viewingCar.ports || viewingCar.boite || viewingCar.type_gaz || viewingCar.type_enegine || viewingCar.description || viewingCar.accident !== undefined || viewingCar.usedby) && (
+                        <div className="mt-6 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-6 border border-gray-200">
+                          <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                            <svg className="w-5 h-5 text-teal-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            Informations supplémentaires
+                          </h3>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {viewingCar.color && (
+                              <div className="bg-white rounded-lg p-3 border border-gray-200">
+                                <p className="text-xs text-gray-500 mb-1">Couleur</p>
+                                <p className="text-sm font-semibold text-gray-900">{viewingCar.color}</p>
+                              </div>
+                            )}
+                            {viewingCar.ports && (
+                              <div className="bg-white rounded-lg p-3 border border-gray-200">
+                                <p className="text-xs text-gray-500 mb-1">Nombre de portes</p>
+                                <p className="text-sm font-semibold text-gray-900">{viewingCar.ports}</p>
+                              </div>
+                            )}
+                            {viewingCar.boite && (
+                              <div className="bg-white rounded-lg p-3 border border-gray-200">
+                                <p className="text-xs text-gray-500 mb-1">Boîte de vitesses</p>
+                                <p className="text-sm font-semibold text-gray-900">
+                                  {viewingCar.boite === 'manuelle' ? 'Manuelle' : viewingCar.boite === 'auto' ? 'Automatique' : 'Semi-automatique'}
+                                </p>
+                              </div>
+                            )}
+                            {viewingCar.type_gaz && (
+                              <div className="bg-white rounded-lg p-3 border border-gray-200">
+                                <p className="text-xs text-gray-500 mb-1">Type de carburant</p>
+                                <p className="text-sm font-semibold text-gray-900">
+                                  {viewingCar.type_gaz === 'diesel' ? 'Diesel' : viewingCar.type_gaz === 'gaz' ? 'Gaz' : viewingCar.type_gaz === 'essence' ? 'Essence' : 'Électrique'}
+                                </p>
+                              </div>
+                            )}
+                            {viewingCar.type_enegine && (
+                              <div className="bg-white rounded-lg p-3 border border-gray-200">
+                                <p className="text-xs text-gray-500 mb-1">Type de moteur</p>
+                                <p className="text-sm font-semibold text-gray-900">{viewingCar.type_enegine}</p>
+                              </div>
+                            )}
+                            {viewingCar.usedby && (
+                              <div className="bg-white rounded-lg p-3 border border-gray-200">
+                                <p className="text-xs text-gray-500 mb-1">Utilisé par</p>
+                                <p className="text-sm font-semibold text-gray-900">{viewingCar.usedby}</p>
+                              </div>
+                            )}
+                            {viewingCar.accident !== undefined && (
+                              <div className="bg-white rounded-lg p-3 border border-gray-200">
+                                <p className="text-xs text-gray-500 mb-1">Accident</p>
+                                <p className="text-sm font-semibold text-gray-900">
+                                  {viewingCar.accident ? (
+                                    <span className="text-red-600">Oui</span>
+                                  ) : (
+                                    <span className="text-green-600">Non</span>
+                                  )}
+                                </p>
+                              </div>
+                            )}
+                            {viewingCar.description && (
+                              <div className="md:col-span-2 bg-white rounded-lg p-3 border border-gray-200">
+                                <p className="text-xs text-gray-500 mb-1">Description</p>
+                                <p className="text-sm text-gray-900 whitespace-pre-wrap">{viewingCar.description}</p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
                       {viewingCar.createdAt && (
                         <div className="pt-4 border-t border-gray-200">
                           <p className="text-sm text-gray-600">
@@ -1055,31 +1330,37 @@ export default function MyCarsPage() {
                           </p>
                         </div>
                       )}
+
+                      {/* QR Code Section */}
+                      {viewingCar.qr && (
+                        <div className="mt-6 bg-gradient-to-br from-teal-50 to-cyan-50 rounded-xl p-6 border-2 border-teal-200">
+                          <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                            <svg className="w-5 h-5 text-teal-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+                            </svg>
+                            Code QR de vérification
+                          </h3>
+                          <div className="flex flex-col items-center gap-3">
+                            <div className="bg-white p-3 rounded-lg border-2 border-teal-300">
+                              <img 
+                                src={viewingCar.qr} 
+                                alt="QR Code" 
+                                className="w-40 h-40"
+                              />
+                            </div>
+                            <p className="text-xs text-gray-600 text-center">
+                              Scannez ce code pour vérifier le statut
+                            </p>
+                          </div>
+                        </div>
+                      )}
                     </div>
 
-                    {/* Action Buttons */}
-                    <div className="flex gap-4 pt-4 border-t border-gray-200 mt-auto">
-                      <button
-                        onClick={() => {
-                          setViewingCar(null);
-                          handleEdit(viewingCar);
-                        }}
-                        className="flex-1 px-6 py-3 bg-teal-500 hover:bg-teal-600 text-white rounded-lg font-semibold transition-colors"
-                      >
-                        Modifier
-                      </button>
-                      <button
-                        onClick={() => {
-                          setViewingCar(null);
-                          handleDelete(viewingCar._id || viewingCar.id);
-                        }}
-                        className="px-6 py-3 bg-red-500 hover:bg-red-600 text-white rounded-lg font-semibold transition-colors"
-                      >
-                        Supprimer
-                      </button>
+                    {/* Action Buttons - Read-only view, no edit/delete */}
+                    <div className="flex justify-end gap-4 pt-4 border-t border-gray-200 mt-auto">
                       <button
                         onClick={() => setViewingCar(null)}
-                        className="px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-semibold transition-colors"
+                        className="px-6 py-3 bg-teal-500 hover:bg-teal-600 text-white rounded-lg font-semibold transition-colors"
                       >
                         Fermer
                       </button>

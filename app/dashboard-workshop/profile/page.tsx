@@ -15,6 +15,9 @@ export default function WorkshopProfilePage() {
     email: '',
     phone: '',
     adr: '',
+    price_visite: '',
+    price_visit_mec: '',
+    price_visit_paint: '',
   });
 
   const [passwordData, setPasswordData] = useState({
@@ -41,6 +44,9 @@ export default function WorkshopProfilePage() {
         email: user.email || '',
         phone: user.phone || '',
         adr: user.adr || '',
+        price_visite: user.price_visite?.toString() || '',
+        price_visit_mec: user.price_visit_mec?.toString() || '',
+        price_visit_paint: user.price_visit_paint?.toString() || '',
       });
       // Fetch profile image
       fetchProfileImage();
@@ -269,6 +275,9 @@ export default function WorkshopProfilePage() {
           name: formData.name,
           phone: formData.phone,
           adr: formData.adr,
+          price_visite: formData.price_visite ? Number(formData.price_visite) : null,
+          price_visit_mec: formData.price_visit_mec ? Number(formData.price_visit_mec) : null,
+          price_visit_paint: formData.price_visit_paint ? Number(formData.price_visit_paint) : null,
         }),
       });
 
@@ -406,6 +415,80 @@ export default function WorkshopProfilePage() {
         <p className="text-gray-600">Gérez les informations de votre atelier</p>
       </div>
 
+      {/* Warning messages based on workshop type */}
+      {user.workshopType === 'mechanic' && (!user.price_visit_mec || user.price_visit_mec === 0) && (
+        <div className="mb-6 bg-red-50 border-2 border-red-400 rounded-xl p-6 shadow-lg">
+          <div className="flex items-start gap-4">
+            <div className="flex-shrink-0">
+              <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <h3 className="text-lg font-bold text-red-900 mb-2">Prix de visite mécanique requis</h3>
+              <p className="text-red-800 mb-3">
+                En tant qu&apos;atelier de mécanique, vous devez définir votre prix de visite mécanique pour accéder à votre dashboard. Ce prix sera visible par les clients lors de la réservation d&apos;un rendez-vous.
+              </p>
+              <p className="text-sm text-red-700 font-medium">
+                Veuillez remplir le champ &quot;Prix de visite mécanique (DA)&quot; ci-dessous et enregistrer vos modifications.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {user.workshopType === 'paint_vehicle' && (!user.price_visit_paint || user.price_visit_paint === 0) && (
+        <div className="mb-6 bg-red-50 border-2 border-red-400 rounded-xl p-6 shadow-lg">
+          <div className="flex items-start gap-4">
+            <div className="flex-shrink-0">
+              <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <h3 className="text-lg font-bold text-red-900 mb-2">Prix de visite peinture requis</h3>
+              <p className="text-red-800 mb-3">
+                En tant qu&apos;atelier de peinture véhicule, vous devez définir votre prix de visite peinture pour accéder à votre dashboard. Ce prix sera visible par les clients lors de la réservation d&apos;un rendez-vous.
+              </p>
+              <p className="text-sm text-red-700 font-medium">
+                Veuillez remplir le champ &quot;Prix de visite peinture (DA)&quot; ci-dessous et enregistrer vos modifications.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {user.workshopType === 'mechanic_paint_inspector' && (
+        ((!user.price_visit_mec || user.price_visit_mec === 0) || (!user.price_visit_paint || user.price_visit_paint === 0)) && (
+          <div className="mb-6 bg-red-50 border-2 border-red-400 rounded-xl p-6 shadow-lg">
+            <div className="flex items-start gap-4">
+              <div className="flex-shrink-0">
+                <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-bold text-red-900 mb-2">Prix de visite requis</h3>
+                <p className="text-red-800 mb-3">
+                  En tant qu&apos;atelier de mécanique et peinture inspecteur, vous devez définir les deux prix de visite (mécanique et peinture) pour accéder à votre dashboard. Ces prix seront visibles par les clients lors de la réservation d&apos;un rendez-vous.
+                </p>
+                <ul className="text-sm text-red-700 font-medium list-disc list-inside space-y-1">
+                  {(!user.price_visit_mec || user.price_visit_mec === 0) && (
+                    <li>Prix de visite mécanique (DA) - requis</li>
+                  )}
+                  {(!user.price_visit_paint || user.price_visit_paint === 0) && (
+                    <li>Prix de visite peinture (DA) - requis</li>
+                  )}
+                </ul>
+                <p className="text-sm text-red-700 font-medium mt-3">
+                  Veuillez remplir les champs manquants ci-dessous et enregistrer vos modifications.
+                </p>
+              </div>
+            </div>
+          </div>
+        )
+      )}
+
       <div className="max-w-4xl mx-auto">
         {/* Error/Success Messages */}
         {error && (
@@ -511,9 +594,12 @@ export default function WorkshopProfilePage() {
               <p className="text-gray-600">{user.email}</p>
               <p className="text-gray-600">{user.phone}</p>
               <div className="flex items-center gap-2 mt-2">
-                {user.verfie && (
-                  <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-bold">
-                    Atelier vérifié
+                {user.certifie && (
+                  <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-bold flex items-center gap-1">
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                    </svg>
+                    Atelier certifié
                   </span>
                 )}
                 {user.status ? (
@@ -525,9 +611,12 @@ export default function WorkshopProfilePage() {
                     Compte en attente
                   </span>
                 )}
-                {user.type && (
+                {user.workshopType && (
                   <span className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-bold">
-                    {user.type === 'mechanic' ? 'Mécanicien' : 'Technicien en carrosserie automobile'}
+                    {user.workshopType === 'mechanic' ? 'Mécanique' : 
+                     user.workshopType === 'paint_vehicle' ? 'Peinture véhicule' : 
+                     user.workshopType === 'mechanic_paint_inspector' ? 'Mécanique & Peinture Inspecteur' : 
+                     user.workshopType}
                   </span>
                 )}
               </div>
@@ -634,6 +723,90 @@ export default function WorkshopProfilePage() {
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
+
+                  {/* Price fields based on workshop type */}
+                  {user.workshopType === 'mechanic' && (
+                    <div>
+                      <label htmlFor="price_visit_mec" className="block text-sm font-medium text-gray-700 mb-2">
+                        Prix de visite mécanique (DA) *
+                      </label>
+                      <input
+                        type="number"
+                        id="price_visit_mec"
+                        name="price_visit_mec"
+                        required
+                        min="0"
+                        step="0.01"
+                        value={formData.price_visit_mec}
+                        onChange={handleChange}
+                        placeholder="Ex: 5000"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">Ce prix sera visible par les clients lors de la réservation</p>
+                    </div>
+                  )}
+                  
+                  {user.workshopType === 'paint_vehicle' && (
+                    <div>
+                      <label htmlFor="price_visit_paint" className="block text-sm font-medium text-gray-700 mb-2">
+                        Prix de visite peinture (DA) *
+                      </label>
+                      <input
+                        type="number"
+                        id="price_visit_paint"
+                        name="price_visit_paint"
+                        required
+                        min="0"
+                        step="0.01"
+                        value={formData.price_visit_paint}
+                        onChange={handleChange}
+                        placeholder="Ex: 5000"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">Ce prix sera visible par les clients lors de la réservation</p>
+                    </div>
+                  )}
+                  
+                  {user.workshopType === 'mechanic_paint_inspector' && (
+                    <>
+                      <div>
+                        <label htmlFor="price_visit_mec" className="block text-sm font-medium text-gray-700 mb-2">
+                          Prix de visite mécanique (DA) *
+                        </label>
+                        <input
+                          type="number"
+                          id="price_visit_mec"
+                          name="price_visit_mec"
+                          required
+                          min="0"
+                          step="0.01"
+                          value={formData.price_visit_mec}
+                          onChange={handleChange}
+                          placeholder="Ex: 5000"
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">Ce prix sera visible par les clients lors de la réservation</p>
+                      </div>
+                      <div>
+                        <label htmlFor="price_visit_paint" className="block text-sm font-medium text-gray-700 mb-2">
+                          Prix de visite peinture (DA) *
+                        </label>
+                        <input
+                          type="number"
+                          id="price_visit_paint"
+                          name="price_visit_paint"
+                          required
+                          min="0"
+                          step="0.01"
+                          value={formData.price_visit_paint}
+                          onChange={handleChange}
+                          placeholder="Ex: 5000"
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">Ce prix sera visible par les clients lors de la réservation</p>
+                      </div>
+                    </>
+                  )}
                 </div>
 
                 <div className="flex gap-4">
