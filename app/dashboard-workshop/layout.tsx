@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useUser } from "@/contexts/UserContext";
 import { getImageUrl, getBackendUrl } from "@/utils/backend";
@@ -190,12 +190,40 @@ export default function WorkshopDashboardLayout({
             setUnreadCount((prev) => prev + 1);
           }
           
+          // Bridge to RDV "today" page: any rdv_workshop notification should refresh the list.
+          if (notification.type === 'rdv_workshop') {
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new CustomEvent('workshopNewAppointment', { detail: data }));
+            }
+          }
+
+          // Bridge to Today page: any workshop notification should refresh the list.
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(
+              new CustomEvent('workshopSocketNotification', {
+                detail: {
+                  notification,
+                },
+              })
+            );
+          }
+          
           // Don't call fetchNotifications() here to avoid duplicates
           // The notification is already added via Socket.IO in real-time
         }
       });
       newSocket.on('new_appointment', (data: any) => {
         fetchNotifications();
+        // Notify workshop pages (appointments/today) to refresh instantly.
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('workshopNewAppointment', { detail: data }));
+        }
+      });
+      newSocket.on('workshop_notifications_updated', () => {
+        fetchNotifications();
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new Event('notificationUpdated'));
+        }
       });
       newSocket.on('disconnect', () => {
         console.log('Socket disconnected');
@@ -219,13 +247,14 @@ export default function WorkshopDashboardLayout({
     }
   }, [user, userType]);
 
-  const fetchTodayAppointmentsCount = async () => {
+  const fetchTodayAppointmentsCount = useCallback(async () => {
     if (!user || !token) return;
     try {
       const res = await fetch('/api/workshop-stats/today', {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
+        cache: 'no-store',
       });
       if (res.ok) {
         const data = await res.json();
@@ -238,7 +267,7 @@ export default function WorkshopDashboardLayout({
     } catch (error) {
       console.error('Error fetching today appointments count:', error);
     }
-  };
+  }, [user, token]);
 
   useEffect(() => {
     if (user && token && userType === 'workshop') {
@@ -258,7 +287,7 @@ export default function WorkshopDashboardLayout({
     return () => {
       window.removeEventListener('appointmentStatusChanged', handleAppointmentStatusChange);
     };
-  }, []);
+  }, [fetchTodayAppointmentsCount]);
 
   const markAsRead = async (notificationId: string) => {
     try {

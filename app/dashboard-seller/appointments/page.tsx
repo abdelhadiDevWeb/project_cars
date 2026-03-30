@@ -71,6 +71,7 @@ export default function AppointmentsPage() {
     finish: false,
   });
   const [addressFilter, setAddressFilter] = useState('');
+  const [myRdvWorkshopFilter, setMyRdvWorkshopFilter] = useState('');
 
   // Check URL parameter for tab
   useEffect(() => {
@@ -293,40 +294,40 @@ export default function AppointmentsPage() {
 
     newSocket.on('connect', () => {
       console.log('Socket connected:', newSocket.id);
-      newSocket.emit('join_user', user._id);
+      newSocket.emit('join_user', user._id || (user as any).id);
     });
 
     // Listen for notification of appointment updates
     newSocket.on('new_notification', (data: any) => {
       console.log('New notification received:', data);
+      const notification = data?.notification || data;
       
       // Check if it's an RDV notification
       const isRdvNotification = 
-        data.type === 'rdv_workshop' || 
-        data.type === 'new_rdv_workshop' ||
-        data.type === 'done_rdv_workshop' ||
-        data.type === 'cancel_rdv_workshop' ||
-        data.type === 'accept_rdv' ||
-        data.message?.toLowerCase().includes('rendez-vous') ||
-        data.message?.toLowerCase().includes('rdv');
+        notification?.type === 'rdv_workshop' || 
+        notification?.type === 'new_rdv_workshop' ||
+        notification?.type === 'done_rdv_workshop' ||
+        notification?.type === 'cancel_rdv_workshop' ||
+        notification?.type === 'accept_rdv' ||
+        notification?.message?.toLowerCase().includes('rendez-vous') ||
+        notification?.message?.toLowerCase().includes('rdv');
       
       // Update RDV notification count if it's an RDV notification
       if (isRdvNotification) {
-        setRdvNotificationCount((prev) => prev + 1);
-        // Also refresh from API to ensure consistency
+        // Refresh from API to ensure correct count (avoid drift)
         fetchRdvNotifications();
       }
       
       // Determine which section this notification is for
       let targetStatus: 'en_attente' | 'accepted' | 'en_cours' | 'finish' | null = null;
       
-      if (data.type === 'rdv_workshop' && (data.message?.toLowerCase().includes('demandé') || data.message?.toLowerCase().includes('nouveau'))) {
+      if (notification?.type === 'rdv_workshop' && (notification?.message?.toLowerCase().includes('demandé') || notification?.message?.toLowerCase().includes('nouveau'))) {
         targetStatus = 'en_attente';
-      } else if (data.type === 'rdv_workshop' || data.type === 'accept_rdv' || data.message?.toLowerCase().includes('accepté') || data.message?.toLowerCase().includes('accept')) {
+      } else if (notification?.type === 'rdv_workshop' || notification?.type === 'accept_rdv' || notification?.message?.toLowerCase().includes('accepté') || notification?.message?.toLowerCase().includes('accept')) {
         targetStatus = 'accepted';
-      } else if (data.message?.toLowerCase().includes('en cours') || data.message?.toLowerCase().includes('commencé')) {
+      } else if (notification?.message?.toLowerCase().includes('en cours') || notification?.message?.toLowerCase().includes('commencé')) {
         targetStatus = 'en_cours';
-      } else if (data.message?.toLowerCase().includes('terminé') || data.message?.toLowerCase().includes('finish') || data.message?.toLowerCase().includes('fini')) {
+      } else if (notification?.message?.toLowerCase().includes('terminé') || notification?.message?.toLowerCase().includes('finish') || notification?.message?.toLowerCase().includes('fini')) {
         targetStatus = 'finish';
       }
       
@@ -348,11 +349,21 @@ export default function AppointmentsPage() {
 
     return () => {
       if (newSocket) {
-        newSocket.emit('leave_user', user._id);
+        newSocket.emit('leave_user', user._id || (user as any).id);
         newSocket.disconnect();
       }
     };
   }, [user]);
+
+  const filteredMyAppointments = myAppointments
+    .filter((appointment: any) => appointment.status === appointmentFilter)
+    .filter((appointment: any) => {
+      const q = myRdvWorkshopFilter.trim().toLowerCase();
+      if (!q) return true;
+      const workshopName = (appointment.id_workshop?.name || '').toString().toLowerCase();
+      const workshopAdr = (appointment.id_workshop?.adr || '').toString().toLowerCase();
+      return workshopName.includes(q) || workshopAdr.includes(q);
+    });
 
   // Fetch available times when date or workshop changes
   useEffect(() => {
@@ -593,15 +604,6 @@ export default function AppointmentsPage() {
           }`}
         >
           <span>Mes rendez-vous</span>
-          {rdvNotificationCount > 0 && (
-            <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
-              activeTab === 'my-appointments'
-                ? 'bg-white/30 text-white'
-                : 'bg-red-500 text-white'
-            }`}>
-              {rdvNotificationCount > 9 ? '9+' : rdvNotificationCount}
-            </span>
-          )}
         </button>
       </div>
 
@@ -1142,20 +1144,44 @@ export default function AppointmentsPage() {
           <div className="mb-6 flex items-center justify-between">
             <h2 className="text-2xl font-bold text-gray-900 font-[var(--font-poppins)] flex items-center gap-3">
               Mes rendez-vous
-              {myAppointments.length > 0 && (
-                <span className="px-3 py-1 bg-teal-500 text-white rounded-full text-sm font-bold">
-                  {myAppointments.length}
-                </span>
-              )}
               {rdvNotificationCount > 0 && (
-                <span className="px-3 py-1 bg-red-500 text-white rounded-full text-sm font-bold flex items-center gap-2">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                  </svg>
-                  {rdvNotificationCount > 9 ? '9+' : rdvNotificationCount} notification{rdvNotificationCount > 1 ? 's' : ''}
+                <span className="px-3 py-1 bg-red-500 text-white rounded-full text-sm font-bold">
+                  {rdvNotificationCount > 9 ? '9+' : rdvNotificationCount}
                 </span>
               )}
             </h2>
+          </div>
+
+          {/* Filter by workshop name/address */}
+          <div className="mb-6 bg-white rounded-2xl shadow-lg p-4 border border-gray-200">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Filtrer par atelier (nom ou adresse)
+            </label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </div>
+              <input
+                type="text"
+                value={myRdvWorkshopFilter}
+                onChange={(e) => setMyRdvWorkshopFilter(e.target.value)}
+                placeholder="Ex: Atelier ABC, Alger, Oran..."
+                className="w-full px-4 py-3 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+              />
+              {myRdvWorkshopFilter && (
+                <button
+                  type="button"
+                  onClick={() => setMyRdvWorkshopFilter('')}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                >
+                  <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                  </svg>
+                </button>
+              )}
+            </div>
           </div>
           
           {/* Filter Buttons */}
@@ -1276,7 +1302,7 @@ export default function AppointmentsPage() {
               </svg>
               <p className="text-gray-600">Aucun rendez-vous trouvé</p>
             </div>
-          ) : myAppointments.filter((appointment: any) => appointment.status === appointmentFilter).length === 0 ? (
+          ) : filteredMyAppointments.length === 0 ? (
             <div className="text-center py-12 bg-white rounded-2xl shadow-lg border border-gray-200">
               <svg className="mx-auto w-16 h-16 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -1285,9 +1311,7 @@ export default function AppointmentsPage() {
             </div>
           ) : (
         <div className="space-y-4">
-              {myAppointments
-                .filter((appointment: any) => appointment.status === appointmentFilter)
-                .map((appointment: any) => (
+              {filteredMyAppointments.map((appointment: any) => (
                 <div key={appointment._id || appointment.id} className="bg-white rounded-2xl shadow-lg p-6 border border-gray-200 hover:shadow-xl transition-all">
                   <div className="flex flex-col lg:flex-row gap-6">
                     {/* Car Info */}

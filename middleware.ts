@@ -2,68 +2,82 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 export function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
+  // IMPORTANT:
+  // Middleware bugs can make routes *look* like they don't exist (404).
+  // Always fail open (NextResponse.next()) so routing remains functional.
+  try {
+    const { pathname } = request.nextUrl;
 
-  // Get token and user data from cookies
-  const token = request.cookies.get('token')?.value;
-  const userType = request.cookies.get('userType')?.value;
-  const userRole = request.cookies.get('userRole')?.value;
+    // Get token and user data from cookies
+    const token = request.cookies.get('token')?.value;
+    const userType = request.cookies.get('userType')?.value; // 'user' | 'workshop'
+    const userRole = request.cookies.get('userRole')?.value; // 'admin' | 'client'
 
-  // Block admin access to home page and chats page
-  if (token && userType === 'user' && userRole === 'admin') {
-    if (pathname === '/' || pathname === '/chats') {
-      const adminUrl = new URL('/dashboard-admin', request.url);
-      return NextResponse.redirect(adminUrl);
+    // Public routes that don't require authentication
+    const publicRoutes = new Set([
+      '/',
+      '/login',
+      '/register',
+      '/forgot-password',
+      '/faq',
+      '/ateliers',
+      '/vendeurs-certifies',
+    ]);
+
+    // Public dynamic routes
+    const publicDynamicRoutes =
+      pathname.startsWith('/cars/') ||
+      pathname.startsWith('/workshops/') ||
+      pathname.startsWith('/users/') ||
+      pathname.startsWith('/verify-car/');
+
+    if (publicRoutes.has(pathname) || publicDynamicRoutes) {
+      return NextResponse.next();
     }
-  }
 
-  // Public routes that don't require authentication
-  const publicRoutes = ['/', '/login', '/register', '/forgot-password'];
-  const publicCarRoutes = pathname.startsWith('/cars/');
+    // Block admin access to home and chats pages (keep UX consistent)
+    if (token && userType === 'user' && userRole === 'admin') {
+      if (pathname === '/' || pathname === '/chats') {
+        return NextResponse.redirect(new URL('/dashboard-admin', request.url));
+      }
+    }
 
-  // If it's a public route, allow access
-  if (publicRoutes.includes(pathname) || publicCarRoutes) {
+    // Protected dashboard routes
+    const adminRoutes = pathname.startsWith('/dashboard-admin');
+    const sellerRoutes = pathname.startsWith('/dashboard-seller');
+    const workshopRoutes = pathname.startsWith('/dashboard-workshop');
+
+    // If accessing a dashboard without token, redirect to home (not login)
+    if ((adminRoutes || sellerRoutes || workshopRoutes) && !token) {
+      return NextResponse.redirect(new URL('/', request.url));
+    }
+
+    // Check admin routes
+    if (adminRoutes) {
+      if (userType !== 'user' || userRole !== 'admin') {
+        return NextResponse.redirect(new URL('/', request.url));
+      }
+    }
+
+    // Check seller routes (any authenticated 'user' who is not admin)
+    if (sellerRoutes) {
+      if (userType !== 'user' || userRole === 'admin') {
+        return NextResponse.redirect(new URL('/', request.url));
+      }
+    }
+
+    // Check workshop routes
+    if (workshopRoutes) {
+      if (userType !== 'workshop') {
+        return NextResponse.redirect(new URL('/', request.url));
+      }
+    }
+
+    return NextResponse.next();
+  } catch (error) {
+    console.error('Middleware error:', error);
     return NextResponse.next();
   }
-
-  // Protected dashboard routes
-  const adminRoutes = pathname.startsWith('/dashboard-admin');
-  const sellerRoutes = pathname.startsWith('/dashboard-seller');
-  const workshopRoutes = pathname.startsWith('/dashboard-workshop');
-
-  // Token and user data already retrieved above
-
-  // If accessing a dashboard without token, redirect to home (not login, as per requirement)
-  if ((adminRoutes || sellerRoutes || workshopRoutes) && !token) {
-    const homeUrl = new URL('/', request.url);
-    return NextResponse.redirect(homeUrl);
-  }
-
-  // Check admin routes
-  if (adminRoutes) {
-    if (userType !== 'user' || userRole !== 'admin') {
-      const homeUrl = new URL('/', request.url);
-      return NextResponse.redirect(homeUrl);
-    }
-  }
-
-  // Check seller routes
-  if (sellerRoutes) {
-    if (userType !== 'user' || userRole === 'admin') {
-      const homeUrl = new URL('/', request.url);
-      return NextResponse.redirect(homeUrl);
-    }
-  }
-
-  // Check workshop routes
-  if (workshopRoutes) {
-    if (userType !== 'workshop') {
-      const homeUrl = new URL('/', request.url);
-      return NextResponse.redirect(homeUrl);
-    }
-  }
-
-  return NextResponse.next();
 }
 
 export const config = {

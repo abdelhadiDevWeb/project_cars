@@ -4,16 +4,23 @@ import Image from "next/image";
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { getImageUrl } from "@/utils/backend";
+import { getImageUrl, getBackendUrl } from "@/utils/backend";
+import { io, type Socket } from "socket.io-client";
+import { useUser } from "@/contexts/UserContext";
 
 export default function AdminDashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const { logout } = useUser();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [user, setUser] = useState<any>(null);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [socket, setSocket] = useState<Socket | null>(null);
   const [monthlyRevenue, setMonthlyRevenue] = useState<number | null>(null);
   const [monthName, setMonthName] = useState<string>('');
   const pathname = usePathname();
@@ -99,38 +106,123 @@ export default function AdminDashboardLayout({
     return () => clearInterval(interval);
   }, []);
 
+  const fetchNotifications = async () => {
+    if (!user?._id) return;
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) return;
+
+      // Admin shared view: ALL unread new_register notifications for ALL admins
+      const res = await fetch("/api/notification/admin/new-register/unread", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.ok && Array.isArray(data.notifications)) {
+          setNotifications(data.notifications);
+          // Endpoint already returns only is_read:false, but keep safe
+          setUnreadCount(data.notifications.filter((n: any) => !n.is_read).length);
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching admin notifications:", error);
+    }
+  };
+
+  const markAsRead = async (notificationId: string) => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) return;
+
+      const res = await fetch(`/api/notification/${notificationId}/read`, {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (res.ok) {
+        setNotifications((prev) =>
+          prev.map((n: any) =>
+            (n._id || n.id) === notificationId ? { ...n, is_read: true } : n
+          )
+        );
+        setUnreadCount((prev) => Math.max(0, prev - 1));
+      }
+    } catch (error) {
+      console.error("Error marking notification as read:", error);
+    }
+  };
+
+  const markAllAsRead = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) return;
+
+      const res = await fetch("/api/notification/read-all", {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (res.ok) {
+        setNotifications((prev) => prev.map((n: any) => ({ ...n, is_read: true })));
+        setUnreadCount(0);
+      }
+    } catch (error) {
+      console.error("Error marking all notifications as read:", error);
+    }
+  };
+
+  // Socket.IO: live admin notifications
+  useEffect(() => {
+    if (!user?._id) return;
+    const token = localStorage.getItem("token");
+    if (!token) return;
+
+    const backendUrl = getBackendUrl();
+    const newSocket = io(backendUrl, {
+      auth: { token },
+      transports: ["websocket", "polling"],
+    });
+
+    newSocket.on("connect", () => {
+      newSocket.emit("join_admin", user._id);
+    });
+
+    // If any admin gets a new_register, everyone should refresh (shared inbox)
+    newSocket.on("admin_notifications_updated", (payload: any) => {
+      if (payload?.type !== "new_register") return;
+      fetchNotifications();
+    });
+
+    // Direct notification event (sent to admin_{id} room)
+    // Keep this so header updates instantly from socket as soon as registration happens.
+    newSocket.on("new_notification", (payload: any) => {
+      const notification = payload?.notification || payload;
+      if (!notification || notification.type !== "new_register") return;
+      fetchNotifications();
+    });
+
+    setSocket(newSocket);
+    return () => {
+      newSocket.emit("leave_admin", user._id);
+      newSocket.close();
+    };
+  }, [user?._id]);
+
+  useEffect(() => {
+    if (!user?._id) return;
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 30000);
+    return () => clearInterval(interval);
+  }, [user?._id]);
+
   const handleLogout = async () => {
     try {
-      const token = localStorage.getItem('token');
-      if (token) {
-        await fetch("/api/auth/logout", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`,
-          },
-        }).catch(() => {});
-      }
-      // Clear localStorage
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      localStorage.removeItem('userType');
-      localStorage.removeItem('userRole');
-      // Clear cookies
-      document.cookie = 'token=; path=/; max-age=0';
-      document.cookie = 'userType=; path=/; max-age=0';
-      document.cookie = 'userRole=; path=/; max-age=0';
-      router.push('/');
+      await logout();
     } catch (error) {
       console.error('Logout error:', error);
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      localStorage.removeItem('userType');
-      localStorage.removeItem('userRole');
-      document.cookie = 'token=; path=/; max-age=0';
-      document.cookie = 'userType=; path=/; max-age=0';
-      document.cookie = 'userRole=; path=/; max-age=0';
-      router.push('/');
     }
   };
 
@@ -288,12 +380,73 @@ export default function AdminDashboardLayout({
           </div>
 
           <div className="flex items-center gap-4">
-            <button className="p-2.5 hover:bg-gray-100 rounded-xl relative transition-all group">
+            {/* Notifications */}
+            <div className="relative">
+              <button
+                onClick={() => setShowNotifications((prev) => !prev)}
+                className="p-2.5 hover:bg-gray-100 rounded-xl relative transition-all group"
+              >
               <svg className="w-6 h-6 text-gray-600 group-hover:text-purple-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
               </svg>
-              <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white"></span>
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-red-500 rounded-full border-2 border-white text-white text-[10px] font-bold flex items-center justify-center">
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </span>
+                )}
             </button>
+
+              {showNotifications && (
+                <>
+                  <div
+                    className="fixed inset-0 z-40"
+                    onClick={() => setShowNotifications(false)}
+                  />
+                  <div className="absolute right-0 mt-2 w-96 max-w-[90vw] bg-white rounded-xl shadow-lg border border-gray-200 z-50 overflow-hidden">
+                    <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+                      <div>
+                        <p className="text-sm font-semibold text-gray-900">Notifications</p>
+                        <p className="text-xs text-gray-500">Nouvelles inscriptions</p>
+                      </div>
+                      <button
+                        onClick={markAllAsRead}
+                        className="text-xs font-semibold text-purple-600 hover:text-purple-700"
+                      >
+                        Tout lire
+                      </button>
+                    </div>
+                    <div className="max-h-[420px] overflow-y-auto">
+                      {notifications.length === 0 ? (
+                        <div className="p-4 text-sm text-gray-500">Aucune notification.</div>
+                      ) : (
+                        notifications.map((n: any) => {
+                          const id = n._id || n.id;
+                          return (
+                            <button
+                              key={id}
+                              onClick={() => markAsRead(id)}
+                              className={`w-full text-left px-4 py-3 border-b border-gray-50 hover:bg-gray-50 transition-colors ${
+                                n.is_read ? "opacity-70" : ""
+                              }`}
+                            >
+                              <div className="flex items-start gap-3">
+                                <div className={`mt-1 w-2.5 h-2.5 rounded-full ${n.is_read ? "bg-gray-300" : "bg-red-500"}`} />
+                                <div className="flex-1">
+                                  <p className="text-sm text-gray-900 font-medium">{n.message}</p>
+                                  <p className="text-xs text-gray-500 mt-1">
+                                    {n.createdAt ? new Date(n.createdAt).toLocaleString("fr-FR") : ""}
+                                  </p>
+                                </div>
+                              </div>
+                            </button>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
 
             {/* User Profile Dropdown */}
             <div className="relative">

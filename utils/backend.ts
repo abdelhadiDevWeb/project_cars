@@ -11,14 +11,16 @@ export function getBackendUrl(): string {
     // Client-side: use NEXT_PUBLIC_ prefixed env vars
     const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 
                        process.env.NEXT_PUBLIC_URLBACKEND || 
-                       'http://localhost:8001';
+                       process.env.URLBACKEND ||
+                       'http://localhost:7000';
     // Remove trailing slash if present
     return backendUrl.replace(/\/$/, '');
   }
   // Server-side
   const backendUrl = process.env.BACKEND_URL || 
+                     process.env.NEXT_PUBLIC_BACKEND_URL ||
                      process.env.URLBACKEND || 
-                     'http://localhost:8001';
+                     'http://localhost:7000';
   // Remove trailing slash if present
   return backendUrl.replace(/\/$/, '');
 }

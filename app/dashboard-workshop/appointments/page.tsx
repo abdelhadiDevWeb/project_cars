@@ -79,6 +79,7 @@ export default function WorkshopAppointmentsPage() {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
+        cache: 'no-store',
       });
 
       const contentType = res.headers.get("content-type");
@@ -115,6 +116,22 @@ export default function WorkshopAppointmentsPage() {
     }
   }, [user, token]);
 
+  // Fallback real-time bridge from dashboard layout socket.
+  useEffect(() => {
+    const handleWorkshopNewAppointment = () => {
+      fetchAppointments();
+      setNewNotifications(prev => ({
+        ...prev,
+        en_attente: true,
+      }));
+    };
+
+    window.addEventListener('workshopNewAppointment', handleWorkshopNewAppointment);
+    return () => {
+      window.removeEventListener('workshopNewAppointment', handleWorkshopNewAppointment);
+    };
+  }, [user, token]);
+
   // Socket.IO setup for real-time notifications
   useEffect(() => {
     if (!user || !token) return;
@@ -124,11 +141,21 @@ export default function WorkshopAppointmentsPage() {
       auth: {
         token: token,
       },
+      transports: ['websocket', 'polling'],
     });
 
     newSocket.on('connect', () => {
       console.log('Socket connected for workshop appointments');
-      newSocket.emit('join_user', user._id);
+      newSocket.emit('join_workshop', user._id);
+    });
+
+    // Real-time: new RDV offer created for this workshop
+    newSocket.on('new_appointment', () => {
+      fetchAppointments();
+      setNewNotifications(prev => ({
+        ...prev,
+        en_attente: true,
+      }));
     });
 
     // Listen for notification of appointment updates
@@ -172,11 +199,15 @@ export default function WorkshopAppointmentsPage() {
       console.log('Socket disconnected');
     });
 
+    newSocket.on('connect_error', (err) => {
+      console.error('Workshop appointments socket connect error:', err?.message || err);
+    });
+
     setSocket(newSocket);
 
     return () => {
       if (newSocket) {
-        newSocket.emit('leave_user', user._id);
+        newSocket.emit('leave_workshop', user._id);
         newSocket.disconnect();
       }
     };
@@ -539,9 +570,6 @@ export default function WorkshopAppointmentsPage() {
               }`}
             >
               {filterOption.label} ({filterOption.count})
-              {newNotifications[filterOption.value] && filter !== filterOption.value && (
-                <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>
-              )}
             </button>
           ))}
         </div>

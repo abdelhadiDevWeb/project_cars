@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useState, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useUser } from "@/contexts/UserContext";
-import { getImageUrl } from "@/utils/backend";
+import { getBackendUrl, getImageUrl } from "@/utils/backend";
 import { io, Socket } from 'socket.io-client';
 
 export default function SellerDashboardLayout({
@@ -175,12 +175,13 @@ export default function SellerDashboardLayout({
 
   // Initialize Socket.io connection
   useEffect(() => {
-    if (user && user._id && userType === 'user') {
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 
-                        process.env.NEXT_PUBLIC_URLBACKEND || 
-                        'http://localhost:8001';
+    if (user && (user._id || user.id) && userType === 'user') {
+      const backendUrl = getBackendUrl();
+      const token = localStorage.getItem('token');
+      if (!token) return;
       
       const newSocket = io(backendUrl, {
+        auth: { token },
         transports: ['websocket', 'polling'],
       });
 
@@ -472,15 +473,6 @@ export default function SellerDashboardLayout({
             })}
           </nav>
 
-          {/* Bottom Earnings Card */}
-          {sidebarOpen && (
-            <div className="p-4 border-t border-white/20 backdrop-blur-sm">
-              <div className="bg-white/10 backdrop-blur-md rounded-xl p-5 border border-white/20 shadow-xl">
-                <p className="text-2xl font-bold mb-1 text-white drop-shadow-md">8,450,000 DA</p>
-                <p className="text-xs text-teal-100">Revenus totaux</p>
-              </div>
-            </div>
-          )}
         </div>
       </aside>
 

@@ -43,6 +43,8 @@ interface TodayStats {
 export default function TodayPage() {
   const { user, token } = useUser();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
   const [stats, setStats] = useState<TodayStats>({
     total: 0,
     completed: 0,
@@ -65,7 +67,6 @@ export default function TodayPage() {
   const [showConfirmFactureModal, setShowConfirmFactureModal] = useState(false);
   const [pendingFinishWithFacture, setPendingFinishWithFacture] = useState<{ appointmentId: string; service?: 'mécanique' | 'vérification peinture' | 'mécanique & peinture' } | null>(null);
 
-  useEffect(() => {
     const fetchTodayAppointments = async () => {
       if (!user || !token) return;
 
@@ -75,6 +76,7 @@ export default function TodayPage() {
           headers: {
             'Authorization': `Bearer ${token}`,
           },
+        cache: 'no-store',
         });
 
         const contentType = res.headers.get("content-type");
@@ -98,8 +100,31 @@ export default function TodayPage() {
       }
     };
 
+  const fetchNotifications = async () => {
+    if (!user || !token) return;
+    try {
+      const res = await fetch('/api/notification', {
+        headers: { 'Authorization': `Bearer ${token}` },
+        cache: 'no-store',
+      });
+
+      if (!res.ok) return;
+
+      const data = await res.json();
+      if (data.ok && Array.isArray(data.notifications)) {
+        const filtered = data.notifications.filter((n: any) => n.type !== 'other');
+        setNotifications(filtered);
+        setUnreadNotificationsCount(filtered.filter((n: any) => !n.is_read).length);
+      }
+    } catch (error) {
+      console.error('Error fetching workshop notifications:', error);
+    }
+  };
+
+  useEffect(() => {
     if (user && token) {
       fetchTodayAppointments();
+      fetchNotifications();
     }
   }, [user, token]);
 
@@ -108,25 +133,6 @@ export default function TodayPage() {
     const handleAppointmentStatusChange = () => {
       // Refresh appointments when status changes
       if (user && token) {
-        const fetchTodayAppointments = async () => {
-          try {
-            const res = await fetch('/api/workshop-stats/today', {
-              headers: {
-                'Authorization': `Bearer ${token}`,
-              },
-            });
-
-            if (res.ok) {
-              const data = await res.json();
-              if (data.ok && data.appointments) {
-                setAppointments(data.appointments || []);
-                setStats(data.stats || { total: 0, completed: 0, pending: 0, progress: 0 });
-              }
-            }
-          } catch (error) {
-            console.error('Error refreshing today appointments:', error);
-          }
-        };
         fetchTodayAppointments();
       }
     };
@@ -134,6 +140,33 @@ export default function TodayPage() {
     window.addEventListener('appointmentStatusChanged', handleAppointmentStatusChange);
     return () => {
       window.removeEventListener('appointmentStatusChanged', handleAppointmentStatusChange);
+    };
+  }, [user, token]);
+
+  // Real-time bridge event from workshop layout socket.
+  useEffect(() => {
+    const handleWorkshopNewAppointment = () => {
+      fetchTodayAppointments();
+    };
+
+    window.addEventListener('workshopNewAppointment', handleWorkshopNewAppointment);
+    return () => {
+      window.removeEventListener('workshopNewAppointment', handleWorkshopNewAppointment);
+    };
+  }, [user, token]);
+
+  // Real-time: refresh unread notifications list when socket sends anything new or when read status changes.
+  useEffect(() => {
+    const handleNotificationsUpdated = () => {
+      fetchNotifications();
+    };
+
+    window.addEventListener('workshopSocketNotification', handleNotificationsUpdated);
+    window.addEventListener('notificationUpdated', handleNotificationsUpdated);
+
+    return () => {
+      window.removeEventListener('workshopSocketNotification', handleNotificationsUpdated);
+      window.removeEventListener('notificationUpdated', handleNotificationsUpdated);
     };
   }, [user, token]);
 
@@ -527,6 +560,47 @@ export default function TodayPage() {
               </svg>
               {pendingTodayCount} rendez-vous en attente
             </p>
+          </div>
+        )}
+      </div>
+
+      {/* Notifications (socket) */}
+      <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-200 mb-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-bold text-gray-900 font-[var(--font-poppins)]">
+            Notifications
+          </h2>
+          {unreadNotificationsCount > 0 ? (
+            <span className="px-3 py-1 bg-red-500 text-white rounded-full text-sm font-bold">
+              {unreadNotificationsCount}
+            </span>
+          ) : (
+            <span className="text-sm text-gray-500">Aucune</span>
+          )}
+        </div>
+
+        {notifications.length === 0 ? (
+          <p className="text-sm text-gray-600">Aucune notification.</p>
+        ) : (
+          <div className="max-h-56 overflow-y-auto space-y-3">
+            {notifications.map((n: any) => (
+              <div
+                key={n._id || n.id}
+                className={`p-3 rounded-xl border ${
+                  n.is_read ? "bg-gray-50 border-gray-200" : "bg-red-50 border-red-200"
+                }`}
+              >
+                <p className="text-sm font-semibold text-gray-900">{n.message}</p>
+                <div className="flex items-center justify-between gap-3 mt-2">
+                  <span className="text-xs text-gray-500">
+                    {n.type ? `Type: ${n.type}` : "Type: notification"}
+                  </span>
+                  <span className="text-xs text-gray-400">
+                    {n.createdAt ? new Date(n.createdAt).toLocaleString("fr-FR") : ""}
+                  </span>
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>

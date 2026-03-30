@@ -66,17 +66,50 @@ export default function AbonnementPage() {
   const [bulkTypes, setBulkTypes] = useState([{ name: '', time: '', price: '' }]);
   const [selectedType, setSelectedType] = useState('');
   const [selectedClient, setSelectedClient] = useState({ id: '', type: '' });
+  const [lastAbonnement, setLastAbonnement] = useState<any | null>(null);
+  const [loadingLastAbonnement, setLoadingLastAbonnement] = useState(false);
   
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    fetchData();
+    fetchData(true);
   }, []);
 
-  const fetchData = async () => {
+  useEffect(() => {
+    // Auto-sync expired subscriptions every 5 minutes
+    const interval = setInterval(() => {
+      syncExpiredAbonnementsAndRefresh();
+    }, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const syncExpiredAbonnements = async () => {
     try {
-      setLoading(true);
       const token = localStorage.getItem('token');
+      await fetch('/api/abonnement/client/sync-expired', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+    } catch (error) {
+      console.error('Error syncing expired abonnements:', error);
+    }
+  };
+
+  const syncExpiredAbonnementsAndRefresh = async () => {
+    await syncExpiredAbonnements();
+    await fetchData(false);
+  };
+
+  const fetchData = async (showLoader: boolean = true) => {
+    try {
+      if (showLoader) setLoading(true);
+      const token = localStorage.getItem('token');
+
+      // Ensure status is synced with latest subscription expiry before loading lists
+      await fetch('/api/abonnement/client/sync-expired', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
       
       const [typesRes, usersRes, workshopsRes, abonnementsRes] = await Promise.all([
         fetch('/api/abonnement/types', {
@@ -143,7 +176,7 @@ export default function AbonnementPage() {
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
-      setLoading(false);
+      if (showLoader) setLoading(false);
     }
   };
 
@@ -272,6 +305,74 @@ export default function AbonnementPage() {
     }
   };
 
+  const fetchLastAbonnementForSelectedClient = async () => {
+    if (!selectedClient.id || !selectedClient.type) return;
+    try {
+      setLoadingLastAbonnement(true);
+      const token = localStorage.getItem('token');
+      const res = await fetch(
+        `/api/abonnement/client/last?clientId=${encodeURIComponent(selectedClient.id)}&clientType=${encodeURIComponent(selectedClient.type)}`,
+        { headers: { 'Authorization': `Bearer ${token}` } }
+      );
+      if (res.ok) {
+        const data = await res.json();
+        if (data.ok && data.hasLast) {
+          setLastAbonnement(data.abonnement);
+        } else {
+          setLastAbonnement(null);
+        }
+      } else {
+        setLastAbonnement(null);
+      }
+    } catch (error) {
+      console.error('Error fetching last abonnement:', error);
+      setLastAbonnement(null);
+    } finally {
+      setLoadingLastAbonnement(false);
+    }
+  };
+
+  const handleCreateSameAsLast = async () => {
+    if (!lastAbonnement?.type_abonnement?.id || !selectedClient.id || !selectedClient.type) {
+      alert("Aucun dernier abonnement trouvé pour ce client");
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/abonnement/client', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          type_abonnement: lastAbonnement.type_abonnement.id,
+          clientId: selectedClient.id,
+          clientType: selectedClient.type,
+        }),
+      });
+
+      const data = await response.json();
+      if (data.ok) {
+        alert('Abonnement créé avec succès (copie du dernier)');
+        setSelectedType('');
+        setSelectedClient({ id: '', type: '' });
+        setLastAbonnement(null);
+        setShowCreateAbonnementModal(false);
+        fetchData();
+      } else {
+        alert(data.message || "Erreur lors de la création");
+      }
+    } catch (error) {
+      console.error('Error creating same abonnement:', error);
+      alert("Erreur lors de la création");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const addBulkTypeField = () => {
     setBulkTypes([...bulkTypes, { name: '', time: '', price: '' }]);
   };
@@ -290,6 +391,14 @@ export default function AbonnementPage() {
       </div>
     );
   }
+
+  const now = new Date();
+  const activeAbonnements = abonnements.filter(
+    (abonnement) => new Date(abonnement.date_end) >= now
+  );
+  const inactiveAbonnements = abonnements.filter(
+    (abonnement) => new Date(abonnement.date_end) < now
+  );
 
   return (
     <div className="p-6 bg-gradient-to-br from-gray-50 via-blue-50/30 to-gray-100 min-h-screen">
@@ -511,16 +620,16 @@ export default function AbonnementPage() {
                     <h2 className="text-3xl font-bold text-white font-[var(--font-poppins)] drop-shadow-lg">
                       Abonnements Actifs
                     </h2>
-                    <p className="text-white/90 text-sm mt-1">Total: {abonnements.length} abonnement(s)</p>
+                    <p className="text-white/90 text-sm mt-1">Total: {activeAbonnements.length} abonnement(s)</p>
                   </div>
                 </div>
                 <div className="px-6 py-3 bg-white/25 backdrop-blur-md rounded-2xl border-2 border-white/30 shadow-xl">
-                  <p className="text-2xl font-bold text-white font-[var(--font-poppins)]">{abonnements.length}</p>
+                  <p className="text-2xl font-bold text-white font-[var(--font-poppins)]">{activeAbonnements.length}</p>
                 </div>
               </div>
             </div>
             <div className="p-8">
-              {abonnements.length === 0 ? (
+              {activeAbonnements.length === 0 ? (
                 <div className="text-center py-12">
                   <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-100 rounded-full mb-4">
                     <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -531,7 +640,7 @@ export default function AbonnementPage() {
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-                  {abonnements.map((abonnement, index) => {
+                  {activeAbonnements.map((abonnement, index) => {
                     const abonnementId = abonnement.id || `abonnement-${index}`;
                     const isExpired = new Date(abonnement.date_end) < new Date();
                     const isActive = new Date(abonnement.date_start) <= new Date() && !isExpired;
@@ -582,12 +691,19 @@ export default function AbonnementPage() {
                               </span>
                               {abonnement.clientInfo && (
                                 <div className="flex items-center gap-1.5">
+                                  {isClient ? (
                                   <span className="px-2 py-1 bg-white/25 backdrop-blur-md rounded-full text-xs font-semibold">
-                                    {isClient ? 'Client' : 'Atelier'}
+                                      Client
                                   </span>
-                                  {abonnement.clientInfo.workshopType && (
+                                  ) : (
                                     <span className="px-2 py-1 bg-white/25 backdrop-blur-md rounded-full text-xs font-semibold">
-                                      {abonnement.clientInfo.workshopType === 'mechanic' ? 'Mécanique' : 'Atelier Voiture'}
+                                      {abonnement.clientInfo.workshopType === 'mechanic'
+                                        ? 'Atelier Mécanique'
+                                        : abonnement.clientInfo.workshopType === 'paint_vehicle'
+                                        ? 'Atelier Peinture'
+                                        : abonnement.clientInfo.workshopType === 'mechanic_paint_inspector'
+                                        ? 'Atelier Mécanique & Peinture'
+                                        : 'Atelier'}
                                     </span>
                                   )}
                                 </div>
@@ -667,6 +783,57 @@ export default function AbonnementPage() {
                               </div>
                             </div>
                           </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Inactive Abonnements Section */}
+        <div className="mb-8">
+          <div className="bg-gradient-to-br from-white via-red-50/30 to-rose-50/30 rounded-3xl shadow-2xl border-2 border-red-200/50 overflow-hidden">
+            <div className="bg-gradient-to-r from-red-500 via-rose-500 to-pink-500 px-8 py-6 relative overflow-hidden">
+              <div className="relative z-10 flex items-center justify-between">
+                <div>
+                  <h2 className="text-3xl font-bold text-white font-[var(--font-poppins)] drop-shadow-lg">
+                    Abonnements Inactifs
+                  </h2>
+                  <p className="text-white/90 text-sm mt-1">Total: {inactiveAbonnements.length} abonnement(s)</p>
+                </div>
+                <div className="px-6 py-3 bg-white/25 backdrop-blur-md rounded-2xl border-2 border-white/30 shadow-xl">
+                  <p className="text-2xl font-bold text-white font-[var(--font-poppins)]">{inactiveAbonnements.length}</p>
+                </div>
+              </div>
+            </div>
+            <div className="p-8">
+              {inactiveAbonnements.length === 0 ? (
+                <div className="text-center py-12">
+                  <p className="text-gray-500 font-medium">Aucun abonnement inactif</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+                  {inactiveAbonnements.map((abonnement, index) => {
+                    const abonnementId = abonnement.id || `inactive-abonnement-${index}`;
+                    return (
+                      <div key={abonnementId} className="bg-white rounded-2xl border-2 border-red-200 shadow-lg overflow-hidden">
+                        <div className="p-4 bg-gradient-to-r from-red-500 to-rose-500 text-white">
+                          <p className="font-bold truncate">{abonnement.clientInfo?.name || 'N/A'}</p>
+                          <p className="text-xs text-white/90 truncate mt-1">{abonnement.clientInfo?.email || 'N/A'}</p>
+                        </div>
+                        <div className="p-4 space-y-2">
+                          <p className="text-sm font-semibold text-gray-800">
+                            {abonnement.type_abonnement?.name || 'Type inconnu'}
+                          </p>
+                          <p className="text-xs text-gray-600">
+                            Expiré le: {new Date(abonnement.date_end).toLocaleDateString('fr-FR')}
+                          </p>
+                          <p className="text-sm font-bold text-red-600">
+                            {abonnement.price.toLocaleString('fr-FR')} DA
+                          </p>
                         </div>
                       </div>
                     );
@@ -952,7 +1119,10 @@ export default function AbonnementPage() {
                     </label>
                     <select
                       value={selectedClient.id}
-                      onChange={(e) => setSelectedClient({ ...selectedClient, id: e.target.value })}
+                      onChange={(e) => {
+                        setSelectedClient({ ...selectedClient, id: e.target.value });
+                        setLastAbonnement(null);
+                      }}
                       className="w-full px-4 py-3 bg-gradient-to-br from-gray-50 to-white border-2 border-gray-200 rounded-xl focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
                       required
                     >
@@ -975,7 +1145,10 @@ export default function AbonnementPage() {
                     </label>
                     <select
                       value={selectedClient.id}
-                      onChange={(e) => setSelectedClient({ ...selectedClient, id: e.target.value })}
+                      onChange={(e) => {
+                        setSelectedClient({ ...selectedClient, id: e.target.value });
+                        setLastAbonnement(null);
+                      }}
                       className="w-full px-4 py-3 bg-gradient-to-br from-gray-50 to-white border-2 border-gray-200 rounded-xl focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
                       required
                     >
@@ -991,6 +1164,44 @@ export default function AbonnementPage() {
                     </select>
                   </div>
                 )}
+
+                {/* Duplicate last abonnement */}
+                {selectedClient.id && selectedClient.type && (
+                  <div className="p-4 bg-gradient-to-br from-blue-50 to-teal-50 rounded-xl border border-blue-200">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="text-sm text-gray-700">
+                        <p className="font-semibold">Dernier abonnement</p>
+                        {lastAbonnement?.type_abonnement ? (
+                          <p className="text-xs text-gray-600 mt-1">
+                            {lastAbonnement.type_abonnement.name} • {lastAbonnement.type_abonnement.time} jours • {lastAbonnement.type_abonnement.price} DA
+                          </p>
+                        ) : (
+                          <p className="text-xs text-gray-600 mt-1">
+                            {loadingLastAbonnement ? "Chargement..." : "Non disponible"}
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={fetchLastAbonnementForSelectedClient}
+                          disabled={loadingLastAbonnement || isSubmitting}
+                          className="px-3 py-2 bg-white border border-blue-200 text-blue-700 rounded-lg text-xs font-semibold hover:bg-blue-50 disabled:opacity-50"
+                        >
+                          Vérifier
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleCreateSameAsLast}
+                          disabled={isSubmitting || !lastAbonnement?.type_abonnement?.id}
+                          className="px-3 py-2 bg-gradient-to-r from-blue-600 to-teal-600 text-white rounded-lg text-xs font-semibold hover:from-blue-700 hover:to-teal-700 disabled:opacity-50"
+                        >
+                          Créer le même
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
                 <div className="flex gap-3 pt-4">
                   <button
                     type="button"
@@ -998,6 +1209,7 @@ export default function AbonnementPage() {
                       setShowCreateAbonnementModal(false);
                       setSelectedType('');
                       setSelectedClient({ id: '', type: '' });
+                      setLastAbonnement(null);
                     }}
                     className="flex-1 px-4 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-all"
                   >

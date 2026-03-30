@@ -2,12 +2,13 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useUser } from "@/contexts/UserContext";
 import { getImageUrl, getBackendUrl } from "@/utils/backend";
 import ChatModal from "@/components/ChatModal";
 import { io, Socket } from 'socket.io-client';
+import logo from "@/images/logo.png";
 
 interface Car {
   _id: string;
@@ -31,11 +32,7 @@ interface Car {
   };
 }
 
-const heroCars = [
-  "/images/car1.png",
-  "/images/car2.png",
-  "/images/car3.png",
-];
+type HeroSlide = { id: string; image: string; alt: string };
 
 
 // Scroll reveal hook
@@ -112,6 +109,36 @@ export default function Home() {
   const heroRef = useScrollReveal(true); // Hero section should be visible immediately
   const statsRef = useRef<HTMLDivElement>(null);
 
+  const heroSlides: HeroSlide[] = useMemo(() => {
+    const slides = (cars || [])
+      .filter((c) => Array.isArray(c.images) && c.images.length > 0)
+      .map((c) => {
+        const id = c._id || c.id || "";
+        const firstImage = c.images?.[0] || "";
+        const image = getImageUrl(firstImage) || firstImage;
+        return {
+          id,
+          image,
+          alt: `${c.brand} ${c.model} ${c.year}`,
+        };
+      })
+      .filter((s) => !!s.id && !!s.image);
+
+    // Keep the hero clean: show only a few DB cars
+    return slides.slice(0, 5);
+  }, [cars]);
+
+  // Keep index safe when slides list changes
+  useEffect(() => {
+    if (heroSlides.length === 0) {
+      setCurrentHeroIndex(0);
+      return;
+    }
+    if (currentHeroIndex >= heroSlides.length) {
+      setCurrentHeroIndex(0);
+    }
+  }, [heroSlides.length, currentHeroIndex]);
+
   // Redirect admin to dashboard-admin
   useEffect(() => {
     if (!isLoading && isAuthenticated && user && userType === 'user' && userRole === 'admin') {
@@ -121,11 +148,12 @@ export default function Home() {
 
   // Hero carousel auto-rotate
   useEffect(() => {
+    if (heroSlides.length <= 1) return;
     const interval = setInterval(() => {
-      setCurrentHeroIndex((prev) => (prev + 1) % heroCars.length);
+      setCurrentHeroIndex((prev) => (prev + 1) % heroSlides.length);
     }, 5000);
     return () => clearInterval(interval);
-  }, []);
+  }, [heroSlides.length]);
 
   // Fetch active cars
   const fetchActiveCars = async (filters?: typeof searchFilters) => {
@@ -452,7 +480,7 @@ export default function Home() {
             <Link href="/" className="flex items-center gap-3 group cursor-pointer">
               <div className="relative w-16 h-16 bg-gradient-to-br from-teal-500 to-cyan-500 rounded-xl p-2 shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:scale-105">
                 <Image
-                  src="/logo.png"
+                  src={logo}
                   alt="CarSure DZ Logo"
                   fill
                   className="object-contain"
@@ -765,22 +793,25 @@ export default function Home() {
                 {/* Main Image Container with Modern Frame */}
                 <div className="relative w-full h-full rounded-3xl overflow-hidden shadow-2xl bg-gradient-to-br from-white to-gray-50 p-4 lg:p-6 border-4 border-white/80">
                   <div className="relative w-full h-full rounded-2xl overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200">
-                    {heroCars.map((car, index) => (
+                    {heroSlides.map((slide, index) => (
                       <div
-                        key={index}
+                        key={slide.id}
                         className={`absolute inset-0 transition-all duration-1000 ease-in-out ${
                           index === currentHeroIndex 
                             ? 'opacity-100 scale-100 z-10' 
                             : 'opacity-0 scale-110 z-0'
                         }`}
                       >
+                        <Link href={`/cars/${slide.id}`} className="absolute inset-0">
                         <Image
-                          src={car}
-                          alt={`Car ${index + 1}`}
+                            src={slide.image}
+                            alt={slide.alt}
                           fill
-                          className="object-contain object-center p-4"
+                            className="object-contain object-center p-4 cursor-pointer"
                           priority={index === 0}
+                            unoptimized
                         />
+                        </Link>
                         {/* Subtle overlay for depth */}
                         <div className="absolute inset-0 bg-gradient-to-t from-black/5 via-transparent to-transparent pointer-events-none" />
                       </div>
@@ -789,7 +820,7 @@ export default function Home() {
                   
                   {/* Carousel Indicators - Modern Design */}
                   <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-20 flex gap-2 bg-white/95 backdrop-blur-md px-5 py-2.5 rounded-full shadow-xl border border-white/50">
-                {heroCars.map((_, index) => (
+                {heroSlides.map((_, index) => (
                   <button
                     key={index}
                     onClick={() => setCurrentHeroIndex(index)}
@@ -805,18 +836,20 @@ export default function Home() {
                   
                   {/* Navigation Arrows */}
                   <button
-                    onClick={() => setCurrentHeroIndex((prev) => (prev - 1 + heroCars.length) % heroCars.length)}
+                    onClick={() => setCurrentHeroIndex((prev) => (prev - 1 + heroSlides.length) % heroSlides.length)}
                     className="absolute left-2 top-1/2 transform -translate-y-1/2 z-20 w-12 h-12 bg-white/90 backdrop-blur-md rounded-full flex items-center justify-center shadow-lg hover:shadow-xl transition-all hover:scale-110 border border-white/50"
                     aria-label="Previous car"
+                    disabled={heroSlides.length <= 1}
                   >
                     <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                     </svg>
                   </button>
                   <button
-                    onClick={() => setCurrentHeroIndex((prev) => (prev + 1) % heroCars.length)}
+                    onClick={() => setCurrentHeroIndex((prev) => (prev + 1) % heroSlides.length)}
                     className="absolute right-2 top-1/2 transform -translate-y-1/2 z-20 w-12 h-12 bg-white/90 backdrop-blur-md rounded-full flex items-center justify-center shadow-lg hover:shadow-xl transition-all hover:scale-110 border border-white/50"
                     aria-label="Next car"
+                    disabled={heroSlides.length <= 1}
                   >
                     <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -1610,7 +1643,8 @@ export default function Home() {
               <div className="flex items-center gap-2 mb-4">
                 <div className="relative w-12 h-12">
                   <Image
-                    src="/logo.png"
+                  src={logo}
+                    src={logo}
                     alt="CarSure DZ Logo"
                     fill
                     className="object-contain"
