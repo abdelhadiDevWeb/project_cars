@@ -7,12 +7,17 @@ import { usePathname, useRouter } from "next/navigation";
 import { getImageUrl, getBackendUrl } from "@/utils/backend";
 import { io, type Socket } from "socket.io-client";
 import { useUser } from "@/contexts/UserContext";
+import { useT } from "@/utils/i18n";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export default function AdminDashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const t = useT();
+  const { language } = useLanguage();
+  const isRTL = language === 'ar';
   const { logout } = useUser();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [user, setUser] = useState<any>(null);
@@ -231,10 +236,9 @@ export default function AdminDashboardLayout({
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 flex">
-      <div className={`${sidebarOpen ? 'w-64' : 'w-20'} flex-shrink-0`}></div>
+    <div dir={isRTL ? 'rtl' : 'ltr'} className="min-h-screen bg-gray-100 flex">
       {/* Left Sidebar */}
-      <aside className={`${sidebarOpen ? 'w-64' : 'w-20'} fixed left-0 top-0 h-screen text-white transition-all duration-300 flex flex-col overflow-hidden z-50`}>
+      <aside className={`${sidebarOpen ? 'w-64' : 'w-20'} fixed ${isRTL ? 'right-0' : 'left-0'} top-0 h-screen text-white transition-all duration-300 flex flex-col overflow-hidden z-50`}>
         {/* Background Image with Gradient Overlay */}
         <div className="absolute inset-0 overflow-hidden">
           <div className="relative w-full h-full">
@@ -272,12 +276,12 @@ export default function AdminDashboardLayout({
           {/* Navigation */}
           <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
             {[
-              { name: 'Dashboard', icon: 'dashboard', path: '/dashboard-admin' },
-              { name: 'Utilisateurs', icon: 'users', path: '/dashboard-admin/users' },
-              { name: 'Abonnements', icon: 'subscription', path: '/dashboard-admin/abonnement' },
-              { name: 'Véhicules', icon: 'car', path: '/dashboard-admin/cars' },
-              { name: 'Encaissements', icon: 'money', path: '/dashboard-admin/payments' },
-              { name: 'Paramètres', icon: 'settings', path: '/dashboard-admin/settings' },
+              { name: t('Dashboard'), icon: 'dashboard', path: '/dashboard-admin' },
+              { name: t('Utilisateurs'), icon: 'users', path: '/dashboard-admin/users' },
+              { name: t('Abonnements'), icon: 'subscription', path: '/dashboard-admin/abonnement' },
+              { name: t('Véhicules'), icon: 'car', path: '/dashboard-admin/cars' },
+              { name: t('Encaissements'), icon: 'money', path: '/dashboard-admin/payments' },
+              { name: t('Paramètres'), icon: 'settings', path: '/dashboard-admin/settings' },
             ].map((item) => {
               const isActive = pathname === item.path || (item.path !== '/dashboard-admin' && pathname?.startsWith(item.path));
               return (
@@ -365,7 +369,11 @@ export default function AdminDashboardLayout({
       </aside>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div
+        className={`flex-1 flex flex-col overflow-hidden transition-[margin] duration-300 ${
+          sidebarOpen ? (isRTL ? 'mr-64' : 'ml-64') : (isRTL ? 'mr-20' : 'ml-20')
+        }`}
+      >
         {/* Top Header */}
         <header className="bg-white border-b border-gray-200 shadow-sm px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -402,22 +410,22 @@ export default function AdminDashboardLayout({
                     className="fixed inset-0 z-40"
                     onClick={() => setShowNotifications(false)}
                   />
-                  <div className="absolute right-0 mt-2 w-96 max-w-[90vw] bg-white rounded-xl shadow-lg border border-gray-200 z-50 overflow-hidden">
+                  <div className={`absolute ${isRTL ? 'left-0' : 'right-0'} mt-2 w-96 max-w-[90vw] bg-white rounded-xl shadow-lg border border-gray-200 z-50 overflow-hidden`}>
                     <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
                       <div>
-                        <p className="text-sm font-semibold text-gray-900">Notifications</p>
-                        <p className="text-xs text-gray-500">Nouvelles inscriptions</p>
+                        <p className="text-sm font-semibold text-gray-900">{t('Notifications')}</p>
+                        <p className="text-xs text-gray-500">{t('Nouvelles inscriptions')}</p>
                       </div>
                       <button
                         onClick={markAllAsRead}
                         className="text-xs font-semibold text-purple-600 hover:text-purple-700"
                       >
-                        Tout lire
+                        {t('Tout lire')}
                       </button>
                     </div>
                     <div className="max-h-[420px] overflow-y-auto">
                       {notifications.length === 0 ? (
-                        <div className="p-4 text-sm text-gray-500">Aucune notification.</div>
+                        <div className="p-4 text-sm text-gray-500">{t('Aucune notification')}</div>
                       ) : (
                         notifications.map((n: any) => {
                           const id = n._id || n.id;
@@ -493,7 +501,7 @@ export default function AdminDashboardLayout({
                     onClick={() => setShowUserMenu(false)}
                   ></div>
 
-                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-gray-200 z-50">
+                  <div className={`absolute ${isRTL ? 'left-0' : 'right-0'} mt-2 w-48 bg-white rounded-xl shadow-lg border border-gray-200 z-50`}>
                     <div className="py-2">
                       <button
                         onClick={handleLogout}
@@ -502,7 +510,7 @@ export default function AdminDashboardLayout({
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                         </svg>
-                        Déconnexion
+                        {t('Déconnexion')}
                       </button>
                     </div>
                   </div>

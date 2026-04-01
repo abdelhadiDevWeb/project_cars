@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useUser } from "@/contexts/UserContext";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { useT } from "@/utils/i18n";
 
 interface Workshop {
   _id: string;
@@ -21,16 +23,16 @@ interface Workshop {
   price_visit_paint?: number | null;
 }
 
-const getWorkshopTypeLabel = (type?: string) => {
+const getWorkshopTypeLabel = (t: (key: string) => string, type?: string) => {
   switch (type) {
     case 'mechanic':
-      return 'Mécanicien';
+      return t('Mécanicien');
     case 'paint_vehicle':
-      return 'Peinture véhicule';
+      return t('Peinture véhicule');
     case 'mechanic_paint_inspector':
-      return 'Mécanicien & Peinture Inspecteur';
+      return t('Mécanicien & Peinture Inspecteur');
     default:
-      return type || 'Atelier';
+      return type ? type : t('Atelier');
   }
 };
 
@@ -52,6 +54,8 @@ export default function WorkshopDetailsPage() {
   const router = useRouter();
   const workshopId = params.id as string;
   const { user, token, userType } = useUser();
+  const { language } = useLanguage();
+  const t = useT();
   const [workshop, setWorkshop] = useState<Workshop | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -76,7 +80,7 @@ export default function WorkshopDetailsPage() {
         const workshopRes = await fetch(`/api/workshop/${workshopId}`);
         
         if (!workshopRes.ok) {
-          setError("Atelier non trouvé");
+          setError(t("Atelier non trouvé"));
           setLoading(false);
           return;
         }
@@ -87,7 +91,7 @@ export default function WorkshopDetailsPage() {
         }
       } catch (error) {
         console.error('Error fetching workshop:', error);
-        setError("Erreur de connexion. Veuillez réessayer.");
+        setError(t("Erreur de connexion. Veuillez réessayer."));
       } finally {
         setLoading(false);
       }
@@ -185,7 +189,7 @@ export default function WorkshopDetailsPage() {
 
   const handleSubmitRate = async () => {
     if (!ratingStar || ratingStar < 1 || ratingStar > 5) {
-      alert('Veuillez sélectionner une note entre 1 et 5 étoiles');
+      alert(t('Veuillez sélectionner une note entre 1 et 5 étoiles'));
       return;
     }
 
@@ -208,7 +212,7 @@ export default function WorkshopDetailsPage() {
       if (res.ok) {
         const data = await res.json();
         if (data.ok) {
-          alert(userRate ? 'Note mise à jour avec succès' : 'Note ajoutée avec succès');
+          alert(userRate ? t('Note mise à jour avec succès') : t('Note ajoutée avec succès'));
           setShowRateModal(false);
           // Refresh rates
           const ratesRes = await fetch(`/api/rate/workshop/${workshopId}`);
@@ -235,11 +239,11 @@ export default function WorkshopDetailsPage() {
         }
       } else {
         const data = await res.json();
-        alert(data.message || 'Erreur lors de l\'envoi de la note');
+        alert(data.message || t("Erreur lors de l'envoi de la note"));
       }
     } catch (error) {
       console.error('Error submitting rate:', error);
-      alert('Erreur lors de l\'envoi de la note');
+      alert(t("Erreur lors de l'envoi de la note"));
     } finally {
       setIsSubmittingRate(false);
     }
@@ -253,7 +257,7 @@ export default function WorkshopDetailsPage() {
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
           </svg>
-          <p className="mt-4 text-gray-600">Chargement...</p>
+          <p className="mt-4 text-gray-600">{t('Chargement...')}</p>
         </div>
       </div>
     );
@@ -263,9 +267,9 @@ export default function WorkshopDetailsPage() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <p className="text-red-600 mb-4">{error || "Atelier non trouvé"}</p>
+          <p className="text-red-600 mb-4">{error || t("Atelier non trouvé")}</p>
           <Link href="/" className="text-teal-600 hover:text-teal-700 font-semibold">
-            Retour à l'accueil
+            {t("Retour à l'accueil")}
           </Link>
         </div>
       </div>
@@ -304,7 +308,7 @@ export default function WorkshopDetailsPage() {
                       <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                       </svg>
-                      Certifié
+                      {t('Certifié')}
                     </span>
                   )}
                 </div>
@@ -312,16 +316,16 @@ export default function WorkshopDetailsPage() {
                 <div className="flex flex-wrap items-center justify-center md:justify-start gap-3">
                   {workshop.status ? (
                     <span className="px-4 py-2 bg-green-100 text-green-700 rounded-full text-sm font-bold">
-                      Atelier actif
+                      {t('Atelier actif')}
                     </span>
                   ) : (
                     <span className="px-4 py-2 bg-yellow-100 text-yellow-700 rounded-full text-sm font-bold">
-                      Atelier en attente
+                      {t('Atelier en attente')}
                     </span>
                   )}
                   {workshop.type && (
                     <span className="px-4 py-2 bg-blue-100 text-blue-700 rounded-full text-sm font-bold">
-                      {getWorkshopTypeLabel(workshop.type)}
+                      {getWorkshopTypeLabel(t, workshop.type)}
                     </span>
                   )}
                 </div>
@@ -333,7 +337,7 @@ export default function WorkshopDetailsPage() {
           <div className="grid md:grid-cols-2 gap-6">
             {/* Contact Info */}
             <div className="bg-white/95 backdrop-blur-md rounded-3xl shadow-2xl p-6 border-2 border-gray-200/50">
-              <h2 className="text-xl font-bold text-gray-900 mb-4 font-[var(--font-poppins)]">Informations de contact</h2>
+              <h2 className="text-xl font-bold text-gray-900 mb-4 font-[var(--font-poppins)]">{t('Informations de contact')}</h2>
               <div className="space-y-4">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-gradient-to-br from-teal-100 to-cyan-100 rounded-xl flex items-center justify-center">
@@ -342,7 +346,7 @@ export default function WorkshopDetailsPage() {
                     </svg>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500">Téléphone</p>
+                    <p className="text-sm text-gray-500">{t('Téléphone')}</p>
                     <a href={`tel:${workshop.phone}`} className="text-gray-900 font-semibold hover:text-teal-600 transition-colors">
                       {workshop.phone}
                     </a>
@@ -355,7 +359,7 @@ export default function WorkshopDetailsPage() {
                     </svg>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500">Email</p>
+                    <p className="text-sm text-gray-500">{t('Email')}</p>
                     <a href={`mailto:${workshop.email}`} className="text-gray-900 font-semibold hover:text-teal-600 transition-colors">
                       {workshop.email}
                     </a>
@@ -369,7 +373,7 @@ export default function WorkshopDetailsPage() {
                     </svg>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500">Adresse</p>
+                    <p className="text-sm text-gray-500">{t('Adresse')}</p>
                     <p className="text-gray-900 font-semibold">{workshop.adr}</p>
                   </div>
                 </div>
@@ -378,22 +382,22 @@ export default function WorkshopDetailsPage() {
 
             {/* Pricing */}
             <div className="bg-white/95 backdrop-blur-md rounded-3xl shadow-2xl p-6 border-2 border-gray-200/50">
-              <h2 className="text-xl font-bold text-gray-900 mb-4 font-[var(--font-poppins)]">Tarifs de visite</h2>
+              <h2 className="text-xl font-bold text-gray-900 mb-4 font-[var(--font-poppins)]">{t('Tarifs de visite')}</h2>
               <div className="space-y-4">
                 {workshop.price_visit_mec && workshop.price_visit_mec > 0 && (
                   <div className="p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-200">
-                    <p className="text-sm text-gray-600 mb-1">Prix de visite mécanique</p>
+                    <p className="text-sm text-gray-600 mb-1">{t('Prix de visite mécanique')}</p>
                     <p className="text-2xl font-bold text-blue-600">{workshop.price_visit_mec.toLocaleString()} DA</p>
                   </div>
                 )}
                 {workshop.price_visit_paint && workshop.price_visit_paint > 0 && (
                   <div className="p-4 bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl border border-purple-200">
-                    <p className="text-sm text-gray-600 mb-1">Prix de visite peinture</p>
+                    <p className="text-sm text-gray-600 mb-1">{t('Prix de visite peinture')}</p>
                     <p className="text-2xl font-bold text-purple-600">{workshop.price_visit_paint.toLocaleString()} DA</p>
                   </div>
                 )}
                 {(!workshop.price_visit_mec || workshop.price_visit_mec <= 0) && (!workshop.price_visit_paint || workshop.price_visit_paint <= 0) && (
-                  <p className="text-gray-500 text-center py-4">Aucun tarif disponible</p>
+                  <p className="text-gray-500 text-center py-4">{t('Aucun tarif disponible')}</p>
                 )}
               </div>
             </div>
@@ -402,7 +406,7 @@ export default function WorkshopDetailsPage() {
           {/* Ratings Section */}
           <div className="bg-white/95 backdrop-blur-md rounded-3xl shadow-2xl p-6 border-2 border-gray-200/50 mt-6">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-gray-900 font-[var(--font-poppins)]">Avis et notes</h2>
+              <h2 className="text-xl font-bold text-gray-900 font-[var(--font-poppins)]">{t('Avis et notes')}</h2>
               {canRate && (
                 <button
                   onClick={() => {
@@ -420,7 +424,7 @@ export default function WorkshopDetailsPage() {
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
                   </svg>
-                  {userRate ? 'Modifier ma note' : 'Noter cet atelier'}
+                  {userRate ? t('Modifier ma note') : t('Noter cet atelier')}
                 </button>
               )}
             </div>
@@ -450,7 +454,7 @@ export default function WorkshopDetailsPage() {
                         </svg>
                       ))}
                     </div>
-                    <div className="text-sm text-gray-600 mt-1">{totalRatings} avis</div>
+                    <div className="text-sm text-gray-600 mt-1">{totalRatings} {t('avis')}</div>
                   </div>
                 </div>
 
@@ -492,9 +496,9 @@ export default function WorkshopDetailsPage() {
                 <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
                 </svg>
-                <p className="text-gray-600">Aucun avis pour le moment</p>
+                <p className="text-gray-600">{t('Aucun avis pour le moment')}</p>
                 {canRate && (
-                  <p className="text-sm text-gray-500 mt-2">Soyez le premier à noter cet atelier !</p>
+                  <p className="text-sm text-gray-500 mt-2">{t('Soyez le premier à noter cet atelier !')}</p>
                 )}
               </div>
             )}
@@ -512,7 +516,7 @@ export default function WorkshopDetailsPage() {
                   <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-t-2xl">
                     <div className="flex items-center justify-between">
                       <h2 className="text-xl font-bold text-white font-[var(--font-poppins)]">
-                        {userRate ? 'Modifier votre note' : 'Noter cet atelier'}
+                        {userRate ? t('Modifier votre note') : t('Noter cet atelier')}
                       </h2>
                       <button
                         onClick={() => setShowRateModal(false)}
@@ -528,7 +532,7 @@ export default function WorkshopDetailsPage() {
                   <div className="p-6">
                     <div className="mb-4">
                       <label className="block text-sm font-semibold text-gray-700 mb-3">
-                        Votre note (1-5 étoiles)
+                        {t('Votre note (1-5 étoiles)')}
                       </label>
                       <div className="flex items-center gap-2">
                         {[1, 2, 3, 4, 5].map((star) => (
@@ -552,17 +556,19 @@ export default function WorkshopDetailsPage() {
 
                     <div className="mb-4">
                       <label className="block text-sm font-semibold text-gray-700 mb-2">
-                        Votre avis (optionnel)
+                        {t('Votre avis (optionnel)')}
                       </label>
                       <textarea
                         value={ratingMessage}
                         onChange={(e) => setRatingMessage(e.target.value)}
-                        placeholder="Partagez votre expérience avec cet atelier..."
+                        placeholder={t('Partagez votre expérience avec cet atelier...')}
                         className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 resize-none"
                         rows={4}
                         maxLength={500}
                       />
-                      <p className="text-xs text-gray-500 mt-1">{ratingMessage.length}/500 caractères</p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {ratingMessage.length}/500 {t('caractères')}
+                      </p>
                     </div>
 
                     <div className="flex gap-3">
@@ -571,13 +577,13 @@ export default function WorkshopDetailsPage() {
                         disabled={isSubmittingRate || ratingStar === 0}
                         className="flex-1 px-6 py-3 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white rounded-lg font-semibold transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        {isSubmittingRate ? 'Envoi...' : userRate ? 'Mettre à jour' : 'Envoyer'}
+                        {isSubmittingRate ? t('Envoi...') : userRate ? t('Mettre à jour') : t('Envoyer')}
                       </button>
                       <button
                         onClick={() => setShowRateModal(false)}
                         className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg font-semibold hover:bg-gray-300 transition-all"
                       >
-                        Annuler
+                        {t('Annuler')}
                       </button>
                     </div>
                   </div>
@@ -595,7 +601,7 @@ export default function WorkshopDetailsPage() {
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
               </svg>
-              Retour
+              {t('Retour')}
             </button>
           </div>
         </div>

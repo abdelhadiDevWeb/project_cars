@@ -5,7 +5,9 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useUser } from '@/contexts/UserContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { getImageUrl, getBackendUrl } from '@/utils/backend';
+import { useT } from '@/utils/i18n';
 import { io, Socket } from 'socket.io-client';
 import ChatModal from '@/components/ChatModal';
 
@@ -36,6 +38,8 @@ export default function ChatsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, token, isAuthenticated } = useUser();
+  const { language } = useLanguage();
+  const t = useT();
   const [chats, setChats] = useState<Chat[]>([]);
   const [loading, setLoading] = useState(true);
   const hasLoadedOnceRef = useRef(false);
@@ -214,11 +218,18 @@ export default function ChatsPage() {
     const hours = Math.floor(diff / 3600000);
     const days = Math.floor(diff / 86400000);
 
-    if (minutes < 1) return 'À l\'instant';
-    if (minutes < 60) return `Il y a ${minutes} min`;
-    if (hours < 24) return `Il y a ${hours}h`;
-    if (days < 7) return `Il y a ${days}j`;
-    return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+    if (minutes < 1) return language === 'en' ? 'Just now' : language === 'ar' ? 'الآن' : "À l'instant";
+    if (minutes < 60) {
+      return language === 'en' ? `${minutes} min ago` : language === 'ar' ? `منذ ${minutes} دقيقة` : `Il y a ${minutes} min`;
+    }
+    if (hours < 24) {
+      return language === 'en' ? `${hours}h ago` : language === 'ar' ? `منذ ${hours} ساعة` : `Il y a ${hours}h`;
+    }
+    if (days < 7) {
+      return language === 'en' ? `${days}d ago` : language === 'ar' ? `منذ ${days} يوم` : `Il y a ${days}j`;
+    }
+    const locale = language === 'en' ? 'en-US' : language === 'ar' ? 'ar-DZ' : 'fr-FR';
+    return date.toLocaleDateString(locale, { day: 'numeric', month: 'short' });
   };
 
   const filteredChats = chats
@@ -239,7 +250,7 @@ export default function ChatsPage() {
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
           </svg>
-          <p className="mt-4 text-gray-600">Chargement des chats...</p>
+          <p className="mt-4 text-gray-600">{t('Chargement des chats...')}</p>
         </div>
       </div>
     );
@@ -255,7 +266,7 @@ export default function ChatsPage() {
         <svg className="w-5 h-5 transition-transform group-hover:-translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
         </svg>
-        <span className="font-semibold text-sm">Retour</span>
+        <span className="font-semibold text-sm">{t('Retour')}</span>
       </Link>
 
       <div className="container mx-auto px-4 lg:px-8 py-12 lg:py-16 max-w-5xl">
@@ -264,7 +275,7 @@ export default function ChatsPage() {
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-4">
               <h1 className="text-4xl lg:text-5xl font-bold bg-gradient-to-r from-teal-600 via-cyan-600 to-indigo-600 bg-clip-text text-transparent font-[var(--font-poppins)]">
-                Mes Chats
+                {t('Mes Chats')}
               </h1>
               {totalUnread > 0 && (
                 <span className="inline-flex items-center justify-center min-w-8 h-8 px-3 rounded-full bg-gradient-to-r from-red-500 to-pink-500 text-white text-xs font-bold shadow-lg animate-pulse">
@@ -284,7 +295,7 @@ export default function ChatsPage() {
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Rechercher par nom ou email..."
+                placeholder={t('Rechercher par nom ou email...')}
               className="w-full pl-12 pr-12 py-4 rounded-2xl border-2 border-gray-200/60 bg-white/80 backdrop-blur-sm shadow-lg focus:outline-none focus:ring-4 focus:ring-teal-500/20 focus:border-teal-500 transition-all duration-200 text-gray-700 placeholder-gray-400"
             />
             {search.trim().length > 0 && (
@@ -292,7 +303,7 @@ export default function ChatsPage() {
                 type="button"
                 onClick={() => setSearch('')}
                 className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500 transition-colors p-1 rounded-full hover:bg-red-50"
-                aria-label="Effacer la recherche"
+                aria-label={t('Effacer la recherche')}
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -308,8 +319,10 @@ export default function ChatsPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
               </svg>
             </div>
-            <h2 className="text-3xl font-bold text-gray-900 mb-3">Aucun chat</h2>
-            <p className="text-gray-600 text-lg mb-8">Vous n'avez pas encore de conversations. Commencez à discuter avec un vendeur !</p>
+            <h2 className="text-3xl font-bold text-gray-900 mb-3">{t('Aucun chat')}</h2>
+            <p className="text-gray-600 text-lg mb-8">
+              {t("Vous n'avez pas encore de conversations. Commencez à discuter avec un vendeur !")}
+            </p>
             <Link
               href="/"
               className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-600 hover:to-cyan-600 text-white rounded-2xl font-semibold transition-all shadow-lg hover:shadow-xl hover:scale-105 duration-200"
@@ -317,7 +330,7 @@ export default function ChatsPage() {
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
-              Parcourir les véhicules
+              {t('Parcourir les véhicules')}
             </Link>
           </div>
         ) : (
@@ -329,8 +342,8 @@ export default function ChatsPage() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35m0 0A7.5 7.5 0 104.5 4.5a7.5 7.5 0 0012.15 12.15z" />
                   </svg>
                 </div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">Aucun résultat</h2>
-                <p className="text-gray-600">Essayez un autre nom ou email.</p>
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">{t('Aucun résultat')}</h2>
+                <p className="text-gray-600">{t('Essayez un autre nom ou email.')}</p>
               </div>
             ) : (
               <div className="divide-y divide-gray-100/50">
@@ -393,12 +406,12 @@ export default function ChatsPage() {
                                 : 'text-gray-600'
                             }`}>
                               <span className={chat.lastMessage.id_sender.id === user?._id ? 'text-teal-600 font-medium' : ''}>
-                                {chat.lastMessage.id_sender.id === user?._id ? 'Vous: ' : ''}
+                                {chat.lastMessage.id_sender.id === user?._id ? t('Vous: ') : ''}
                               </span>
                               {chat.lastMessage.message}
                             </p>
                           ) : (
-                            <p className="text-sm text-gray-400 italic">Aucun message</p>
+                            <p className="text-sm text-gray-400 italic">{t('Aucun message')}</p>
                           )}
                         </div>
                       </div>

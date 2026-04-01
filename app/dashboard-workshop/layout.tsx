@@ -7,12 +7,17 @@ import { usePathname, useRouter } from "next/navigation";
 import { useUser } from "@/contexts/UserContext";
 import { getImageUrl, getBackendUrl } from "@/utils/backend";
 import { io, Socket } from 'socket.io-client';
+import { useT } from "@/utils/i18n";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export default function WorkshopDashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const t = useT();
+  const { language } = useLanguage();
+  const isRTL = language === 'ar';
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -335,7 +340,7 @@ export default function WorkshopDashboardLayout({
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
           </svg>
-          <p className="mt-4 text-gray-600">Chargement...</p>
+          <p className="mt-4 text-gray-600">{t('Chargement...')}</p>
         </div>
       </div>
     );
@@ -346,18 +351,17 @@ export default function WorkshopDashboardLayout({
   }
 
   const navItems = [
-    { name: 'Tableau de bord', icon: 'dashboard', path: '/dashboard-workshop' },
-    { name: 'Rendez-vous', icon: 'appointment', path: '/dashboard-workshop/appointments' },
-    { name: "Aujourd'hui", icon: 'today', path: '/dashboard-workshop/today' },
-    { name: 'Factures', icon: 'facture', path: '/dashboard-workshop/factures' },
-    { name: 'Statistiques', icon: 'stats', path: '/dashboard-workshop/statistics' },
-    { name: 'Profil', icon: 'profile', path: '/dashboard-workshop/profile' },
+    { name: t('Tableau de bord'), icon: 'dashboard', path: '/dashboard-workshop' },
+    { name: t('Rendez-vous'), icon: 'appointment', path: '/dashboard-workshop/appointments' },
+    { name: t("Aujourd'hui"), icon: 'today', path: '/dashboard-workshop/today' },
+    { name: t('Factures'), icon: 'facture', path: '/dashboard-workshop/factures' },
+    { name: t('Statistiques'), icon: 'stats', path: '/dashboard-workshop/statistics' },
+    { name: t('Profil'), icon: 'profile', path: '/dashboard-workshop/profile' },
   ];
 
   return (
-    <div className="min-h-screen bg-gray-100 flex">
-      <div className={`${sidebarOpen ? 'w-64' : 'w-20'} flex-shrink-0`}></div>
-      <aside className={`${sidebarOpen ? 'w-64' : 'w-20'} fixed left-0 top-0 h-screen text-white transition-all duration-300 flex flex-col overflow-hidden z-50`}>
+    <div dir={isRTL ? 'rtl' : 'ltr'} className="min-h-screen bg-gray-100 flex">
+      <aside className={`${sidebarOpen ? 'w-64' : 'w-20'} fixed ${isRTL ? 'right-0' : 'left-0'} top-0 h-screen text-white transition-all duration-300 flex flex-col overflow-hidden z-50`}>
         <div className="absolute inset-0 overflow-hidden">
           <div className="relative w-full h-full">
             <Image
@@ -381,8 +385,8 @@ export default function WorkshopDashboardLayout({
               </div>
               {sidebarOpen && (
                 <div>
-                  <h2 className="text-lg font-bold font-[var(--font-poppins)] text-white drop-shadow-lg">Espace Atelier</h2>
-                  <p className="text-xs text-blue-200 mt-0.5">Gérez vos rendez-vous</p>
+                  <h2 className="text-lg font-bold font-[var(--font-poppins)] text-white drop-shadow-lg">{t('Espace Atelier')}</h2>
+                  <p className="text-xs text-blue-200 mt-0.5">{t('Gérez vos rendez-vous')}</p>
                 </div>
               )}
             </div>
@@ -436,12 +440,12 @@ export default function WorkshopDashboardLayout({
                     <span className="text-sm font-medium flex items-center gap-2 flex-1">
                       {item.name}
                       {item.icon === 'appointment' && unreadCount > 0 && (
-                        <span className="px-2 py-0.5 bg-red-500 text-white rounded-full text-xs font-bold ml-auto">
+                        <span className={`px-2 py-0.5 bg-red-500 text-white rounded-full text-xs font-bold ${isRTL ? 'mr-auto' : 'ml-auto'}`}>
                           {unreadCount > 9 ? '9+' : unreadCount}
                         </span>
                       )}
                       {item.icon === 'today' && todayAppointmentsCount > 0 && (
-                        <span className="px-2 py-0.5 bg-blue-500 text-white rounded-full text-xs font-bold ml-auto">
+                        <span className={`px-2 py-0.5 bg-blue-500 text-white rounded-full text-xs font-bold ${isRTL ? 'mr-auto' : 'ml-auto'}`}>
                           {todayAppointmentsCount > 9 ? '9+' : todayAppointmentsCount}
                         </span>
                       )}
@@ -455,17 +459,21 @@ export default function WorkshopDashboardLayout({
             <div className="p-4 border-t border-white/20 backdrop-blur-sm">
               <div className="bg-white/10 backdrop-blur-md rounded-xl p-5 border border-white/20 shadow-xl">
                 <p className="text-lg font-bold mb-1 text-white drop-shadow-md">
-                  {user.name || 'Atelier'}
+                  {user.name || t('Atelier')}
                 </p>
                 <p className="text-xs text-blue-100">
-                  {user.price_visite ? `${user.price_visite} DA/visite` : 'Prix non défini'}
+                  {user.price_visite ? `${user.price_visite} ${t('DA')}/${t('visite')}` : t('Prix non défini')}
                 </p>
               </div>
             </div>
           )}
         </div>
       </aside>
-      <div className="flex-1 flex flex-col overflow-hidden relative">
+      <div
+        className={`flex-1 flex flex-col overflow-hidden relative transition-[margin] duration-300 ${
+          sidebarOpen ? (isRTL ? 'mr-64' : 'ml-64') : (isRTL ? 'mr-20' : 'ml-20')
+        }`}
+      >
         <header className="bg-white border-b border-gray-200 shadow-sm px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button
@@ -498,17 +506,17 @@ export default function WorkshopDashboardLayout({
                     className="fixed inset-0 z-40" 
                     onClick={() => setShowNotifications(false)}
                   ></div>
-                  <div className="absolute right-0 mt-2 w-96 bg-white rounded-xl shadow-lg border border-gray-200 z-50 max-h-[600px] flex flex-col">
+                  <div className={`absolute ${isRTL ? 'left-0' : 'right-0'} mt-2 w-96 bg-white rounded-xl shadow-lg border border-gray-200 z-50 max-h-[600px] flex flex-col`}>
                     <div className="p-4 border-b border-gray-200 flex items-center justify-between">
                       <h3 className="text-lg font-bold text-gray-900 font-[var(--font-poppins)]">
-                        Notifications
+                        {t('Notifications')}
                       </h3>
                       {unreadCount > 0 && (
                         <button
                           onClick={markAllAsRead}
                           className="text-sm text-blue-600 hover:text-blue-700 font-medium"
                         >
-                          Tout marquer comme lu
+                          {t('Tout marquer comme lu')}
                         </button>
                       )}
                     </div>
@@ -518,7 +526,7 @@ export default function WorkshopDashboardLayout({
                           <svg className="w-12 h-12 mx-auto mb-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                           </svg>
-                          <p>Aucune notification</p>
+                          <p>{t('Aucune notification')}</p>
                         </div>
                       ) : (
                         <div className="divide-y divide-gray-100">
@@ -546,11 +554,11 @@ export default function WorkshopDashboardLayout({
                                   <p className="text-sm font-medium text-gray-900 mb-1">
                                     {notification.id_sender?.name || notification.id_sender?.firstName 
                                       ? (notification.id_sender.name || `${notification.id_sender.firstName} ${notification.id_sender.lastName || ''}`)
-                                      : 'Client'}
+                                      : t('Client')}
                                   </p>
                                   <p className="text-sm text-gray-600 mb-2">{notification.message}</p>
                                   <p className="text-xs text-gray-400">
-                                    {new Date(notification.createdAt).toLocaleDateString('fr-FR', {
+                                    {new Date(notification.createdAt).toLocaleDateString(language === 'ar' ? 'ar-DZ' : language === 'en' ? 'en-US' : 'fr-FR', {
                                       day: 'numeric',
                                       month: 'short',
                                       year: 'numeric',
@@ -591,16 +599,16 @@ export default function WorkshopDashboardLayout({
                 )}
                 <div className="hidden md:block">
                   <p className="text-sm font-semibold text-gray-900">
-                    {user?.name || 'Atelier'}
+                    {user?.name || t('Atelier')}
                   </p>
                   <p className="text-xs text-gray-500">
-                    {user?.email || 'Email'}
+                    {user?.email || t('Email')}
                   </p>
                   {user?.workshopType && (
                     <p className="text-xs font-medium text-teal-600 mt-0.5">
-                      {user.workshopType === 'mechanic' ? 'Mécanique' : 
-                       user.workshopType === 'paint_vehicle' ? 'Peinture véhicule' : 
-                       user.workshopType === 'mechanic_paint_inspector' ? 'Mécanique & Peinture Inspecteur' : 
+                      {user.workshopType === 'mechanic' ? t('Mécanique') : 
+                       user.workshopType === 'paint_vehicle' ? t('Peinture véhicule') : 
+                       user.workshopType === 'mechanic_paint_inspector' ? t('Mécanique & Peinture Inspecteur') : 
                        user.workshopType}
                     </p>
                   )}
@@ -615,7 +623,7 @@ export default function WorkshopDashboardLayout({
                     className="fixed inset-0 z-40" 
                     onClick={() => setShowUserMenu(false)}
                   ></div>
-                  <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-gray-200 z-50">
+                  <div className={`absolute ${isRTL ? 'left-0' : 'right-0'} mt-2 w-56 bg-white rounded-xl shadow-lg border border-gray-200 z-50`}>
                     <div className="py-2">
                       <button
                         onClick={logout}
@@ -624,7 +632,7 @@ export default function WorkshopDashboardLayout({
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                         </svg>
-                        Déconnexion
+                        {t('Déconnexion')}
                       </button>
                     </div>
                   </div>

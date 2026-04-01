@@ -6,6 +6,7 @@ import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getImageUrl } from "@/utils/backend";
 import { QRCodeSVG } from "react-qr-code";
+import { useT } from "@/utils/i18n";
 
 interface Car {
   _id: string;
@@ -34,6 +35,7 @@ interface Car {
 }
 
 export default function MyCarsPage() {
+  const t = useT();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [filter, setFilter] = useState('all');
@@ -88,14 +90,14 @@ export default function MyCarsPage() {
         if (!contentType || !contentType.includes("application/json")) {
           const text = await res.text();
           console.error("Non-JSON response:", text.substring(0, 200));
-          setError("Erreur serveur: réponse invalide. Vérifiez que le serveur backend est démarré.");
+          setError(t("Erreur serveur: réponse invalide. Vérifiez que le serveur backend est démarré."));
           setLoading(false);
           return;
         }
 
         const data = await res.json();
         if (!res.ok) {
-          setError(data?.message || "Erreur lors du chargement des voitures");
+          setError(data?.message || t("Erreur lors du chargement des voitures"));
           setLoading(false);
           return;
         }
@@ -109,7 +111,7 @@ export default function MyCarsPage() {
         setLoading(false);
       } catch (error) {
         console.error('Error fetching cars:', error);
-        setError("Erreur de connexion. Veuillez réessayer.");
+        setError(t("Erreur de connexion. Veuillez réessayer."));
         setLoading(false);
       }
     };
@@ -294,14 +296,14 @@ export default function MyCarsPage() {
         if (!contentType || !contentType.includes("application/json")) {
           const text = await res.text();
           console.error("Non-JSON response:", text.substring(0, 200));
-          setError("Erreur serveur: réponse invalide. Vérifiez que le serveur backend est démarré.");
+          setError(t("Erreur serveur: réponse invalide. Vérifiez que le serveur backend est démarré."));
           setIsUpdating(false);
           return;
         }
 
         const data = await res.json();
         if (!res.ok) {
-          setError(data?.message || "Erreur lors de la mise à jour");
+          setError(data?.message || t("Erreur lors de la mise à jour"));
           setIsUpdating(false);
           return;
         }
@@ -348,14 +350,14 @@ export default function MyCarsPage() {
       if (!contentType || !contentType.includes("application/json")) {
         const text = await res.text();
         console.error("Non-JSON response:", text.substring(0, 200));
-        setError("Erreur serveur: réponse invalide. Vérifiez que le serveur backend est démarré.");
+        setError(t("Erreur serveur: réponse invalide. Vérifiez que le serveur backend est démarré."));
         setIsUpdating(false);
         return;
       }
 
       const data = await res.json();
       if (!res.ok) {
-        setError(data?.message || "Erreur lors de la mise à jour");
+        setError(data?.message || t("Erreur lors de la mise à jour"));
         setIsUpdating(false);
         return;
       }
@@ -372,7 +374,7 @@ export default function MyCarsPage() {
       setIsUpdating(false);
     } catch (error) {
       console.error('Error updating car:', error);
-      setError("Erreur de connexion. Veuillez réessayer.");
+      setError(t("Erreur de connexion. Veuillez réessayer."));
       setIsUpdating(false);
     }
   };
@@ -386,7 +388,7 @@ export default function MyCarsPage() {
   };
 
   const handleDelete = async (carId: string) => {
-    if (!confirm("Êtes-vous sûr de vouloir supprimer cette voiture ?")) {
+    if (!confirm(t("Êtes-vous sûr de vouloir supprimer cette voiture ?"))) {
       return;
     }
 
@@ -412,14 +414,14 @@ export default function MyCarsPage() {
       if (!contentType || !contentType.includes("application/json")) {
         const text = await res.text();
         console.error("Non-JSON response:", text.substring(0, 200));
-        setError("Erreur serveur: réponse invalide. Vérifiez que le serveur backend est démarré.");
+        setError(t("Erreur serveur: réponse invalide. Vérifiez que le serveur backend est démarré."));
         setDeletingCarId(null);
         return;
       }
 
       const data = await res.json();
       if (!res.ok) {
-        setError(data?.message || "Erreur lors de la suppression");
+        setError(data?.message || t("Erreur lors de la suppression"));
         setDeletingCarId(null);
         return;
       }
@@ -429,7 +431,7 @@ export default function MyCarsPage() {
       setDeletingCarId(null);
     } catch (error) {
       console.error('Error deleting car:', error);
-      setError("Erreur de connexion. Veuillez réessayer.");
+      setError(t("Erreur de connexion. Veuillez réessayer."));
       setDeletingCarId(null);
     }
   };
@@ -437,13 +439,13 @@ export default function MyCarsPage() {
   const getStatusLabel = (status: string) => {
     switch (status) {
       case 'no_proccess':
-        return 'Non traité';
+        return t('Non traité');
       case 'en_attente':
-        return 'En attente';
+        return t('En attente');
       case 'actif':
-        return 'Actif';
+        return t('Actif');
       case 'sold':
-        return 'Vendu';
+        return t('Vendu');
       default:
         return status;
     }
@@ -468,8 +470,8 @@ export default function MyCarsPage() {
     <div className="p-6 bg-gradient-to-br from-gray-50 via-teal-50/30 to-gray-100">
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 font-[var(--font-poppins)] mb-2">Mes voitures</h1>
-          <p className="text-gray-600">Gérez toutes vos annonces de véhicules</p>
+          <h1 className="text-3xl font-bold text-gray-900 font-[var(--font-poppins)] mb-2">{t('Mes voitures')}</h1>
+          <p className="text-gray-600">{t('Gérez toutes vos annonces de véhicules')}</p>
         </div>
         <Link
           href="/dashboard-seller/add-car"
@@ -478,7 +480,7 @@ export default function MyCarsPage() {
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
           </svg>
-          Ajouter une voiture
+          {t('Ajouter une voiture')}
         </Link>
       </div>
         {error && (
@@ -496,11 +498,11 @@ export default function MyCarsPage() {
         <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-200 mb-6">
           <div className="flex flex-wrap gap-3">
             {[
-              { value: 'all', label: 'Toutes', count: myCars.length },
-              { value: 'no_proccess', label: 'Non traité', count: myCars.filter(c => c.status === 'no_proccess').length },
-              { value: 'en_attente', label: 'En attente', count: myCars.filter(c => c.status === 'en_attente').length },
-              { value: 'actif', label: 'Actives', count: myCars.filter(c => c.status === 'actif').length },
-              { value: 'sold', label: 'Vendues', count: myCars.filter(c => c.status === 'sold').length },
+              { value: 'all', label: t('Toutes'), count: myCars.length },
+              { value: 'no_proccess', label: t('Non traité'), count: myCars.filter(c => c.status === 'no_proccess').length },
+              { value: 'en_attente', label: t('En attente'), count: myCars.filter(c => c.status === 'en_attente').length },
+              { value: 'actif', label: t('Actives'), count: myCars.filter(c => c.status === 'actif').length },
+              { value: 'sold', label: t('Vendues'), count: myCars.filter(c => c.status === 'sold').length },
             ].map((filterOption) => (
               <button
                 key={filterOption.value}
@@ -523,7 +525,7 @@ export default function MyCarsPage() {
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
-            <p className="mt-4 text-gray-600">Chargement de vos voitures...</p>
+            <p className="mt-4 text-gray-600">{t('Chargement de vos voitures...')}</p>
           </div>
         ) : (
           <>
@@ -545,7 +547,7 @@ export default function MyCarsPage() {
                         <svg className="w-16 h-16 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                         </svg>
-                        <span className="ml-2 text-gray-500 text-sm">Aucune image</span>
+                        <span className="ml-2 text-gray-500 text-sm">{t('Aucune image')}</span>
                       </div>
                     )}
                 <div className="absolute top-4 left-4">
@@ -586,7 +588,7 @@ export default function MyCarsPage() {
                 )}
                 
                 <div className="text-2xl font-bold text-teal-600 font-[var(--font-poppins)]">
-                      {car.price.toLocaleString()} DA
+                      {car.price.toLocaleString()} {t('DA')}
                 </div>
 
                     {/* Show finished appointments with images and PDF */}
@@ -648,20 +650,20 @@ export default function MyCarsPage() {
                         }}
                     className="flex-1 px-4 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-lg font-semibold transition-colors text-center text-sm"
                   >
-                    Voir
+                    {t('Voir')}
                       </button>
                       <button 
                         onClick={() => handleEdit(car)}
                         className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-semibold transition-colors text-sm"
                       >
-                    Modifier
+                    {t('Modifier')}
                   </button>
                       <button 
                         onClick={() => handleDelete(car._id || car.id)}
                         disabled={deletingCarId === (car._id || car.id)}
                         className="px-4 py-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg font-semibold transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        {deletingCarId === (car._id || car.id) ? 'Suppression...' : 'Supprimer'}
+                        {deletingCarId === (car._id || car.id) ? t('Suppression...') : t('Supprimer')}
                   </button>
                 </div>
               </div>
@@ -683,7 +685,7 @@ export default function MyCarsPage() {
                       </div>
                       <div>
                         <h2 className="text-2xl font-bold text-white font-[var(--font-poppins)]">
-                          Modifier la voiture
+                          {t('Modifier la voiture')}
                         </h2>
                         <p className="text-sm text-teal-50 mt-1">
                           {editingCar.brand} {editingCar.model} {editingCar.year}
@@ -707,7 +709,7 @@ export default function MyCarsPage() {
                         <svg className="w-5 h-5 text-teal-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
-                        Informations générales
+                        {t('Informations générales')}
                       </h3>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
@@ -715,7 +717,7 @@ export default function MyCarsPage() {
                             <svg className="w-4 h-4 text-teal-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
                             </svg>
-                            Marque *
+                            {t('Marque')} *
                           </label>
                           <input
                             type="text"
@@ -732,7 +734,7 @@ export default function MyCarsPage() {
                             <svg className="w-4 h-4 text-teal-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                             </svg>
-                            Modèle *
+                            {t('Modèle')} *
                           </label>
                           <input
                             type="text"
@@ -749,7 +751,7 @@ export default function MyCarsPage() {
                             <svg className="w-4 h-4 text-teal-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                             </svg>
-                            Année *
+                            {t('Année')} *
                           </label>
                           <input
                             type="number"
@@ -977,7 +979,7 @@ export default function MyCarsPage() {
                                   type="button"
                                   onClick={() => removeExistingImage(imagePath)}
                                   className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1.5 hover:bg-red-600 opacity-0 group-hover:opacity-100 transition-all shadow-lg hover:scale-110"
-                                  title="Supprimer cette image"
+                                  title={t('Supprimer cette image')}
                                 >
                                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -989,7 +991,7 @@ export default function MyCarsPage() {
                         </div>
                       ) : (
                         <div className="mb-6 p-4 bg-white/50 rounded-xl border border-gray-200">
-                          <p className="text-sm text-gray-500 text-center">Aucune image existante</p>
+                          <p className="text-sm text-gray-500 text-center">{t('Aucune image existante')}</p>
                         </div>
                       )}
 
@@ -1060,7 +1062,7 @@ export default function MyCarsPage() {
                                     type="button"
                                     onClick={() => removeImagePreview(index)}
                                     className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1.5 hover:bg-red-600 shadow-lg hover:scale-110 transition-all"
-                                    title="Supprimer cette image"
+                                    title={t('Supprimer cette image')}
                                   >
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -1225,14 +1227,14 @@ export default function MyCarsPage() {
                           <p className="text-lg font-semibold text-gray-900">{viewingCar.km.toLocaleString()} km</p>
                         </div>
                         <div className="p-4 bg-white rounded-lg">
-                          <p className="text-sm text-gray-600 mb-1">Statut</p>
+                          <p className="text-sm text-gray-600 mb-1">{t('Statut')}</p>
                           <span className={`inline-block px-3 py-1.5 rounded-full text-sm font-bold ${getStatusColor(viewingCar.status)}`}>
                             {getStatusLabel(viewingCar.status)}
                           </span>
                         </div>
                         <div className="p-4 bg-white rounded-lg">
                           <p className="text-sm text-gray-600 mb-1">Prix</p>
-                          <p className="text-lg font-semibold text-teal-600">{viewingCar.price.toLocaleString()} DA</p>
+                          <p className="text-lg font-semibold text-teal-600">{viewingCar.price.toLocaleString()} {t('DA')}</p>
                         </div>
                       </div>
 

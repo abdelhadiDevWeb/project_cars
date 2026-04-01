@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { getImageUrl } from "@/utils/backend";
+import { useT } from "@/utils/i18n";
 
 interface Workshop {
   _id: string;
@@ -20,6 +21,7 @@ interface Workshop {
 }
 
 export default function AteliersPage() {
+  const t = useT();
   const [workshops, setWorkshops] = useState<Workshop[]>([]);
   const [loading, setLoading] = useState(true);
   const [workshopImages, setWorkshopImages] = useState<Record<string, string>>({});
@@ -65,11 +67,11 @@ export default function AteliersPage() {
   const getRoleLabel = (role: string) => {
     switch (role) {
       case 'mechanic':
-        return 'Mécanique';
+        return t('Mécanique');
       case 'paint_vehicle':
-        return 'Peinture véhicule';
+        return t('Peinture véhicule');
       case 'mechanic_paint_inspector':
-        return 'Mécanique & Peinture Inspecteur';
+        return t('Mécanique & Peinture Inspecteur');
       default:
         return role;
     }
@@ -83,7 +85,7 @@ export default function AteliersPage() {
             <div className="absolute inset-0 border-4 border-teal-200/50 rounded-full"></div>
             <div className="absolute inset-0 border-4 border-teal-600 border-t-transparent rounded-full animate-spin"></div>
           </div>
-          <p className="text-gray-600 font-medium">Chargement des ateliers...</p>
+          <p className="text-gray-600 font-medium">{t('Chargement des ateliers...')}</p>
         </div>
       </div>
     );
@@ -95,10 +97,10 @@ export default function AteliersPage() {
       <header className="bg-white/98 backdrop-blur-lg border-b border-gray-200/60 shadow-md">
         <div className="container mx-auto px-4 lg:px-8 py-6">
           <h1 className="text-4xl font-bold bg-gradient-to-r from-teal-600 to-cyan-600 bg-clip-text text-transparent font-[var(--font-poppins)]">
-            Ateliers Certifiés
+            {t('Ateliers Certifiés')}
           </h1>
           <p className="text-gray-600 mt-2">
-            Découvrez nos ateliers de vérification agréés
+            {t('Découvrez nos ateliers de vérification agréés')}
           </p>
         </div>
       </header>
@@ -112,8 +114,8 @@ export default function AteliersPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
               </svg>
             </div>
-            <h2 className="text-2xl font-semibold text-gray-900 mb-2">Aucun atelier disponible pour le moment</h2>
-            <p className="text-gray-600">Revenez bientôt pour découvrir nos ateliers certifiés.</p>
+            <h2 className="text-2xl font-semibold text-gray-900 mb-2">{t('Aucun atelier disponible pour le moment')}</h2>
+            <p className="text-gray-600">{t('Revenez bientôt pour découvrir nos ateliers certifiés.')}</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -153,7 +155,7 @@ export default function AteliersPage() {
                             <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                               <path fillRule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                             </svg>
-                            Certifié
+                            {t('Certifié')}
                           </div>
                         )}
                       </div>
@@ -179,13 +181,13 @@ export default function AteliersPage() {
                     <div className="space-y-2 mb-4">
                       {workshop.price_visit_mec && (
                         <div className="flex items-center justify-between text-sm">
-                          <span className="text-gray-600">Vérification mécanique:</span>
+                          <span className="text-gray-600">{t('Vérification mécanique:')}</span>
                           <span className="font-semibold text-teal-600">{workshop.price_visit_mec} DA</span>
                         </div>
                       )}
                       {workshop.price_visit_paint && (
                         <div className="flex items-center justify-between text-sm">
-                          <span className="text-gray-600">Vérification peinture:</span>
+                          <span className="text-gray-600">{t('Vérification peinture:')}</span>
                           <span className="font-semibold text-teal-600">{workshop.price_visit_paint} DA</span>
                         </div>
                       )}
@@ -209,7 +211,7 @@ export default function AteliersPage() {
                     
                     {/* View Profile Button */}
                     <button className="w-full px-4 py-2 bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-600 hover:to-cyan-600 text-white rounded-lg font-semibold transition-all duration-200 shadow-lg hover:shadow-xl">
-                      Voir le profil
+                      {t('Voir le profil')}
                     </button>
                   </div>
                 </Link>

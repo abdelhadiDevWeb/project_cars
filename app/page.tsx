@@ -9,6 +9,7 @@ import { getImageUrl, getBackendUrl } from "@/utils/backend";
 import ChatModal from "@/components/ChatModal";
 import { io, Socket } from 'socket.io-client';
 import logo from "@/images/logo.png";
+import { useT } from "@/utils/i18n";
 
 interface Car {
   _id: string;
@@ -69,6 +70,7 @@ function useScrollReveal(initialVisible: boolean = false) {
 export default function Home() {
   const router = useRouter();
   const { isLoading, isAuthenticated, user, userType, userRole, token, refreshUser, logout } = useUser();
+  const t = useT();
   const [cars, setCars] = useState<Car[]>([]);
   const [loadingCars, setLoadingCars] = useState(true);
   const [pageLoading, setPageLoading] = useState(true);
@@ -124,20 +126,30 @@ export default function Home() {
       })
       .filter((s) => !!s.id && !!s.image);
 
+    // Keep the hero stable: sort deterministically so language toggles / refetches don't shuffle images.
+    slides.sort((a, b) => a.id.localeCompare(b.id));
+
     // Keep the hero clean: show only a few DB cars
     return slides.slice(0, 5);
   }, [cars]);
 
-  // Keep index safe when slides list changes
+  // Keep index safe + stable when slides list changes
   useEffect(() => {
     if (heroSlides.length === 0) {
       setCurrentHeroIndex(0);
       return;
     }
-    if (currentHeroIndex >= heroSlides.length) {
-      setCurrentHeroIndex(0);
+    // If the current slide id still exists, keep showing it.
+    const currentId = heroSlides[currentHeroIndex]?.id;
+    if (currentId) {
+      const idx = heroSlides.findIndex((s) => s.id === currentId);
+      if (idx !== -1 && idx !== currentHeroIndex) {
+        setCurrentHeroIndex(idx);
+        return;
+      }
     }
-  }, [heroSlides.length, currentHeroIndex]);
+    if (currentHeroIndex >= heroSlides.length) setCurrentHeroIndex(0);
+  }, [heroSlides, currentHeroIndex]);
 
   // Redirect admin to dashboard-admin
   useEffect(() => {
@@ -421,9 +433,9 @@ export default function Home() {
             </div>
           </div>
           <h2 className="text-3xl font-bold bg-gradient-to-r from-teal-600 to-cyan-600 bg-clip-text text-transparent font-[var(--font-poppins)] mb-3">
-            Chargement...
+            {t('Chargement...')}
           </h2>
-          <p className="text-gray-600 text-lg">Veuillez patienter</p>
+          <p className="text-gray-600 text-lg">{t('Veuillez patienter')}</p>
           <div className="mt-6 flex justify-center gap-2">
             <div className="w-2 h-2 bg-teal-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
             <div className="w-2 h-2 bg-cyan-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
@@ -452,7 +464,7 @@ export default function Home() {
                   </svg>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-gray-900">Nouveau message</p>
+                  <p className="text-sm font-semibold text-gray-900">{t('Nouveau message')}</p>
                   <p className="text-xs text-gray-600 truncate">{notification.message}</p>
                 </div>
                 <button
@@ -498,21 +510,21 @@ export default function Home() {
                 href="/vendeurs-certifies"
                 className="text-gray-700 hover:text-teal-600 transition-all duration-200 font-medium text-sm relative group"
               >
-                Vendeurs Certifiés
+                {t('Vendeurs Certifiés')}
                 <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-teal-600 transition-all duration-200 group-hover:w-full"></span>
               </Link>
               <Link
                 href="/ateliers"
                 className="text-gray-700 hover:text-teal-600 transition-all duration-200 font-medium text-sm relative group"
               >
-                Ateliers
+                {t('Ateliers')}
                 <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-teal-600 transition-all duration-200 group-hover:w-full"></span>
               </Link>
               <Link
                 href="/faq"
                 className="text-gray-700 hover:text-teal-600 transition-all duration-200 font-medium text-sm relative group"
               >
-                FAQ
+                {t('FAQ')}
                 <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-teal-600 transition-all duration-200 group-hover:w-full"></span>
               </Link>
               {/* Dashboard Link - Only show if authenticated */}
@@ -521,7 +533,7 @@ export default function Home() {
                   href={userType === 'workshop' ? '/dashboard-workshop' : '/dashboard-seller'}
                   className="text-gray-700 hover:text-teal-600 transition-all duration-200 font-medium text-sm relative group"
                 >
-                  Dashboard
+                  {t('Dashboard')}
                   <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-teal-600 transition-all duration-200 group-hover:w-full"></span>
                 </Link>
               )}
@@ -563,7 +575,7 @@ export default function Home() {
                         }
                       }}
                       className="relative p-3 text-gray-700 hover:text-teal-600 transition-all duration-200 hover:bg-teal-50 rounded-xl"
-                      title="Mes chats"
+                      title={t("Mes chats")}
                     >
                       <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
@@ -637,7 +649,7 @@ export default function Home() {
                                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
                                   </svg>
-                                  Tableau de bord
+                                  {t("Tableau de bord")}
                                 </Link>
                               ) : userType === 'user' && userRole !== 'admin' ? (
                                 <Link
@@ -648,7 +660,7 @@ export default function Home() {
                                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
                                   </svg>
-                                  Tableau de bord
+                                  {t("Tableau de bord")}
                                 </Link>
                               ) : null}
                               
@@ -662,7 +674,7 @@ export default function Home() {
                                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                                   </svg>
-                                  Mon profil
+                                  {t("Mon profil")}
                                 </Link>
                               )}
                               
@@ -680,7 +692,7 @@ export default function Home() {
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                                 </svg>
-                                Déconnexion
+                                {t("Déconnexion")}
                               </button>
                             </div>
                           </div>
@@ -689,7 +701,7 @@ export default function Home() {
                     </div>
                   ) : (
                     <Link href="/login" className="px-6 py-2.5 bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-600 hover:to-cyan-600 text-white rounded-xl font-semibold transition-all duration-200 text-sm shadow-lg hover:shadow-xl">
-                      Se Connecter
+                      {t("Se Connecter")}
                     </Link>
                   )}
                 </>
@@ -725,23 +737,23 @@ export default function Home() {
               <div className="space-y-5">
                 <div className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-teal-100 via-cyan-100 to-teal-100 text-teal-700 rounded-full text-sm font-semibold shadow-lg border border-teal-200/60 backdrop-blur-sm hover:shadow-xl transition-all duration-300 hover:scale-105">
                   <span className="text-lg animate-pulse">✨</span>
-                  <span>Plateforme de confiance</span>
+                  <span>{t('Plateforme de confiance')}</span>
                 </div>
                 
                 <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold leading-[1.15] font-[var(--font-poppins)]">
                   <span className="block bg-gradient-to-r from-blue-900 via-teal-700 to-cyan-600 bg-clip-text text-transparent mb-1.5">
-                    Achetez et vendez
+                    {t('Achetez et vendez')}
                   </span>
                   <span className="block bg-gradient-to-r from-teal-600 to-cyan-500 bg-clip-text text-transparent mb-1.5">
-                    des véhicules certifiés
+                    {t('des véhicules certifiés')}
                   </span>
                   <span className="block text-gray-800">
-                    en toute confiance
+                    {t('en toute confiance')}
                   </span>
               </h1>
               
                 <p className="text-base sm:text-lg text-gray-600 leading-relaxed max-w-xl">
-                  La plateforme de référence en Algérie pour acheter et vendre des véhicules d&apos;occasion vérifiés et certifiés par des ateliers agréés.
+                  {t("La plateforme de référence en Algérie pour acheter et vendre des véhicules d'occasion vérifiés et certifiés par des ateliers agréés.")}
                 </p>
               </div>
 
@@ -752,7 +764,7 @@ export default function Home() {
                       <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                     </svg>
                   </div>
-                  <span className="text-sm font-bold text-gray-800">Vérifiés par des experts</span>
+                  <span className="text-sm font-bold text-gray-800">{t('Vérifiés par des experts')}</span>
                 </div>
                 <div className="flex items-center gap-3 px-5 py-3 bg-white/95 backdrop-blur-md rounded-xl shadow-lg border border-white/60 hover:shadow-xl transition-all duration-300 hover:scale-105 hover:-translate-y-1 group">
                   <div className="w-10 h-10 bg-gradient-to-br from-blue-400 to-cyan-500 rounded-xl flex items-center justify-center shadow-md group-hover:scale-110 transition-transform">
@@ -760,7 +772,7 @@ export default function Home() {
                       <path fillRule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                     </svg>
                   </div>
-                  <span className="text-sm font-bold text-gray-800">100% Sécurisé</span>
+                  <span className="text-sm font-bold text-gray-800">{t('100% Sécurisé')}</span>
                 </div>
               </div>
 
@@ -773,7 +785,7 @@ export default function Home() {
                   <svg className="w-5 h-5 relative z-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                   </svg>
-                  <span className="relative z-10">Trouver une voiture</span>
+                  <span className="relative z-10">{t('Trouver une voiture')}</span>
                   <svg className="w-5 h-5 relative z-10 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                   </svg>
@@ -782,7 +794,7 @@ export default function Home() {
                   href="/register" 
                   className="px-8 py-4 bg-white hover:bg-gradient-to-r hover:from-gray-50 hover:to-white text-gray-800 rounded-2xl font-bold transition-all duration-300 text-base text-center shadow-xl hover:shadow-2xl border-2 border-gray-200 hover:border-teal-400 hover:scale-105 transform hover:-translate-y-1"
                 >
-                  Déposer mon véhicule
+                  {t('Déposer mon véhicule')}
                 </Link>
               </div>
             </div>
@@ -866,7 +878,7 @@ export default function Home() {
                   <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                   </svg>
-                  Certifié
+                  {t('Certifié')}
                 </div>
               </div>
             </div>
@@ -880,9 +892,9 @@ export default function Home() {
           <div className="mb-6 flex items-center justify-between">
             <div>
               <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-900 to-teal-700 bg-clip-text text-transparent mb-2 font-[var(--font-poppins)]">
-                Dernières Offres Certifiées
+                {t('Dernières Offres Certifiées')}
               </h2>
-              <p className="text-gray-600">Recherchez parmi nos véhicules vérifiés</p>
+              <p className="text-gray-600">{t('Recherchez parmi nos véhicules vérifiés')}</p>
             </div>
             <button
               type="button"
@@ -892,7 +904,7 @@ export default function Home() {
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
               </svg>
-              Filtres avancés
+              {t('Filtres avancés')}
               {countActiveAdvancedFilters() > 0 && (
                 <span className="absolute -top-2 -right-2 bg-purple-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
                   {countActiveAdvancedFilters()}
@@ -906,7 +918,7 @@ export default function Home() {
               type="text"
               value={searchFilters.brand}
               onChange={(e) => handleFilterChange('brand', e.target.value)}
-              placeholder="Marque"
+              placeholder={t('Marque')}
               list="brands-list"
               className="px-5 py-3.5 bg-gradient-to-br from-gray-50 to-white border-2 border-gray-200 rounded-xl focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30 transition-all font-medium text-gray-700 text-sm shadow-md hover:shadow-lg hover:border-teal-300 focus:scale-105"
             />
@@ -932,7 +944,7 @@ export default function Home() {
               type="text"
               value={searchFilters.model}
               onChange={(e) => handleFilterChange('model', e.target.value)}
-              placeholder="Modèle"
+              placeholder={t('Modèle')}
               className="px-5 py-3.5 bg-gradient-to-br from-gray-50 to-white border-2 border-gray-200 rounded-xl focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30 transition-all font-medium text-gray-700 text-sm shadow-md hover:shadow-lg hover:border-teal-300 focus:scale-105"
             />
             
@@ -940,7 +952,7 @@ export default function Home() {
               type="number"
               value={searchFilters.maxPrice}
               onChange={(e) => handleFilterChange('maxPrice', e.target.value)}
-              placeholder="Prix Maximum"
+              placeholder={t('Prix Maximum')}
               min="0"
               className="px-5 py-3.5 bg-gradient-to-br from-gray-50 to-white border-2 border-gray-200 rounded-xl focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30 transition-all font-medium text-gray-700 text-sm shadow-md hover:shadow-lg hover:border-teal-300 focus:scale-105"
             />
@@ -949,7 +961,7 @@ export default function Home() {
               type="number"
               value={searchFilters.maxKm}
               onChange={(e) => handleFilterChange('maxKm', e.target.value)}
-              placeholder="Km Maximum"
+              placeholder={t('Km Maximum')}
               min="0"
               className="px-5 py-3.5 bg-gradient-to-br from-gray-50 to-white border-2 border-gray-200 rounded-xl focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30 transition-all font-medium text-gray-700 text-sm shadow-md hover:shadow-lg hover:border-teal-300 focus:scale-105"
             />
@@ -969,7 +981,7 @@ export default function Home() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
               )}
-              Rechercher
+              {t('Rechercher')}
             </button>
           </form>
         </div>
@@ -998,8 +1010,8 @@ export default function Home() {
                   </svg>
                 </div>
                 <div>
-                  <h3 className="text-2xl font-bold text-white font-[var(--font-poppins)]">Filtres avancés</h3>
-                  <p className="text-white/80 text-sm">Affinez votre recherche</p>
+                  <h3 className="text-2xl font-bold text-white font-[var(--font-poppins)]">{t('Filtres avancés')}</h3>
+                  <p className="text-white/80 text-sm">{t('Affinez votre recherche')}</p>
                 </div>
               </div>
               <button
@@ -1366,7 +1378,7 @@ export default function Home() {
           <div className="lg:col-span-2">
             <div className="mb-10">
               <h2 className="text-5xl font-bold bg-gradient-to-r from-blue-900 via-teal-700 to-cyan-600 bg-clip-text text-transparent mb-3 font-[var(--font-poppins)]">
-              Dernières Offres Certifiées
+              {t('Dernières Offres Certifiées')}
             </h2>
               <p className="text-gray-600 text-lg">Découvrez notre sélection de véhicules vérifiés</p>
             </div>
@@ -1381,7 +1393,7 @@ export default function Home() {
                       <div className="w-6 h-6 bg-gradient-to-br from-teal-500 to-cyan-500 rounded-full"></div>
                     </div>
                   </div>
-                  <p className="text-lg text-gray-700 font-semibold">Chargement des véhicules...</p>
+                  <p className="text-lg text-gray-700 font-semibold">{t('Chargement des véhicules...')}</p>
                   <div className="mt-4 flex justify-center gap-2">
                     <div className="w-2 h-2 bg-teal-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
                     <div className="w-2 h-2 bg-cyan-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
@@ -1394,8 +1406,8 @@ export default function Home() {
                 <svg className="w-20 h-20 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                <p className="text-lg font-semibold text-gray-700 mb-2">Aucune voiture disponible</p>
-                <p className="text-gray-600">Aucune voiture active disponible pour le moment.</p>
+                <p className="text-lg font-semibold text-gray-700 mb-2">{t('Aucune voiture disponible')}</p>
+                <p className="text-gray-600">{t('Aucune voiture active disponible pour le moment.')}</p>
               </div>
             ) : (
             <div className="grid md:grid-cols-2 gap-6">
@@ -1427,11 +1439,11 @@ export default function Home() {
                         <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent"></div>
                         {car.status === 'actif' ? (
                           <div className="absolute top-4 left-4 bg-gradient-to-r from-teal-500 to-cyan-500 text-white px-4 py-2 rounded-full text-xs font-bold shadow-lg backdrop-blur-sm">
-                            ✓ Certifié
+                            ✓ {t('Certifié')}
                           </div>
                         ) : (
                           <div className="absolute top-4 left-4 bg-gradient-to-r from-gray-500 to-gray-600 text-white px-4 py-2 rounded-full text-xs font-bold shadow-lg backdrop-blur-sm">
-                            Non certifié
+                            {t('Non certifié')}
                           </div>
                         )}
                         <div className="absolute bottom-4 right-4 bg-white/90 backdrop-blur-sm text-gray-800 px-3 py-1.5 rounded-lg text-xs font-semibold shadow-md">
@@ -1465,7 +1477,7 @@ export default function Home() {
                             </div>
                           )}
                           <div className="flex-1">
-                            <span className="text-gray-500 text-xs">Vendeur</span>
+                            <span className="text-gray-500 text-xs">{t('Vendeur')}</span>
                             <div className="flex items-center gap-2">
                               <Link 
                                 href={`/users/${car.owner._id}`}
@@ -1479,7 +1491,7 @@ export default function Home() {
                                   <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                                   </svg>
-                                  Certifié
+                                  {t('Certifié')}
                                 </span>
                               )}
                             </div>
@@ -1536,7 +1548,7 @@ export default function Home() {
                         <Link href={`/cars/${car._id || car.id}`} className="flex-1">
                           <div className="w-full py-4 bg-gradient-to-r from-teal-500 via-cyan-500 to-teal-500 hover:from-teal-600 hover:via-cyan-600 hover:to-teal-600 text-white rounded-xl font-bold transition-all duration-300 text-sm text-center cursor-pointer shadow-lg hover:shadow-xl hover:shadow-teal-500/50 group-hover:scale-105 transform hover:-translate-y-1 relative overflow-hidden">
                             <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
-                            <span className="relative z-10">Voir Détails</span>
+                            <span className="relative z-10">{t('Voir Détails')}</span>
                           </div>
                         </Link>
                         {isAuthenticated && car.owner && typeof car.owner === 'object' && car.owner._id !== user?._id && (
@@ -1574,7 +1586,7 @@ export default function Home() {
                 <h2 className="text-2xl font-bold bg-gradient-to-r from-teal-600 to-cyan-600 bg-clip-text text-transparent mb-2 font-[var(--font-poppins)]">
                   CarSure DZ
               </h2>
-                <p className="text-gray-600 text-sm">Votre plateforme de confiance</p>
+                <p className="text-gray-600 text-sm">{t('Votre plateforme de confiance')}</p>
               </div>
               
               <div className="space-y-5">
@@ -1588,7 +1600,7 @@ export default function Home() {
                     <p className="text-4xl font-bold bg-gradient-to-r from-green-600 via-emerald-600 to-green-600 bg-clip-text text-transparent font-[var(--font-poppins)]">
                       {stats.activeCars.toLocaleString()}
                     </p>
-                    <p className="text-gray-700 text-sm font-semibold">Véhicules certifiés</p>
+                    <p className="text-gray-700 text-sm font-semibold">{t('Véhicules certifiés')}</p>
                   </div>
                 </div>
                 
@@ -1602,7 +1614,7 @@ export default function Home() {
                     <p className="text-4xl font-bold bg-gradient-to-r from-blue-600 via-cyan-600 to-blue-600 bg-clip-text text-transparent font-[var(--font-poppins)]">
                       {stats.verifiedUsers.toLocaleString()}
                     </p>
-                    <p className="text-gray-700 text-sm font-semibold">Utilisateurs vérifiés</p>
+                    <p className="text-gray-700 text-sm font-semibold">{t('Utilisateurs vérifiés')}</p>
                   </div>
                 </div>
                 
@@ -1616,14 +1628,14 @@ export default function Home() {
                     <p className="text-4xl font-bold bg-gradient-to-r from-orange-600 via-amber-600 to-orange-600 bg-clip-text text-transparent font-[var(--font-poppins)]">
                       {stats.verifiedWorkshops.toLocaleString()}
                     </p>
-                    <p className="text-gray-700 text-sm font-semibold">Ateliers partenaires</p>
+                    <p className="text-gray-700 text-sm font-semibold">{t('Ateliers partenaires')}</p>
                   </div>
                 </div>
               </div>
               
               <div className="mt-6 pt-6 border-t border-gray-200">
                 <a href="#" className="group text-teal-600 hover:text-teal-700 font-bold flex items-center gap-2 text-sm transition-all hover:gap-3">
-                  <span>Comment ça fonctionne?</span>
+                  <span>{t('Comment ça fonctionne?')}</span>
                   <svg className="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
                   </svg>
@@ -1652,11 +1664,11 @@ export default function Home() {
                 </div>
                 <span className="text-xl font-bold font-[var(--font-poppins)]">CarSure DZ</span>
               </div>
-              <p className="text-gray-400 text-sm">Votre plateforme de confiance pour acheter et vendre des véhicules certifiés en Algérie.</p>
+              <p className="text-gray-400 text-sm">{t('Votre plateforme de confiance pour acheter et vendre des véhicules certifiés en Algérie.')}</p>
             </div>
             {[
-              { title: 'Navigation', links: ['Achéteurs Certifiés', 'Vendeurs Certifiés', 'Ateliers', 'FAQ'] },
-              { title: 'Support', links: ['Contact', 'Aide', 'Blog'] },
+              { title: t('Navigation'), links: [t('Achéteurs Certifiés'), t('Vendeurs Certifiés'), t('Ateliers'), t('FAQ')] },
+              { title: t('Support'), links: [t('Contact'), t('Aide'), t('Blog')] },
             ].map((section, i) => (
               <div key={i}>
                 <h3 className="font-bold mb-4 font-[var(--font-poppins)]">{section.title}</h3>
@@ -1672,7 +1684,7 @@ export default function Home() {
               </div>
             ))}
             <div>
-              <h3 className="font-bold mb-4 font-[var(--font-poppins)]">Suivez-nous</h3>
+              <h3 className="font-bold mb-4 font-[var(--font-poppins)]">{t('Suivez-nous')}</h3>
               <div className="flex gap-3">
                 {['facebook', 'twitter', 'instagram'].map((social, i) => (
                   <a 
@@ -1691,7 +1703,7 @@ export default function Home() {
             </div>
           </div>
           <div className="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400 text-sm">
-            <p>&copy; 2024 CarSure DZ. Tous droits réservés.</p>
+            <p>&copy; 2024 CarSure DZ. {t('Tous droits réservés.')}</p>
           </div>
         </div>
       </footer>

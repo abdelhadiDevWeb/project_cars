@@ -6,6 +6,7 @@ import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { getImageUrl } from "@/utils/backend";
 import { useUser } from "@/contexts/UserContext";
+import { useT } from "@/utils/i18n";
 
 interface User {
   _id: string;
@@ -40,6 +41,7 @@ export default function UserDetailsPage() {
   const router = useRouter();
   const userId = params.id as string;
   const { user: currentUser, token, userType } = useUser();
+  const t = useT();
   const [user, setUser] = useState<User | null>(null);
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -65,7 +67,7 @@ export default function UserDetailsPage() {
         const userRes = await fetch(`/api/auth/user/${userId}`);
         
         if (!userRes.ok) {
-          setError("Utilisateur non trouvé");
+          setError(t("Utilisateur non trouvé"));
           setLoading(false);
           return;
         }
@@ -85,7 +87,7 @@ export default function UserDetailsPage() {
         }
       } catch (error) {
         console.error('Error fetching user:', error);
-        setError("Erreur de connexion. Veuillez réessayer.");
+        setError(t("Erreur de connexion. Veuillez réessayer."));
       } finally {
         setLoading(false);
       }
@@ -183,12 +185,12 @@ export default function UserDetailsPage() {
 
   const handleSubmitRate = async () => {
     if (!ratingStar || ratingStar < 1 || ratingStar > 5) {
-      alert('Veuillez sélectionner une note entre 1 et 5 étoiles');
+      alert(t('Veuillez sélectionner une note entre 1 et 5 étoiles'));
       return;
     }
 
     if (!token) {
-      alert('Vous devez être connecté pour noter');
+      alert(t('Vous devez être connecté pour noter'));
       return;
     }
 
@@ -211,7 +213,7 @@ export default function UserDetailsPage() {
       if (res.ok) {
         const data = await res.json();
         if (data.ok) {
-          alert(userRate ? 'Note mise à jour avec succès' : 'Note ajoutée avec succès');
+          alert(userRate ? t('Note mise à jour avec succès') : t('Note ajoutée avec succès'));
           setShowRateModal(false);
           // Refresh rates
           const ratesRes = await fetch(`/api/rate/user/${userId}`);
@@ -238,11 +240,11 @@ export default function UserDetailsPage() {
         }
       } else {
         const data = await res.json();
-        alert(data.message || 'Erreur lors de l\'envoi de la note');
+        alert(data.message || t("Erreur lors de l'envoi de la note"));
       }
     } catch (error) {
       console.error('Error submitting rate:', error);
-      alert('Erreur lors de l\'envoi de la note');
+      alert(t("Erreur lors de l'envoi de la note"));
     } finally {
       setIsSubmittingRate(false);
     }
@@ -256,7 +258,7 @@ export default function UserDetailsPage() {
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
           </svg>
-          <p className="mt-4 text-gray-600">Chargement...</p>
+          <p className="mt-4 text-gray-600">{t('Chargement...')}</p>
         </div>
       </div>
     );
@@ -266,9 +268,9 @@ export default function UserDetailsPage() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <p className="text-red-600 mb-4">{error || "Utilisateur non trouvé"}</p>
+          <p className="text-red-600 mb-4">{error || t("Utilisateur non trouvé")}</p>
           <Link href="/" className="text-teal-600 hover:text-teal-700 font-semibold">
-            Retour à l'accueil
+            {t("Retour à l'accueil")}
           </Link>
         </div>
       </div>
@@ -283,7 +285,7 @@ export default function UserDetailsPage() {
             onClick={() => router.back()}
             className="text-teal-600 hover:text-teal-700 font-semibold mb-6 inline-block"
           >
-            ← Retour
+            ← {t('Retour')}
           </button>
 
           <div className="bg-white rounded-2xl shadow-lg p-8 border border-gray-200">
@@ -314,7 +316,7 @@ export default function UserDetailsPage() {
                       <svg className="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                       </svg>
-                      Certifié
+                      {t('Certifié')}
                     </span>
                   )}
                 </div>
@@ -322,11 +324,11 @@ export default function UserDetailsPage() {
                 <div className="flex items-center justify-center md:justify-start gap-2">
                   {user.status ? (
                     <span className="px-4 py-2 bg-green-100 text-green-700 rounded-full text-sm font-bold">
-                      Compte vérifié
+                      {t('Compte vérifié')}
                     </span>
                   ) : (
                     <span className="px-4 py-2 bg-yellow-100 text-yellow-700 rounded-full text-sm font-bold">
-                      Compte en attente
+                      {t('Compte en attente')}
                     </span>
                   )}
                 </div>
@@ -335,7 +337,7 @@ export default function UserDetailsPage() {
 
             <div className="border-t border-gray-200 pt-6">
               <h2 className="text-xl font-bold text-gray-900 font-[var(--font-poppins)] mb-4">
-                Informations de contact
+                {t('Informations de contact')}
               </h2>
               <div className="space-y-3">
                 <div className="flex items-center gap-3">
@@ -356,7 +358,7 @@ export default function UserDetailsPage() {
             {/* Ratings Section */}
             <div className="border-t border-gray-200 pt-6 mt-6">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-bold text-gray-900 font-[var(--font-poppins)]">Avis et notes</h2>
+                <h2 className="text-xl font-bold text-gray-900 font-[var(--font-poppins)]">{t('Avis et notes')}</h2>
                 {canRate && (
                   <button
                     onClick={() => {
@@ -374,7 +376,7 @@ export default function UserDetailsPage() {
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
                     </svg>
-                    {userRate ? 'Modifier ma note' : 'Noter ce vendeur'}
+                    {userRate ? t('Modifier ma note') : t('Noter ce vendeur')}
                   </button>
                 )}
               </div>
@@ -404,7 +406,7 @@ export default function UserDetailsPage() {
                           </svg>
                         ))}
                       </div>
-                      <div className="text-sm text-gray-600 mt-1">{totalRatings} avis</div>
+                      <div className="text-sm text-gray-600 mt-1">{totalRatings} {t('avis')}</div>
                     </div>
                   </div>
 
@@ -446,9 +448,9 @@ export default function UserDetailsPage() {
                   <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
                   </svg>
-                  <p className="text-gray-600">Aucun avis pour le moment</p>
+                  <p className="text-gray-600">{t('Aucun avis pour le moment')}</p>
                   {canRate && (
-                    <p className="text-sm text-gray-500 mt-2">Soyez le premier à noter ce vendeur !</p>
+                    <p className="text-sm text-gray-500 mt-2">{t('Soyez le premier à noter ce vendeur !')}</p>
                   )}
                 </div>
               )}
@@ -467,7 +469,7 @@ export default function UserDetailsPage() {
                   <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-t-2xl">
                     <div className="flex items-center justify-between">
                       <h2 className="text-xl font-bold text-white font-[var(--font-poppins)]">
-                        {userRate ? 'Modifier votre note' : 'Noter ce vendeur'}
+                        {userRate ? t('Modifier votre note') : t('Noter ce vendeur')}
                       </h2>
                       <button
                         onClick={() => setShowRateModal(false)}
@@ -483,7 +485,7 @@ export default function UserDetailsPage() {
                   <div className="p-6">
                     <div className="mb-4">
                       <label className="block text-sm font-semibold text-gray-700 mb-3">
-                        Votre note (1-5 étoiles)
+                        {t('Votre note (1-5 étoiles)')}
                       </label>
                       <div className="flex items-center gap-2">
                         {[1, 2, 3, 4, 5].map((star) => (
@@ -507,17 +509,19 @@ export default function UserDetailsPage() {
 
                     <div className="mb-4">
                       <label className="block text-sm font-semibold text-gray-700 mb-2">
-                        Votre avis (optionnel)
+                        {t('Votre avis (optionnel)')}
                       </label>
                       <textarea
                         value={ratingMessage}
                         onChange={(e) => setRatingMessage(e.target.value)}
-                        placeholder="Partagez votre expérience avec ce vendeur..."
+                        placeholder={t('Partagez votre expérience avec ce vendeur...')}
                         className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 resize-none"
                         rows={4}
                         maxLength={500}
                       />
-                      <p className="text-xs text-gray-500 mt-1">{ratingMessage.length}/500 caractères</p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {ratingMessage.length}/500 {t('caractères')}
+                      </p>
                     </div>
 
                     <div className="flex gap-3">
@@ -526,13 +530,13 @@ export default function UserDetailsPage() {
                         disabled={isSubmittingRate || ratingStar === 0}
                         className="flex-1 px-6 py-3 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white rounded-lg font-semibold transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        {isSubmittingRate ? 'Envoi...' : userRate ? 'Mettre à jour' : 'Envoyer'}
+                        {isSubmittingRate ? t('Envoi...') : userRate ? t('Mettre à jour') : t('Envoyer')}
                       </button>
                       <button
                         onClick={() => setShowRateModal(false)}
                         className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg font-semibold hover:bg-gray-300 transition-all"
                       >
-                        Annuler
+                        {t('Annuler')}
                       </button>
                     </div>
                   </div>

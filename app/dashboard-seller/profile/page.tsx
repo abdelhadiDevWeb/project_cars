@@ -6,10 +6,12 @@ import { useState, useEffect, useRef } from "react";
 import { useUser } from "@/contexts/UserContext";
 import { useRouter } from "next/navigation";
 import { getImageUrl } from "@/utils/backend";
+import { useT } from "@/utils/i18n";
 
 export default function ProfilePage() {
   const router = useRouter();
   const { user, isLoading, updateUser, refreshUser } = useUser();
+  const t = useT();
   const [activeTab, setActiveTab] = useState('profile');
   const [formData, setFormData] = useState({
     firstName: '',
@@ -89,13 +91,13 @@ export default function ProfilePage() {
     // Validate file type
     const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
     if (!allowedTypes.includes(file.type)) {
-      setError("Type de fichier non autorisé. Seules les images (JPEG, PNG, WEBP, GIF) sont acceptées.");
+      setError(t("Type de fichier non autorisé. Seules les images (JPEG, PNG, WEBP, GIF) sont acceptées."));
       return;
     }
 
     // Validate file size (5MB max)
     if (file.size > 5 * 1024 * 1024) {
-      setError("L'image est trop grande. La taille maximale est de 5MB.");
+      setError(t("L'image est trop grande. La taille maximale est de 5MB."));
       return;
     }
 
@@ -126,7 +128,7 @@ export default function ProfilePage() {
       if (!contentType || !contentType.includes("application/json")) {
         const text = await res.text();
         console.error("Non-JSON response:", text.substring(0, 200));
-        setError("Erreur serveur: réponse invalide");
+        setError(t("Erreur serveur: réponse invalide"));
         setIsUploadingImage(false);
         return;
       }
@@ -148,7 +150,7 @@ export default function ProfilePage() {
         }));
       }
 
-      setSuccess("Image de profil mise à jour avec succès");
+      setSuccess(t("Image de profil mise à jour avec succès"));
       setIsUploadingImage(false);
       
       // Clear success message after 3 seconds
@@ -160,14 +162,14 @@ export default function ProfilePage() {
       }
     } catch (error) {
       console.error('Error uploading profile image:', error);
-      setError("Erreur de connexion. Veuillez réessayer.");
+      setError(t("Erreur de connexion. Veuillez réessayer."));
       setIsUploadingImage(false);
     }
   };
 
   // Handle profile image deletion
   const handleImageDelete = async () => {
-    if (!confirm("Êtes-vous sûr de vouloir supprimer votre image de profil ?")) {
+    if (!confirm(t("Êtes-vous sûr de vouloir supprimer votre image de profil ?"))) {
       return;
     }
 
@@ -194,7 +196,7 @@ export default function ProfilePage() {
       if (!contentType || !contentType.includes("application/json")) {
         const text = await res.text();
         console.error("Non-JSON response:", text.substring(0, 200));
-        setError("Erreur serveur: réponse invalide");
+        setError(t("Erreur serveur: réponse invalide"));
         setIsDeletingImage(false);
         return;
       }
@@ -202,7 +204,7 @@ export default function ProfilePage() {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data?.message || "Erreur lors de la suppression de l'image");
+        setError(data?.message || t("Erreur lors de la suppression de l'image"));
         setIsDeletingImage(false);
         return;
       }
@@ -213,14 +215,14 @@ export default function ProfilePage() {
       window.dispatchEvent(new CustomEvent('profileImageUpdated', { 
         detail: { image: null } 
       }));
-      setSuccess("Image de profil supprimée avec succès");
+      setSuccess(t("Image de profil supprimée avec succès"));
       setIsDeletingImage(false);
       
       // Clear success message after 3 seconds
       setTimeout(() => setSuccess(''), 3000);
     } catch (error) {
       console.error('Error deleting profile image:', error);
-      setError("Erreur de connexion. Veuillez réessayer.");
+      setError(t("Erreur de connexion. Veuillez réessayer."));
       setIsDeletingImage(false);
     }
   };
@@ -278,7 +280,7 @@ export default function ProfilePage() {
       if (!contentType || !contentType.includes("application/json")) {
         const text = await res.text();
         console.error("Non-JSON response:", text.substring(0, 200));
-        setError("Erreur serveur: réponse invalide");
+        setError(t("Erreur serveur: réponse invalide"));
         setIsUpdating(false);
         return;
       }
@@ -286,7 +288,7 @@ export default function ProfilePage() {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data?.message || "Erreur lors de la mise à jour du profil");
+        setError(data?.message || t("Erreur lors de la mise à jour du profil"));
         setIsUpdating(false);
         return;
       }
@@ -297,14 +299,14 @@ export default function ProfilePage() {
         await refreshUser();
       }
 
-      setSuccess("Profil mis à jour avec succès");
+      setSuccess(t("Profil mis à jour avec succès"));
       setIsUpdating(false);
       
       // Clear success message after 3 seconds
       setTimeout(() => setSuccess(''), 3000);
     } catch (error) {
       console.error('Error updating profile:', error);
-      setError("Erreur de connexion. Veuillez réessayer.");
+      setError(t("Erreur de connexion. Veuillez réessayer."));
       setIsUpdating(false);
     }
   };
@@ -317,7 +319,7 @@ export default function ProfilePage() {
 
     // Client-side validation
     if (passwordData.newPassword !== passwordData.confirmPassword) {
-      setError('Les mots de passe ne correspondent pas');
+      setError(t('Les mots de passe ne correspondent pas'));
       return;
     }
 
@@ -347,7 +349,7 @@ export default function ProfilePage() {
       if (!contentType || !contentType.includes("application/json")) {
         const text = await res.text();
         console.error("Non-JSON response:", text.substring(0, 200));
-        setError("Erreur serveur: réponse invalide");
+        setError(t("Erreur serveur: réponse invalide"));
         setIsChangingPassword(false);
         return;
       }
@@ -358,16 +360,16 @@ export default function ProfilePage() {
         // Check for detailed validation errors
         if (data?.errors && Array.isArray(data.errors) && data.errors.length > 0) {
           setErrors(data.errors);
-          setError(data?.message || "Erreur de validation");
+          setError(data?.message || t("Erreur de validation"));
         } else {
-          setError(data?.message || "Erreur lors du changement de mot de passe");
+          setError(data?.message || t("Erreur lors du changement de mot de passe"));
           setErrors([]);
         }
         setIsChangingPassword(false);
         return;
       }
 
-      setSuccess("Mot de passe modifié avec succès");
+      setSuccess(t("Mot de passe modifié avec succès"));
     setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
       setErrors([]);
       setIsChangingPassword(false);
@@ -376,7 +378,7 @@ export default function ProfilePage() {
       setTimeout(() => setSuccess(''), 3000);
     } catch (error) {
       console.error('Error changing password:', error);
-      setError("Erreur de connexion. Veuillez réessayer.");
+      setError(t("Erreur de connexion. Veuillez réessayer."));
       setErrors([]);
       setIsChangingPassword(false);
     }
@@ -390,7 +392,7 @@ export default function ProfilePage() {
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
           </svg>
-          <p className="mt-4 text-gray-600">Chargement...</p>
+          <p className="mt-4 text-gray-600">{t('Chargement...')}</p>
         </div>
       </div>
     );
@@ -403,8 +405,8 @@ export default function ProfilePage() {
   return (
     <div className="p-6 bg-gradient-to-br from-gray-50 via-teal-50/30 to-gray-100">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900 font-[var(--font-poppins)] mb-2">Profil</h1>
-        <p className="text-gray-600">Gérez vos informations personnelles et paramètres</p>
+        <h1 className="text-3xl font-bold text-gray-900 font-[var(--font-poppins)] mb-2">{t('Profil')}</h1>
+        <p className="text-gray-600">{t('Gérez vos informations personnelles et paramètres')}</p>
       </div>
 
       <div className="max-w-4xl mx-auto">
@@ -471,7 +473,7 @@ export default function ProfilePage() {
               <label
                 htmlFor="profile-image-upload"
                 className={`absolute bottom-0 right-0 bg-teal-500 hover:bg-teal-600 text-white rounded-full p-2 cursor-pointer shadow-lg transition-colors ${isUploadingImage || isDeletingImage ? 'opacity-50 cursor-not-allowed' : ''}`}
-                title="Modifier la photo de profil"
+                title={t("Modifier la photo de profil")}
               >
                 {isUploadingImage ? (
                   <svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -490,7 +492,7 @@ export default function ProfilePage() {
                   onClick={handleImageDelete}
                   disabled={isDeletingImage || isUploadingImage}
                   className="absolute top-0 right-0 bg-red-500 hover:bg-red-600 text-white rounded-full p-1.5 cursor-pointer shadow-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  title="Supprimer la photo de profil"
+                  title={t('Supprimer la photo de profil')}
                 >
                   {isDeletingImage ? (
                     <svg className="w-3 h-3 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -514,11 +516,11 @@ export default function ProfilePage() {
               <div className="flex items-center gap-2 mt-2">
                 {user.status ? (
                 <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-bold">
-                    Compte activé
+                    {t('Compte activé')}
                   </span>
                 ) : (
                   <span className="px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs font-bold">
-                    Compte en attente
+                    {t('Compte en attente')}
                 </span>
                 )}
               </div>
@@ -537,7 +539,7 @@ export default function ProfilePage() {
                   : 'text-gray-600 hover:text-gray-900'
               }`}
             >
-              Informations personnelles
+              {t('Informations personnelles')}
             </button>
             <button
               onClick={() => setActiveTab('password')}
@@ -547,7 +549,7 @@ export default function ProfilePage() {
                   : 'text-gray-600 hover:text-gray-900'
               }`}
             >
-              Mot de passe
+              {t('Mot de passe')}
             </button>
             <button
               onClick={() => setActiveTab('settings')}
@@ -557,7 +559,7 @@ export default function ProfilePage() {
                   : 'text-gray-600 hover:text-gray-900'
               }`}
             >
-              Paramètres
+              {t('Paramètres')}
             </button>
           </div>
 
@@ -568,7 +570,7 @@ export default function ProfilePage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-2">
-                      Prénom *
+                      {t('Prénom')} *
                     </label>
                     <input
                       type="text"
@@ -583,7 +585,7 @@ export default function ProfilePage() {
 
                   <div>
                     <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-2">
-                      Nom *
+                      {t('Nom')} *
                     </label>
                     <input
                       type="text"
@@ -598,7 +600,7 @@ export default function ProfilePage() {
 
                   <div>
                     <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                      Email
+                      {t('Email')}
                     </label>
                     <input
                       type="email"
@@ -608,12 +610,12 @@ export default function ProfilePage() {
                       value={formData.email}
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-100 text-gray-600 cursor-not-allowed"
                     />
-                    <p className="text-xs text-gray-500 mt-1">L'email ne peut pas être modifié</p>
+                    <p className="text-xs text-gray-500 mt-1">{t("L'email ne peut pas être modifié")}</p>
                   </div>
 
                   <div>
                     <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-2">
-                      Téléphone *
+                      {t('Téléphone')} *
                     </label>
                     <input
                       type="tel"
@@ -634,7 +636,7 @@ export default function ProfilePage() {
                     disabled={isUpdating}
                     className="px-6 py-3 bg-teal-500 hover:bg-teal-600 text-white rounded-lg font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {isUpdating ? 'Mise à jour...' : 'Enregistrer les modifications'}
+                    {isUpdating ? t('Mise à jour...') : t('Enregistrer les modifications')}
                   </button>
                 </div>
               </form>
@@ -644,7 +646,7 @@ export default function ProfilePage() {
               <form onSubmit={handlePasswordSubmit} className="space-y-6">
                 <div>
                   <label htmlFor="currentPassword" className="block text-sm font-medium text-gray-700 mb-2">
-                    Mot de passe actuel *
+                    {t('Mot de passe actuel')} *
                   </label>
                   <input
                     type="password"
@@ -659,7 +661,7 @@ export default function ProfilePage() {
 
                 <div>
                   <label htmlFor="newPassword" className="block text-sm font-medium text-gray-700 mb-2">
-                    Nouveau mot de passe *
+                    {t('Nouveau mot de passe')} *
                   </label>
                   <input
                     type="password"
@@ -674,7 +676,7 @@ export default function ProfilePage() {
 
                 <div>
                   <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">
-                    Confirmer le nouveau mot de passe *
+                    {t('Confirmer le nouveau mot de passe')} *
                   </label>
                   <input
                     type="password"
@@ -693,7 +695,7 @@ export default function ProfilePage() {
                     disabled={isChangingPassword}
                     className="px-6 py-3 bg-teal-500 hover:bg-teal-600 text-white rounded-lg font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {isChangingPassword ? 'Changement en cours...' : 'Changer le mot de passe'}
+                    {isChangingPassword ? t('Changement en cours...') : t('Changer le mot de passe')}
                   </button>
                 </div>
               </form>
@@ -703,30 +705,8 @@ export default function ProfilePage() {
               <div className="space-y-6">
                 <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
                   <div>
-                    <h3 className="font-semibold text-gray-900">Notifications par email</h3>
-                    <p className="text-sm text-gray-600">Recevoir des emails pour les nouveaux messages</p>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input type="checkbox" className="sr-only peer" defaultChecked />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-teal-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-teal-600"></div>
-                  </label>
-                </div>
-
-                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                  <div>
-                    <h3 className="font-semibold text-gray-900">Notifications SMS</h3>
-                    <p className="text-sm text-gray-600">Recevoir des SMS pour les rendez-vous</p>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input type="checkbox" className="sr-only peer" />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-teal-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-teal-600"></div>
-                  </label>
-                </div>
-
-                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                  <div>
-                    <h3 className="font-semibold text-gray-900">Profil public</h3>
-                    <p className="text-sm text-gray-600">Rendre votre profil visible aux acheteurs</p>
+                    <h3 className="font-semibold text-gray-900">{t('Profil public')}</h3>
+                    <p className="text-sm text-gray-600">{t('Rendre votre profil visible aux acheteurs')}</p>
                   </div>
                   <label className="relative inline-flex items-center cursor-pointer">
                     <input type="checkbox" className="sr-only peer" defaultChecked />
@@ -736,7 +716,7 @@ export default function ProfilePage() {
 
                 <div className="pt-6 border-t border-gray-200">
                   <button className="px-6 py-3 bg-red-500 hover:bg-red-600 text-white rounded-lg font-semibold transition-colors">
-                    Supprimer mon compte
+                    {t('Supprimer mon compte')}
                   </button>
                 </div>
               </div>

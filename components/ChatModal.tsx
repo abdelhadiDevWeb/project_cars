@@ -3,6 +3,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { useUser } from '@/contexts/UserContext';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { useT } from '@/utils/i18n';
 
 interface Message {
   id: string;
@@ -37,6 +39,8 @@ interface ChatModalProps {
 
 export default function ChatModal({ isOpen, onClose, otherUserId, otherUserName, otherUserEmail }: ChatModalProps) {
   const { user, token } = useUser();
+  const { language } = useLanguage();
+  const t = useT();
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
@@ -183,11 +187,11 @@ export default function ChatModal({ isOpen, onClose, otherUserId, otherUserName,
           scrollToBottom();
         } else {
           console.error('Error sending message:', data.message);
-          alert(data.message || 'Erreur lors de l\'envoi du message');
+          alert(data.message || t("Erreur lors de l'envoi du message"));
         }
     } catch (error) {
       console.error('Error sending message:', error);
-      alert('Erreur de connexion. Veuillez réessayer.');
+      alert(t('Erreur de connexion. Veuillez réessayer.'));
     } finally {
       setSending(false);
     }
@@ -240,7 +244,7 @@ export default function ChatModal({ isOpen, onClose, otherUserId, otherUserName,
         >
           {messages.length === 0 ? (
             <div className="flex items-center justify-center h-full">
-              <p className="text-gray-500">Aucun message. Commencez la conversation !</p>
+              <p className="text-gray-500">{t('Aucun message. Commencez la conversation !')}</p>
             </div>
           ) : (
             messages.map((message, index) => {
@@ -261,10 +265,13 @@ export default function ChatModal({ isOpen, onClose, otherUserId, otherUserName,
                   >
                     <p className="text-sm whitespace-pre-wrap break-words">{message.message}</p>
                     <p className={`text-xs mt-1 ${isMine ? 'text-white/70' : 'text-gray-500'}`}>
-                      {new Date(message.createdAt).toLocaleTimeString('fr-FR', {
+                      {new Date(message.createdAt).toLocaleTimeString(
+                        language === 'ar' ? 'ar-DZ' : language === 'en' ? 'en-US' : 'fr-FR',
+                        {
                         hour: '2-digit',
                         minute: '2-digit',
-                      })}
+                        }
+                      )}
                     </p>
                   </div>
                 </div>
@@ -281,7 +288,7 @@ export default function ChatModal({ isOpen, onClose, otherUserId, otherUserName,
               type="text"
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
-              placeholder="Tapez votre message..."
+              placeholder={t('Tapez votre message...')}
               className="flex-1 px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none"
               disabled={sending || !chatId}
             />
@@ -297,7 +304,7 @@ export default function ChatModal({ isOpen, onClose, otherUserId, otherUserName,
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                   </svg>
-                  Envoyer
+                  {t('Envoyer')}
                 </>
               )}
             </button>

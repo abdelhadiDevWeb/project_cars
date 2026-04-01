@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useUser } from "@/contexts/UserContext";
+import { useT } from "@/utils/i18n";
 
 interface Stats {
   activeCars: number;
@@ -27,6 +28,7 @@ interface TopCar {
 
 export default function StatisticsPage() {
   const { user, token } = useUser();
+  const t = useT();
   const [timeRange, setTimeRange] = useState('month');
   const [stats, setStats] = useState<Stats>({
     activeCars: 0,
@@ -88,7 +90,7 @@ export default function StatisticsPage() {
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
           </svg>
-          <p className="mt-4 text-gray-600">Chargement...</p>
+          <p className="mt-4 text-gray-600">{t('Chargement...')}</p>
         </div>
       </div>
     );
@@ -114,8 +116,8 @@ export default function StatisticsPage() {
     <div className="p-6 bg-gradient-to-br from-gray-50 via-teal-50/30 to-gray-100">
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 font-[var(--font-poppins)] mb-2">Statistiques</h1>
-          <p className="text-gray-600">Analysez vos performances de vente</p>
+          <h1 className="text-3xl font-bold text-gray-900 font-[var(--font-poppins)] mb-2">{t('Statistiques')}</h1>
+          <p className="text-gray-600">{t('Analysez vos performances de vente')}</p>
         </div>
         <div className="flex gap-2">
           {['week', 'month', 'year'].map((range) => (
@@ -128,7 +130,7 @@ export default function StatisticsPage() {
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
-              {range === 'week' ? 'Semaine' : range === 'month' ? 'Mois' : 'Année'}
+              {range === 'week' ? t('Semaine') : range === 'month' ? t('Mois') : t('Année')}
             </button>
           ))}
         </div>
@@ -138,51 +140,51 @@ export default function StatisticsPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
           <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl shadow-lg p-6 border border-blue-200/50">
             <div className="flex items-center justify-between mb-2">
-            <p className="text-sm text-blue-700 font-medium">Véhicules Actifs</p>
+            <p className="text-sm text-blue-700 font-medium">{t('Véhicules Actifs')}</p>
               <svg className="w-8 h-8 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
               <path d="M8 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM15 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z" />
               <path d="M3 4a1 1 0 00-1 1v10a1 1 0 001 1h1.05a2.5 2.5 0 014.9 0H10a1 1 0 001-1V5a1 1 0 00-1-1H3zM14 7a1 1 0 00-1 1v6.05A2.5 2.5 0 0115.95 16H17a1 1 0 001-1v-5a1 1 0 00-.293-.707l-2-2A1 1 0 0015 7h-1z" />
               </svg>
             </div>
           <p className="text-3xl font-bold text-blue-900 font-[var(--font-poppins)]">{stats.activeCars}</p>
-          <p className="text-xs text-blue-600 mt-2">{stats.totalCars} au total</p>
+          <p className="text-xs text-blue-600 mt-2">{stats.totalCars} {t('au total')}</p>
           </div>
 
           <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-2xl shadow-lg p-6 border border-purple-200/50">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-sm text-purple-700 font-medium">Messages</p>
+              <p className="text-sm text-purple-700 font-medium">{t('Messages')}</p>
               <svg className="w-8 h-8 text-purple-600" fill="currentColor" viewBox="0 0 20 20">
                 <path d="M2 5a2 2 0 012-2h7a2 2 0 012 2v4a2 2 0 01-2 2H9l-3 3v-3H4a2 2 0 01-2-2V5z" />
                 <path d="M15 7v2a4 4 0 01-4 4H9.828l-1.766 1.767c.28.149.599.233.938.233h2l3 3v-3h2a2 2 0 002-2V9a2 2 0 00-2-2h-1z" />
               </svg>
             </div>
           <p className="text-3xl font-bold text-purple-900 font-[var(--font-poppins)]">{stats.unreadNotifications}</p>
-          <p className="text-xs text-purple-600 mt-2">{stats.totalNotifications} messages au total</p>
+          <p className="text-xs text-purple-600 mt-2">{stats.totalNotifications} {t('messages au total')}</p>
           </div>
 
           <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-2xl shadow-lg p-6 border border-green-200/50">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-sm text-green-700 font-medium">Ventes</p>
+              <p className="text-sm text-green-700 font-medium">{t('Ventes')}</p>
               <svg className="w-8 h-8 text-green-600" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
               </svg>
             </div>
           <p className="text-3xl font-bold text-green-900 font-[var(--font-poppins)]">{stats.soldCars}</p>
-            <p className="text-xs text-green-600 mt-2">Taux de conversion: {stats.conversionRate}%</p>
+            <p className="text-xs text-green-600 mt-2">{t('Taux de conversion')}: {stats.conversionRate}%</p>
           </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Top Cars */}
           <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-200">
-          <h2 className="text-xl font-bold text-gray-900 mb-6 font-[var(--font-poppins)]">Vos véhicules</h2>
+          <h2 className="text-xl font-bold text-gray-900 mb-6 font-[var(--font-poppins)]">{t('Vos véhicules')}</h2>
           {topCars.length === 0 ? (
             <div className="text-center py-8 text-gray-500">
               <svg className="w-12 h-12 mx-auto mb-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM15 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z" />
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 00-1 1v10a1 1 0 001 1h1.05a2.5 2.5 0 014.9 0H10a1 1 0 001-1V5a1 1 0 00-1-1H3zM14 7a1 1 0 00-1 1v6.05A2.5 2.5 0 0115.95 16H17a1 1 0 001-1v-5a1 1 0 00-.293-.707l-2-2A1 1 0 0015 7h-1z" />
               </svg>
-              <p>Aucun véhicule trouvé</p>
+              <p>{t('Aucun véhicule trouvé')}</p>
             </div>
           ) : (
             <div className="space-y-4">
@@ -194,7 +196,7 @@ export default function StatisticsPage() {
                   <div className="flex-1">
                     <h3 className="font-semibold text-gray-900">{car.name}</h3>
                     <div className="flex gap-4 text-sm text-gray-600 mt-1">
-                      <span>Année: {car.year}</span>
+                      <span>{t('Année')}: {car.year}</span>
                     </div>
                   </div>
                   <span className={`px-3 py-1 rounded-full text-xs font-bold ${getStatusColor(car.status)}`}>
@@ -209,25 +211,25 @@ export default function StatisticsPage() {
         {/* Additional Stats */}
         <div className="space-y-6">
           <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-200">
-            <h3 className="text-lg font-bold text-gray-900 mb-4 font-[var(--font-poppins)]">Rendez-vous</h3>
+            <h3 className="text-lg font-bold text-gray-900 mb-4 font-[var(--font-poppins)]">{t('Rendez-vous')}</h3>
             <p className="text-3xl font-bold text-teal-600 font-[var(--font-poppins)]">{stats.totalAppointments}</p>
-            <p className="text-sm text-gray-600 mt-2">Total des rendez-vous</p>
-            <p className="text-xs text-teal-600 mt-1">{stats.upcomingAppointments} à venir</p>
+            <p className="text-sm text-gray-600 mt-2">{t('Total des rendez-vous')}</p>
+            <p className="text-xs text-teal-600 mt-1">{stats.upcomingAppointments} {t('à venir')}</p>
           </div>
 
           <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-200">
-            <h3 className="text-lg font-bold text-gray-900 mb-4 font-[var(--font-poppins)]">Taux de conversion</h3>
+            <h3 className="text-lg font-bold text-gray-900 mb-4 font-[var(--font-poppins)]">{t('Taux de conversion')}</h3>
             <p className="text-3xl font-bold text-green-600 font-[var(--font-poppins)]">{stats.conversionRate}%</p>
-            <p className="text-sm text-gray-600 mt-2">Véhicules vendus / Total</p>
+            <p className="text-sm text-gray-600 mt-2">{t('Véhicules vendus / Total')}</p>
           </div>
 
           {stats.averagePrice > 0 && (
           <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-200">
-            <h3 className="text-lg font-bold text-gray-900 mb-4 font-[var(--font-poppins)]">Prix moyen</h3>
+            <h3 className="text-lg font-bold text-gray-900 mb-4 font-[var(--font-poppins)]">{t('Prix moyen')}</h3>
               <p className="text-3xl font-bold text-orange-600 font-[var(--font-poppins)]">
-                {(stats.averagePrice / 1000000).toFixed(2)}M DA
+                {(stats.averagePrice / 1000000).toFixed(2)}M {t('DA')}
               </p>
-            <p className="text-sm text-gray-600 mt-2">Par véhicule vendu</p>
+            <p className="text-sm text-gray-600 mt-2">{t('Par véhicule vendu')}</p>
             </div>
           )}
           </div>

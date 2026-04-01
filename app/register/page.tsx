@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState, useEffect } from "react";
+import { useT } from "@/utils/i18n";
 
 export default function RegisterPage() {
   const [registerAs, setRegisterAs] = useState<null | "client" | "workshop">(null);
@@ -38,6 +39,8 @@ export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
+  const t = useT();
+
   const handleUserChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setUserData({
       ...userData,
@@ -66,7 +69,7 @@ export default function RegisterPage() {
 
     if (registerAs === "client") {
       if (userData.password !== userData.confirmPassword) {
-        setFormError("Les mots de passe ne correspondent pas");
+        setFormError(t("Les mots de passe ne correspondent pas"));
         setIsSubmitting(false);
         return;
       }
@@ -123,7 +126,7 @@ export default function RegisterPage() {
 
     if (registerAs === "workshop") {
       if (workshopData.password !== workshopData.confirmPassword) {
-        setFormError("Les mots de passe ne correspondent pas");
+        setFormError(t("Les mots de passe ne correspondent pas"));
         setIsSubmitting(false);
         return;
       }
@@ -189,12 +192,12 @@ export default function RegisterPage() {
     
     // Validate code format
     if (normalizedCode.length !== 6) {
-      setCodeError("Le code doit contenir exactement 6 chiffres");
+      setCodeError(t("Le code doit contenir exactement 6 chiffres"));
       return;
     }
 
     if (timeLeft <= 0) {
-      setCodeError("Le code a expiré. Veuillez vous réinscrire.");
+      setCodeError(t("Le code a expiré. Veuillez vous réinscrire."));
       return;
     }
 
@@ -226,7 +229,7 @@ export default function RegisterPage() {
       console.log('Verification response:', data);
       
       if (!res.ok) {
-        setCodeError(data?.message || "Code invalide ou expiré");
+        setCodeError(data?.message || t("Code invalide ou expiré"));
         setIsVerifying(false);
         return;
       }
@@ -248,7 +251,7 @@ export default function RegisterPage() {
       }
     } catch (error) {
       console.error('Verification error:', error);
-      setCodeError("Erreur de connexion. Veuillez réessayer.");
+      setCodeError(t("Erreur de connexion. Veuillez réessayer."));
     } finally {
       setIsVerifying(false);
     }
@@ -282,10 +285,10 @@ export default function RegisterPage() {
               </svg>
             </div>
             <h2 className="text-3xl font-bold text-blue-900 font-[var(--font-poppins)] mb-2">
-              Vérifiez votre email
+              {t("Vérifiez votre email")}
             </h2>
             <p className="text-sm text-gray-600 mb-1">
-              Nous avons envoyé un code de vérification à
+              {t("Nous avons envoyé un code de vérification à")}
             </p>
             <p className="text-sm font-semibold text-teal-600 mb-2">{verificationEmail}</p>
             <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium mb-6 ${
@@ -297,9 +300,11 @@ export default function RegisterPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               {timeLeft > 0 ? (
-                <span>Code valide pendant {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}</span>
+                <span>
+                  {t("Code valide pendant")} {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}
+                </span>
               ) : (
-                <span>Code expiré</span>
+                <span>{t("Code expiré")}</span>
               )}
             </div>
           </div>
@@ -307,7 +312,7 @@ export default function RegisterPage() {
           <form onSubmit={handleVerifyEmail} className="bg-white/95 backdrop-blur-md p-8 rounded-3xl shadow-2xl border-2 border-gray-200/50">
             <div className="mb-6">
               <label htmlFor="code" className="block text-sm font-medium text-gray-700 mb-2">
-                Code de vérification (6 chiffres)
+                {t("Code de vérification (6 chiffres)")}
               </label>
               <input
                 id="code"
@@ -347,19 +352,19 @@ export default function RegisterPage() {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  <span>Vérification...</span>
+                  <span>{t("Vérification...")}</span>
                 </>
               ) : timeLeft <= 0 ? (
-                "Code expiré"
+                t("Code expiré")
               ) : (
-                "Vérifier"
+                t("Vérifier")
               )}
             </button>
 
             {timeLeft <= 0 && (
               <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
                 <p className="text-sm text-red-700 text-center mb-3">
-                  Le code a expiré. Veuillez vous réinscrire pour recevoir un nouveau code.
+                  {t("Le code a expiré. Veuillez vous réinscrire pour recevoir un nouveau code.")}
                 </p>
                 <button
                   type="button"
@@ -372,7 +377,7 @@ export default function RegisterPage() {
                   }}
                   className="w-full py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-semibold transition-colors text-sm"
                 >
-                  Retour à l'inscription
+                  {t("Retour à l'inscription")}
                 </button>
               </div>
             )}
@@ -387,7 +392,7 @@ export default function RegisterPage() {
                 }}
                 className="text-sm text-gray-600 hover:text-teal-600 transition-colors"
               >
-                ← Retour au formulaire
+                ← {t("Retour au formulaire")}
               </button>
             </div>
           </form>
@@ -413,10 +418,10 @@ export default function RegisterPage() {
             </svg>
           </div>
           <h2 className="text-4xl font-bold bg-gradient-to-r from-blue-900 via-teal-700 to-cyan-600 bg-clip-text text-transparent font-[var(--font-poppins)] mb-2">
-            Créer un compte
+            {t("Créer un compte")}
           </h2>
           <p className="text-base text-gray-600">
-            Rejoignez CarSure DZ et commencez à acheter/vendre des véhicules certifiés
+            {t("Rejoignez CarSure DZ et commencez à acheter/vendre des véhicules certifiés")}
           </p>
         </div>
 
@@ -440,8 +445,8 @@ export default function RegisterPage() {
                 <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
               </svg>
             </div>
-            <p className="font-bold text-gray-900 text-lg">Client</p>
-            <p className="text-xs text-gray-600 mt-1">Acheteur / vendeur</p>
+            <p className="font-bold text-gray-900 text-lg">{t("Client")}</p>
+            <p className="text-xs text-gray-600 mt-1">{t("Acheteur / vendeur")}</p>
           </button>
 
           <button
@@ -462,8 +467,8 @@ export default function RegisterPage() {
                 <path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
               </svg>
             </div>
-            <p className="font-bold text-gray-900 text-lg">Atelier</p>
-            <p className="text-xs text-gray-600 mt-1">Partenaire / inspection</p>
+            <p className="font-bold text-gray-900 text-lg">{t("Atelier")}</p>
+            <p className="text-xs text-gray-600 mt-1">{t("Partenaire / inspection")}</p>
           </button>
         </div>
 
@@ -504,7 +509,7 @@ export default function RegisterPage() {
           {!registerAs && (
             <div className="text-center py-6">
               <p className="text-sm text-gray-600">
-                Choisissez d&apos;abord le type de compte (Client ou Atelier).
+                {t("Choisissez d'abord le type de compte (Client ou Atelier).")}
               </p>
             </div>
           )}
@@ -815,13 +820,13 @@ export default function RegisterPage() {
               className="h-4 w-4 text-teal-600 focus:ring-teal-500 border-gray-300 rounded"
             />
             <label htmlFor="terms" className="ml-2 block text-sm text-gray-700">
-              J&apos;accepte les{" "}
+              {t("J'accepte les")}{" "}
               <Link href="/terms" className="text-teal-600 hover:text-teal-500">
-                conditions d&apos;utilisation
+                {t("conditions d'utilisation")}
               </Link>{" "}
-              et la{" "}
+              {t("et la")}{" "}
               <Link href="/privacy" className="text-teal-600 hover:text-teal-500">
-                politique de confidentialité
+                {t("politique de confidentialité")}
               </Link>
             </label>
           </div>
@@ -838,10 +843,10 @@ export default function RegisterPage() {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  <span>Création en cours...</span>
+                  <span>{t("Création en cours...")}</span>
                 </>
               ) : (
-                "Créer un compte"
+                t("Créer un compte")
               )}
             </button>
           </div>
@@ -862,7 +867,7 @@ export default function RegisterPage() {
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
             </svg>
-            Retour à l&apos;accueil
+            {t("Retour à l'accueil")}
           </Link>
         </div>
       </div>
@@ -890,20 +895,20 @@ export default function RegisterPage() {
 
               {/* Title */}
               <h2 className="text-2xl font-bold text-gray-900 mb-4 font-[var(--font-poppins)]">
-                Compte créé avec succès !
+                {t("Compte créé avec succès !")}
               </h2>
 
               {/* Message */}
               <div className="text-gray-600 mb-6 space-y-3">
                 <p className="text-base leading-relaxed">
-                  Votre compte a été créé et votre email est vérifié.
+                  {t("Votre compte a été créé et votre email est vérifié.")}
                 </p>
                 <p className="text-base leading-relaxed">
-                  Vous devez attendre que l&apos;admin active votre compte.
+                  {t("Vous devez attendre que l'admin active votre compte.")}
                 </p>
                 <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
                   <p className="text-sm text-gray-700 mb-2 font-medium">
-                    Besoin d&apos;aide ?
+                    {t("Besoin d'aide ?")}
                   </p>
                   <a 
                     href="tel:0562232628" 

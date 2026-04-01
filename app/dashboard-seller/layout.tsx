@@ -7,12 +7,17 @@ import { usePathname, useRouter } from "next/navigation";
 import { useUser } from "@/contexts/UserContext";
 import { getBackendUrl, getImageUrl } from "@/utils/backend";
 import { io, Socket } from 'socket.io-client';
+import { useT } from "@/utils/i18n";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export default function SellerDashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const t = useT();
+  const { language } = useLanguage();
+  const isRTL = language === 'ar';
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -345,7 +350,7 @@ export default function SellerDashboardLayout({
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
           </svg>
-          <p className="mt-4 text-gray-600">Chargement...</p>
+          <p className="mt-4 text-gray-600">{t('Chargement...')}</p>
         </div>
       </div>
     );
@@ -357,20 +362,19 @@ export default function SellerDashboardLayout({
   }
 
   const navItems = [
-    { name: 'Tableau de bord', icon: 'dashboard', path: '/dashboard-seller' },
-    { name: 'Ajouter une voiture', icon: 'add-car', path: '/dashboard-seller/add-car' },
-    { name: 'Mes voitures', icon: 'car', path: '/dashboard-seller/my-cars' },
-    { name: 'Rendez-vous', icon: 'appointment', path: '/dashboard-seller/appointments' },
-    { name: 'Messages', icon: 'message', path: '/dashboard-seller/messages' },
-    { name: 'Statistiques', icon: 'stats', path: '/dashboard-seller/statistics' },
-    { name: 'Profil', icon: 'profile', path: '/dashboard-seller/profile' },
+    { name: t('Tableau de bord'), icon: 'dashboard', path: '/dashboard-seller' },
+    { name: t('Ajouter une voiture'), icon: 'add-car', path: '/dashboard-seller/add-car' },
+    { name: t('Mes voitures'), icon: 'car', path: '/dashboard-seller/my-cars' },
+    { name: t('Rendez-vous'), icon: 'appointment', path: '/dashboard-seller/appointments' },
+    { name: t('Messages'), icon: 'message', path: '/dashboard-seller/messages' },
+    { name: t('Statistiques'), icon: 'stats', path: '/dashboard-seller/statistics' },
+    { name: t('Profil'), icon: 'profile', path: '/dashboard-seller/profile' },
   ];
 
   return (
-    <div className="min-h-screen bg-gray-100 flex">
-      <div className={`${sidebarOpen ? 'w-64' : 'w-20'} flex-shrink-0`}></div>
+    <div dir={isRTL ? 'rtl' : 'ltr'} className="min-h-screen bg-gray-100 flex">
       {/* Left Sidebar */}
-      <aside className={`${sidebarOpen ? 'w-64' : 'w-20'} fixed left-0 top-0 h-screen text-white transition-all duration-300 flex flex-col overflow-hidden z-50`}>
+      <aside className={`${sidebarOpen ? 'w-64' : 'w-20'} fixed ${isRTL ? 'right-0' : 'left-0'} top-0 h-screen text-white transition-all duration-300 flex flex-col overflow-hidden z-50`}>
         {/* Background Image with Gradient Overlay */}
         <div className="absolute inset-0 overflow-hidden">
           <div className="relative w-full h-full">
@@ -398,8 +402,8 @@ export default function SellerDashboardLayout({
               </div>
               {sidebarOpen && (
                 <div className="animate-slide-in">
-                  <h2 className="text-lg font-bold font-[var(--font-poppins)] text-white drop-shadow-lg">Espace Vendeur</h2>
-                  <p className="text-xs text-teal-200 mt-0.5">Gérez vos véhicules</p>
+                  <h2 className="text-lg font-bold font-[var(--font-poppins)] text-white drop-shadow-lg">{t('Espace Vendeur')}</h2>
+                  <p className="text-xs text-teal-200 mt-0.5">{t('Gérez vos véhicules')}</p>
                 </div>
               )}
             </div>
@@ -462,7 +466,7 @@ export default function SellerDashboardLayout({
                     <span className="text-sm font-medium flex items-center gap-2 flex-1">
                       {item.name}
                       {item.icon === 'appointment' && rdvNotificationCount > 0 && (
-                        <span className="px-2 py-0.5 bg-red-500 text-white rounded-full text-xs font-bold ml-auto">
+                        <span className={`px-2 py-0.5 bg-red-500 text-white rounded-full text-xs font-bold ${isRTL ? 'mr-auto' : 'ml-auto'}`}>
                           {rdvNotificationCount > 9 ? '9+' : rdvNotificationCount}
                         </span>
                       )}
@@ -477,7 +481,11 @@ export default function SellerDashboardLayout({
       </aside>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col overflow-hidden relative">
+      <div
+        className={`flex-1 flex flex-col overflow-hidden relative transition-[margin] duration-300 ${
+          sidebarOpen ? (isRTL ? 'mr-64' : 'ml-64') : (isRTL ? 'mr-20' : 'ml-20')
+        }`}
+      >
         {/* Top Header */}
         <header className="bg-white border-b border-gray-200 shadow-sm px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -502,7 +510,7 @@ export default function SellerDashboardLayout({
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                 </svg>
                 {unreadCount > 0 && (
-                  <span className="absolute top-1.5 right-1.5 w-5 h-5 bg-red-500 rounded-full border-2 border-white flex items-center justify-center text-white text-xs font-bold">
+                  <span className={`absolute top-1.5 ${isRTL ? 'left-1.5' : 'right-1.5'} w-5 h-5 bg-red-500 rounded-full border-2 border-white flex items-center justify-center text-white text-xs font-bold`}>
                     {unreadCount > 9 ? '9+' : unreadCount}
                   </span>
                 )}
@@ -515,17 +523,17 @@ export default function SellerDashboardLayout({
                     className="fixed inset-0 z-40" 
                     onClick={() => setShowNotifications(false)}
                   ></div>
-                  <div className="absolute right-0 mt-2 w-96 bg-white rounded-xl shadow-lg border border-gray-200 z-50 max-h-[600px] flex flex-col">
+                  <div className={`absolute ${isRTL ? 'left-0' : 'right-0'} mt-2 w-96 bg-white rounded-xl shadow-lg border border-gray-200 z-50 max-h-[600px] flex flex-col`}>
                     <div className="p-4 border-b border-gray-200 flex items-center justify-between">
                       <h3 className="text-lg font-bold text-gray-900 font-[var(--font-poppins)]">
-                        Notifications
+                        {t('Notifications')}
                       </h3>
                       {unreadCount > 0 && (
                         <button
                           onClick={markAllAsRead}
                           className="text-sm text-teal-600 hover:text-teal-700 font-medium"
                         >
-                          Tout marquer comme lu
+                          {t('Tout marquer comme lu')}
                         </button>
                       )}
                     </div>
@@ -535,7 +543,7 @@ export default function SellerDashboardLayout({
                           <svg className="w-12 h-12 mx-auto mb-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                           </svg>
-                          <p>Aucune notification</p>
+                          <p>{t('Aucune notification')}</p>
                         </div>
                       ) : (
                         <div className="divide-y divide-gray-100">
@@ -565,7 +573,7 @@ export default function SellerDashboardLayout({
                                   <p className="text-sm font-medium text-gray-900 mb-1">
                                     {notification.id_sender?.name || notification.id_sender?.firstName 
                                       ? (notification.id_sender.name || `${notification.id_sender.firstName} ${notification.id_sender.lastName || ''}`)
-                                      : 'Atelier'}
+                                      : t('Atelier')}
                                   </p>
                                   <p className="text-sm text-gray-600 mb-2">{notification.message}</p>
                                   <p className="text-xs text-gray-400">
@@ -639,7 +647,7 @@ export default function SellerDashboardLayout({
                   ></div>
                   
                   {/* Menu */}
-                  <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-gray-200 z-50">
+                  <div className={`absolute ${isRTL ? 'left-0' : 'right-0'} mt-2 w-56 bg-white rounded-xl shadow-lg border border-gray-200 z-50`}>
                     <div className="py-2">
                       {/* Switch to Buyer Mode */}
                       <button
@@ -652,7 +660,7 @@ export default function SellerDashboardLayout({
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
                         </svg>
-                        Passer en mode Acheteur
+                        {t('Passer en mode Acheteur')}
                       </button>
                       
                       {/* Divider */}
@@ -666,7 +674,7 @@ export default function SellerDashboardLayout({
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                         </svg>
-                        Déconnexion
+                        {t('Déconnexion')}
                       </button>
                     </div>
                   </div>

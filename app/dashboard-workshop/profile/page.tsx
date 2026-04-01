@@ -5,10 +5,12 @@ import { useState, useEffect, useRef } from "react";
 import { useUser } from "@/contexts/UserContext";
 import { useRouter } from "next/navigation";
 import { getImageUrl } from "@/utils/backend";
+import { useT } from "@/utils/i18n";
 
 export default function WorkshopProfilePage() {
   const router = useRouter();
   const { user, isLoading, updateUser, refreshUser } = useUser();
+  const t = useT();
   const [activeTab, setActiveTab] = useState('profile');
   const [formData, setFormData] = useState({
     name: '',
@@ -94,13 +96,13 @@ export default function WorkshopProfilePage() {
     // Validate file type
     const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
     if (!allowedTypes.includes(file.type)) {
-      setError("Type de fichier non autorisé. Seules les images (JPEG, PNG, WEBP, GIF) sont acceptées.");
+      setError(t("Type de fichier non autorisé. Seules les images (JPEG, PNG, WEBP, GIF) sont acceptées."));
       return;
     }
 
     // Validate file size (5MB max)
     if (file.size > 5 * 1024 * 1024) {
-      setError("L'image est trop grande. La taille maximale est de 5MB.");
+      setError(t("L'image est trop grande. La taille maximale est de 5MB."));
       return;
     }
 
@@ -131,7 +133,7 @@ export default function WorkshopProfilePage() {
       if (!contentType || !contentType.includes("application/json")) {
         const text = await res.text();
         console.error("Non-JSON response:", text.substring(0, 200));
-        setError("Erreur serveur: réponse invalide");
+        setError(t("Erreur serveur: réponse invalide"));
         setIsUploadingImage(false);
         return;
       }
@@ -139,7 +141,7 @@ export default function WorkshopProfilePage() {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data?.message || "Erreur lors de l'upload de l'image");
+        setError(data?.message || t("Erreur lors de l'upload de l'image"));
         setIsUploadingImage(false);
         return;
       }
@@ -153,7 +155,7 @@ export default function WorkshopProfilePage() {
         }));
       }
 
-      setSuccess("Image de profil mise à jour avec succès");
+      setSuccess(t("Image de profil mise à jour avec succès"));
       setIsUploadingImage(false);
       
       // Clear success message after 3 seconds
@@ -165,14 +167,14 @@ export default function WorkshopProfilePage() {
       }
     } catch (error) {
       console.error('Error uploading profile image:', error);
-      setError("Erreur de connexion. Veuillez réessayer.");
+      setError(t("Erreur de connexion. Veuillez réessayer."));
       setIsUploadingImage(false);
     }
   };
 
   // Handle profile image deletion
   const handleImageDelete = async () => {
-    if (!confirm("Êtes-vous sûr de vouloir supprimer votre image de profil ?")) {
+    if (!confirm(t("Êtes-vous sûr de vouloir supprimer votre image de profil ?"))) {
       return;
     }
 
@@ -199,7 +201,7 @@ export default function WorkshopProfilePage() {
       if (!contentType || !contentType.includes("application/json")) {
         const text = await res.text();
         console.error("Non-JSON response:", text.substring(0, 200));
-        setError("Erreur serveur: réponse invalide");
+        setError(t("Erreur serveur: réponse invalide"));
         setIsDeletingImage(false);
         return;
       }
@@ -207,7 +209,7 @@ export default function WorkshopProfilePage() {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data?.message || "Erreur lors de la suppression de l'image");
+        setError(data?.message || t("Erreur lors de la suppression de l'image"));
         setIsDeletingImage(false);
         return;
       }
@@ -218,14 +220,14 @@ export default function WorkshopProfilePage() {
       window.dispatchEvent(new CustomEvent('profileImageUpdated', { 
         detail: { image: null } 
       }));
-      setSuccess("Image de profil supprimée avec succès");
+      setSuccess(t("Image de profil supprimée avec succès"));
       setIsDeletingImage(false);
       
       // Clear success message after 3 seconds
       setTimeout(() => setSuccess(''), 3000);
     } catch (error) {
       console.error('Error deleting profile image:', error);
-      setError("Erreur de connexion. Veuillez réessayer.");
+      setError(t("Erreur de connexion. Veuillez réessayer."));
       setIsDeletingImage(false);
     }
   };
@@ -286,7 +288,7 @@ export default function WorkshopProfilePage() {
       if (!contentType || !contentType.includes("application/json")) {
         const text = await res.text();
         console.error("Non-JSON response:", text.substring(0, 200));
-        setError("Erreur serveur: réponse invalide");
+        setError(t("Erreur serveur: réponse invalide"));
         setIsUpdating(false);
         return;
       }
@@ -294,7 +296,7 @@ export default function WorkshopProfilePage() {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data?.message || "Erreur lors de la mise à jour du profil");
+        setError(data?.message || t("Erreur lors de la mise à jour du profil"));
         setIsUpdating(false);
         return;
       }
@@ -305,14 +307,14 @@ export default function WorkshopProfilePage() {
         await refreshUser();
       }
 
-      setSuccess("Profil mis à jour avec succès");
+      setSuccess(t("Profil mis à jour avec succès"));
       setIsUpdating(false);
       
       // Clear success message after 3 seconds
       setTimeout(() => setSuccess(''), 3000);
     } catch (error) {
       console.error('Error updating profile:', error);
-      setError("Erreur de connexion. Veuillez réessayer.");
+      setError(t("Erreur de connexion. Veuillez réessayer."));
       setIsUpdating(false);
     }
   };
@@ -325,7 +327,7 @@ export default function WorkshopProfilePage() {
 
     // Client-side validation
     if (passwordData.newPassword !== passwordData.confirmPassword) {
-      setError('Les mots de passe ne correspondent pas');
+      setError(t('Les mots de passe ne correspondent pas'));
       return;
     }
 
@@ -355,7 +357,7 @@ export default function WorkshopProfilePage() {
       if (!contentType || !contentType.includes("application/json")) {
         const text = await res.text();
         console.error("Non-JSON response:", text.substring(0, 200));
-        setError("Erreur serveur: réponse invalide");
+        setError(t("Erreur serveur: réponse invalide"));
         setIsChangingPassword(false);
         return;
       }
@@ -366,16 +368,16 @@ export default function WorkshopProfilePage() {
         // Check for detailed validation errors
         if (data?.errors && Array.isArray(data.errors) && data.errors.length > 0) {
           setErrors(data.errors);
-          setError(data?.message || "Erreur de validation");
+          setError(data?.message || t("Erreur de validation"));
         } else {
-          setError(data?.message || "Erreur lors du changement de mot de passe");
+          setError(data?.message || t("Erreur lors du changement de mot de passe"));
           setErrors([]);
         }
         setIsChangingPassword(false);
         return;
       }
 
-      setSuccess("Mot de passe modifié avec succès");
+      setSuccess(t("Mot de passe modifié avec succès"));
       setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
       setErrors([]);
       setIsChangingPassword(false);
@@ -384,7 +386,7 @@ export default function WorkshopProfilePage() {
       setTimeout(() => setSuccess(''), 3000);
     } catch (error) {
       console.error('Error changing password:', error);
-      setError("Erreur de connexion. Veuillez réessayer.");
+      setError(t("Erreur de connexion. Veuillez réessayer."));
       setErrors([]);
       setIsChangingPassword(false);
     }
@@ -398,7 +400,7 @@ export default function WorkshopProfilePage() {
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
           </svg>
-          <p className="mt-4 text-gray-600">Chargement...</p>
+          <p className="mt-4 text-gray-600">{t('Chargement...')}</p>
         </div>
       </div>
     );
@@ -411,8 +413,8 @@ export default function WorkshopProfilePage() {
   return (
     <div className="p-6 bg-gradient-to-br from-gray-50 via-blue-50/30 to-gray-100">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900 font-[var(--font-poppins)] mb-2">Profil</h1>
-        <p className="text-gray-600">Gérez les informations de votre atelier</p>
+        <h1 className="text-3xl font-bold text-gray-900 font-[var(--font-poppins)] mb-2">{t('Profil')}</h1>
+        <p className="text-gray-600">{t('Gérez les informations de votre atelier')}</p>
       </div>
 
       {/* Warning messages based on workshop type */}
@@ -425,12 +427,12 @@ export default function WorkshopProfilePage() {
               </svg>
             </div>
             <div className="flex-1">
-              <h3 className="text-lg font-bold text-red-900 mb-2">Prix de visite mécanique requis</h3>
+              <h3 className="text-lg font-bold text-red-900 mb-2">{t('Prix de visite mécanique requis')}</h3>
               <p className="text-red-800 mb-3">
-                En tant qu&apos;atelier de mécanique, vous devez définir votre prix de visite mécanique pour accéder à votre dashboard. Ce prix sera visible par les clients lors de la réservation d&apos;un rendez-vous.
+                {t("En tant qu'atelier de mécanique, vous devez définir votre prix de visite mécanique pour accéder à votre dashboard. Ce prix sera visible par les clients lors de la réservation d'un rendez-vous.")}
               </p>
               <p className="text-sm text-red-700 font-medium">
-                Veuillez remplir le champ &quot;Prix de visite mécanique (DA)&quot; ci-dessous et enregistrer vos modifications.
+                {t('Veuillez remplir le champ "Prix de visite mécanique (DA)" ci-dessous et enregistrer vos modifications.')}
               </p>
             </div>
           </div>
@@ -446,12 +448,12 @@ export default function WorkshopProfilePage() {
               </svg>
             </div>
             <div className="flex-1">
-              <h3 className="text-lg font-bold text-red-900 mb-2">Prix de visite peinture requis</h3>
+              <h3 className="text-lg font-bold text-red-900 mb-2">{t('Prix de visite peinture requis')}</h3>
               <p className="text-red-800 mb-3">
-                En tant qu&apos;atelier de peinture véhicule, vous devez définir votre prix de visite peinture pour accéder à votre dashboard. Ce prix sera visible par les clients lors de la réservation d&apos;un rendez-vous.
+                {t("En tant qu'atelier de peinture véhicule, vous devez définir votre prix de visite peinture pour accéder à votre dashboard. Ce prix sera visible par les clients lors de la réservation d'un rendez-vous.")}
               </p>
               <p className="text-sm text-red-700 font-medium">
-                Veuillez remplir le champ &quot;Prix de visite peinture (DA)&quot; ci-dessous et enregistrer vos modifications.
+                {t('Veuillez remplir le champ "Prix de visite peinture (DA)" ci-dessous et enregistrer vos modifications.')}
               </p>
             </div>
           </div>
@@ -468,20 +470,20 @@ export default function WorkshopProfilePage() {
                 </svg>
               </div>
               <div className="flex-1">
-                <h3 className="text-lg font-bold text-red-900 mb-2">Prix de visite requis</h3>
+                <h3 className="text-lg font-bold text-red-900 mb-2">{t('Prix de visite requis')}</h3>
                 <p className="text-red-800 mb-3">
-                  En tant qu&apos;atelier de mécanique et peinture inspecteur, vous devez définir les deux prix de visite (mécanique et peinture) pour accéder à votre dashboard. Ces prix seront visibles par les clients lors de la réservation d&apos;un rendez-vous.
+                  {t("En tant qu'atelier de mécanique et peinture inspecteur, vous devez définir les deux prix de visite (mécanique et peinture) pour accéder à votre dashboard. Ces prix seront visibles par les clients lors de la réservation d'un rendez-vous.")}
                 </p>
                 <ul className="text-sm text-red-700 font-medium list-disc list-inside space-y-1">
                   {(!user.price_visit_mec || user.price_visit_mec === 0) && (
-                    <li>Prix de visite mécanique (DA) - requis</li>
+                    <li>{t('Prix de visite mécanique (DA) - requis')}</li>
                   )}
                   {(!user.price_visit_paint || user.price_visit_paint === 0) && (
-                    <li>Prix de visite peinture (DA) - requis</li>
+                    <li>{t('Prix de visite peinture (DA) - requis')}</li>
                   )}
                 </ul>
                 <p className="text-sm text-red-700 font-medium mt-3">
-                  Veuillez remplir les champs manquants ci-dessous et enregistrer vos modifications.
+                  {t('Veuillez remplir les champs manquants ci-dessous et enregistrer vos modifications.')}
                 </p>
               </div>
             </div>
@@ -553,7 +555,7 @@ export default function WorkshopProfilePage() {
               <label
                 htmlFor="profile-image-upload"
                 className={`absolute bottom-0 right-0 bg-blue-500 hover:bg-blue-600 text-white rounded-full p-2 cursor-pointer shadow-lg transition-colors ${isUploadingImage || isDeletingImage ? 'opacity-50 cursor-not-allowed' : ''}`}
-                title="Modifier la photo de profil"
+                    title={t('Modifier la photo de profil')}
               >
                 {isUploadingImage ? (
                   <svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -572,7 +574,7 @@ export default function WorkshopProfilePage() {
                   onClick={handleImageDelete}
                   disabled={isDeletingImage || isUploadingImage}
                   className="absolute top-0 right-0 bg-red-500 hover:bg-red-600 text-white rounded-full p-1.5 cursor-pointer shadow-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  title="Supprimer la photo de profil"
+                  title={t('Supprimer la photo de profil')}
                 >
                   {isDeletingImage ? (
                     <svg className="w-3 h-3 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -589,7 +591,7 @@ export default function WorkshopProfilePage() {
             </div>
             <div className="flex-1">
               <h2 className="text-2xl font-bold text-gray-900 font-[var(--font-poppins)]">
-                {user.name || 'Nom de l\'atelier'}
+                {user.name || t("Nom de l'atelier")}
               </h2>
               <p className="text-gray-600">{user.email}</p>
               <p className="text-gray-600">{user.phone}</p>
@@ -599,23 +601,23 @@ export default function WorkshopProfilePage() {
                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                     </svg>
-                    Atelier certifié
+                    {t('Atelier certifié')}
                   </span>
                 )}
                 {user.status ? (
                   <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-bold">
-                    Compte actif
+                    {t('Compte actif')}
                   </span>
                 ) : (
                   <span className="px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs font-bold">
-                    Compte en attente
+                    {t('Compte en attente')}
                   </span>
                 )}
                 {user.workshopType && (
                   <span className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-bold">
-                    {user.workshopType === 'mechanic' ? 'Mécanique' : 
-                     user.workshopType === 'paint_vehicle' ? 'Peinture véhicule' : 
-                     user.workshopType === 'mechanic_paint_inspector' ? 'Mécanique & Peinture Inspecteur' : 
+                    {user.workshopType === 'mechanic' ? t('Mécanique') : 
+                     user.workshopType === 'paint_vehicle' ? t('Peinture véhicule') : 
+                     user.workshopType === 'mechanic_paint_inspector' ? t('Mécanique & Peinture Inspecteur') : 
                      user.workshopType}
                   </span>
                 )}
@@ -635,7 +637,7 @@ export default function WorkshopProfilePage() {
                   : 'text-gray-600 hover:text-gray-900'
               }`}
             >
-              Informations de l&apos;atelier
+              {t("Informations de l'atelier")}
             </button>
             <button
               onClick={() => setActiveTab('password')}
@@ -645,18 +647,9 @@ export default function WorkshopProfilePage() {
                   : 'text-gray-600 hover:text-gray-900'
               }`}
             >
-              Mot de passe
+              {t('Mot de passe')}
             </button>
-            <button
-              onClick={() => setActiveTab('settings')}
-              className={`flex-1 px-6 py-4 font-semibold transition-colors ${
-                activeTab === 'settings'
-                  ? 'text-blue-600 border-b-2 border-blue-600'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              Paramètres
-            </button>
+            {/* Settings tab removed */}
           </div>
 
           {/* Tab Content */}
@@ -666,7 +659,7 @@ export default function WorkshopProfilePage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
-                      Nom de l&apos;atelier *
+                      {t("Nom de l'atelier")} *
                     </label>
                     <input
                       type="text"
@@ -681,7 +674,7 @@ export default function WorkshopProfilePage() {
 
                   <div>
                     <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                      Email
+                      {t('Email')}
                     </label>
                     <input
                       type="email"
@@ -691,12 +684,12 @@ export default function WorkshopProfilePage() {
                       value={formData.email}
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-100 text-gray-600 cursor-not-allowed"
                     />
-                    <p className="text-xs text-gray-500 mt-1">L&apos;email ne peut pas être modifié</p>
+                    <p className="text-xs text-gray-500 mt-1">{t("L'email ne peut pas être modifié")}</p>
                   </div>
 
                   <div>
                     <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-2">
-                      Téléphone *
+                      {t('Téléphone')} *
                     </label>
                     <input
                       type="tel"
@@ -711,7 +704,7 @@ export default function WorkshopProfilePage() {
 
                   <div>
                     <label htmlFor="adr" className="block text-sm font-medium text-gray-700 mb-2">
-                      Adresse *
+                      {t('Adresse')} *
                     </label>
                     <input
                       type="text"
@@ -728,7 +721,7 @@ export default function WorkshopProfilePage() {
                   {user.workshopType === 'mechanic' && (
                     <div>
                       <label htmlFor="price_visit_mec" className="block text-sm font-medium text-gray-700 mb-2">
-                        Prix de visite mécanique (DA) *
+                        {t('Prix de visite mécanique (DA) *')}
                       </label>
                       <input
                         type="number"
@@ -739,17 +732,17 @@ export default function WorkshopProfilePage() {
                         step="0.01"
                         value={formData.price_visit_mec}
                         onChange={handleChange}
-                        placeholder="Ex: 5000"
+                        placeholder={t('Ex: 5000')}
                         className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       />
-                      <p className="text-xs text-gray-500 mt-1">Ce prix sera visible par les clients lors de la réservation</p>
+                      <p className="text-xs text-gray-500 mt-1">{t('Ce prix sera visible par les clients lors de la réservation')}</p>
                     </div>
                   )}
                   
                   {user.workshopType === 'paint_vehicle' && (
                     <div>
                       <label htmlFor="price_visit_paint" className="block text-sm font-medium text-gray-700 mb-2">
-                        Prix de visite peinture (DA) *
+                        {t('Prix de visite peinture (DA) *')}
                       </label>
                       <input
                         type="number"
@@ -760,10 +753,10 @@ export default function WorkshopProfilePage() {
                         step="0.01"
                         value={formData.price_visit_paint}
                         onChange={handleChange}
-                        placeholder="Ex: 5000"
+                        placeholder={t('Ex: 5000')}
                         className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       />
-                      <p className="text-xs text-gray-500 mt-1">Ce prix sera visible par les clients lors de la réservation</p>
+                      <p className="text-xs text-gray-500 mt-1">{t('Ce prix sera visible par les clients lors de la réservation')}</p>
                     </div>
                   )}
                   
@@ -771,7 +764,7 @@ export default function WorkshopProfilePage() {
                     <>
                       <div>
                         <label htmlFor="price_visit_mec" className="block text-sm font-medium text-gray-700 mb-2">
-                          Prix de visite mécanique (DA) *
+                          {t('Prix de visite mécanique (DA) *')}
                         </label>
                         <input
                           type="number"
@@ -782,14 +775,14 @@ export default function WorkshopProfilePage() {
                           step="0.01"
                           value={formData.price_visit_mec}
                           onChange={handleChange}
-                          placeholder="Ex: 5000"
+                          placeholder={t('Ex: 5000')}
                           className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         />
-                        <p className="text-xs text-gray-500 mt-1">Ce prix sera visible par les clients lors de la réservation</p>
+                        <p className="text-xs text-gray-500 mt-1">{t('Ce prix sera visible par les clients lors de la réservation')}</p>
                       </div>
                       <div>
                         <label htmlFor="price_visit_paint" className="block text-sm font-medium text-gray-700 mb-2">
-                          Prix de visite peinture (DA) *
+                          {t('Prix de visite peinture (DA) *')}
                         </label>
                         <input
                           type="number"
@@ -800,10 +793,10 @@ export default function WorkshopProfilePage() {
                           step="0.01"
                           value={formData.price_visit_paint}
                           onChange={handleChange}
-                          placeholder="Ex: 5000"
+                          placeholder={t('Ex: 5000')}
                           className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         />
-                        <p className="text-xs text-gray-500 mt-1">Ce prix sera visible par les clients lors de la réservation</p>
+                        <p className="text-xs text-gray-500 mt-1">{t('Ce prix sera visible par les clients lors de la réservation')}</p>
                       </div>
                     </>
                   )}
@@ -815,7 +808,7 @@ export default function WorkshopProfilePage() {
                     disabled={isUpdating}
                     className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {isUpdating ? 'Mise à jour...' : 'Enregistrer les modifications'}
+                    {isUpdating ? t('Mise à jour...') : t('Enregistrer les modifications')}
                   </button>
                 </div>
               </form>
@@ -825,7 +818,7 @@ export default function WorkshopProfilePage() {
               <form onSubmit={handlePasswordSubmit} className="space-y-6">
                 <div>
                   <label htmlFor="currentPassword" className="block text-sm font-medium text-gray-700 mb-2">
-                    Mot de passe actuel *
+                    {t('Mot de passe actuel')} *
                   </label>
                   <input
                     type="password"
@@ -840,7 +833,7 @@ export default function WorkshopProfilePage() {
 
                 <div>
                   <label htmlFor="newPassword" className="block text-sm font-medium text-gray-700 mb-2">
-                    Nouveau mot de passe *
+                    {t('Nouveau mot de passe')} *
                   </label>
                   <input
                     type="password"
@@ -855,7 +848,7 @@ export default function WorkshopProfilePage() {
 
                 <div>
                   <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">
-                    Confirmer le nouveau mot de passe *
+                    {t('Confirmer le nouveau mot de passe')} *
                   </label>
                   <input
                     type="password"
@@ -874,54 +867,13 @@ export default function WorkshopProfilePage() {
                     disabled={isChangingPassword}
                     className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {isChangingPassword ? 'Changement en cours...' : 'Changer le mot de passe'}
+                    {isChangingPassword ? t('Changement en cours...') : t('Changer le mot de passe')}
                   </button>
                 </div>
               </form>
             )}
 
-            {activeTab === 'settings' && (
-              <div className="space-y-6">
-                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                  <div>
-                    <h3 className="font-semibold text-gray-900">Notifications par email</h3>
-                    <p className="text-sm text-gray-600">Recevoir des emails pour les nouvelles commandes</p>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input type="checkbox" className="sr-only peer" defaultChecked />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                  </label>
-                </div>
-
-                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                  <div>
-                    <h3 className="font-semibold text-gray-900">Notifications SMS</h3>
-                    <p className="text-sm text-gray-600">Recevoir des SMS pour les rendez-vous urgents</p>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input type="checkbox" className="sr-only peer" />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                  </label>
-                </div>
-
-                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                  <div>
-                    <h3 className="font-semibold text-gray-900">Profil public</h3>
-                    <p className="text-sm text-gray-600">Rendre votre atelier visible aux clients</p>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input type="checkbox" className="sr-only peer" defaultChecked />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                  </label>
-                </div>
-
-                <div className="pt-6 border-t border-gray-200">
-                  <button className="px-6 py-3 bg-red-500 hover:bg-red-600 text-white rounded-lg font-semibold transition-colors">
-                    Supprimer mon compte
-                  </button>
-                </div>
-              </div>
-            )}
+            {/* Settings content removed */}
           </div>
         </div>
       </div>

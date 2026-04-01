@@ -4,6 +4,7 @@ import { useParams } from "next/navigation";
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useT } from "@/utils/i18n";
 
 interface CarVerification {
   ok: boolean;
@@ -22,6 +23,7 @@ interface CarVerification {
 export default function VerifyCarPage() {
   const params = useParams();
   const carId = params?.id as string;
+  const t = useT();
   const [verification, setVerification] = useState<CarVerification | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -29,7 +31,7 @@ export default function VerifyCarPage() {
   useEffect(() => {
     const checkVerification = async () => {
       if (!carId) {
-        setError("ID de voiture manquant");
+        setError(t("ID de voiture manquant"));
         setLoading(false);
         return;
       }
@@ -42,12 +44,12 @@ export default function VerifyCarPage() {
         if (res.ok && data.ok) {
           setVerification(data);
         } else {
-          setError(data?.message || "Erreur lors de la vérification");
+          setError(data?.message || t("Erreur lors de la vérification"));
           setVerification(data);
         }
       } catch (err) {
         console.error('Error checking verification:', err);
-        setError("Erreur de connexion. Veuillez réessayer.");
+        setError(t("Erreur de connexion. Veuillez réessayer."));
       } finally {
         setLoading(false);
       }
@@ -64,7 +66,7 @@ export default function VerifyCarPage() {
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
           </svg>
-          <p className="mt-4 text-gray-600">Vérification en cours...</p>
+          <p className="mt-4 text-gray-600">{t('Vérification en cours...')}</p>
         </div>
       </div>
     );
@@ -86,8 +88,8 @@ export default function VerifyCarPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                 </svg>
               </div>
-              <h1 className="text-3xl font-bold text-white font-[var(--font-poppins)]">Véhicule Vérifié</h1>
-              <p className="text-white/90 text-lg">Ce véhicule a été vérifié par un atelier certifié</p>
+              <h1 className="text-3xl font-bold text-white font-[var(--font-poppins)]">{t('Véhicule Vérifié')}</h1>
+              <p className="text-white/90 text-lg">{t('Ce véhicule a été vérifié par un atelier certifié')}</p>
             </div>
           ) : (
             <div className="flex flex-col items-center gap-4">
@@ -96,9 +98,9 @@ export default function VerifyCarPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </div>
-              <h1 className="text-3xl font-bold text-white font-[var(--font-poppins)]">Non Vérifié</h1>
+              <h1 className="text-3xl font-bold text-white font-[var(--font-poppins)]">{t('Non Vérifié')}</h1>
               <p className="text-white/90 text-lg">
-                {verification?.message || "Ce véhicule n'a pas été vérifié"}
+                {verification?.message || t("Ce véhicule n'a pas été vérifié")}
               </p>
             </div>
           )}
@@ -109,18 +111,18 @@ export default function VerifyCarPage() {
           {verification?.car ? (
             <div className="space-y-6">
               <div className="bg-gray-50 rounded-2xl p-6 border border-gray-200">
-                <h2 className="text-xl font-bold text-gray-900 mb-4 font-[var(--font-poppins)]">Informations du véhicule</h2>
+                <h2 className="text-xl font-bold text-gray-900 mb-4 font-[var(--font-poppins)]">{t('Informations du véhicule')}</h2>
                 <div className="space-y-3">
                   <div className="flex items-center justify-between py-2 border-b border-gray-200">
-                    <span className="text-gray-600 font-medium">Marque</span>
+                    <span className="text-gray-600 font-medium">{t('Marque')}</span>
                     <span className="text-gray-900 font-semibold">{verification.car.brand}</span>
                   </div>
                   <div className="flex items-center justify-between py-2 border-b border-gray-200">
-                    <span className="text-gray-600 font-medium">Modèle</span>
+                    <span className="text-gray-600 font-medium">{t('Modèle')}</span>
                     <span className="text-gray-900 font-semibold">{verification.car.model}</span>
                   </div>
                   <div className="flex items-center justify-between py-2">
-                    <span className="text-gray-600 font-medium">Année</span>
+                    <span className="text-gray-600 font-medium">{t('Année')}</span>
                     <span className="text-gray-900 font-semibold">{verification.car.year}</span>
                   </div>
                 </div>
@@ -133,10 +135,9 @@ export default function VerifyCarPage() {
                       <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                     </svg>
                     <div>
-                      <h3 className="text-lg font-bold text-green-900 mb-2">Statut de vérification</h3>
+                      <h3 className="text-lg font-bold text-green-900 mb-2">{t('Statut de vérification')}</h3>
                       <p className="text-green-800">
-                        Ce véhicule a été inspecté et vérifié par un atelier certifié. 
-                        Tous les documents et rapports de vérification sont disponibles.
+                        {t('Ce véhicule a été inspecté et vérifié par un atelier certifié. Tous les documents et rapports de vérification sont disponibles.')}
                       </p>
                     </div>
                   </div>
@@ -145,7 +146,7 @@ export default function VerifyCarPage() {
             </div>
           ) : (
             <div className="text-center py-8">
-              <p className="text-gray-600 text-lg">{error || verification?.message || "Véhicule non trouvé"}</p>
+              <p className="text-gray-600 text-lg">{error || verification?.message || t("Véhicule non trouvé")}</p>
             </div>
           )}
 
@@ -154,7 +155,7 @@ export default function VerifyCarPage() {
               href="/"
               className="block w-full px-6 py-3 bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white rounded-xl font-semibold transition-all text-center shadow-lg hover:shadow-xl"
             >
-              Retour à l'accueil
+              {t("Retour à l'accueil")}
             </Link>
           </div>
         </div>

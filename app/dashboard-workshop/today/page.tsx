@@ -5,6 +5,8 @@ import { useUser } from "@/contexts/UserContext";
 import Image from "next/image";
 import { getImageUrl } from "@/utils/backend";
 import { QRCodeSVG } from "react-qr-code";
+import { useT } from "@/utils/i18n";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface Appointment {
   _id: string;
@@ -42,6 +44,8 @@ interface TodayStats {
 
 export default function TodayPage() {
   const { user, token } = useUser();
+  const t = useT();
+  const { language } = useLanguage();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
@@ -172,11 +176,11 @@ export default function TodayPage() {
 
   const getStatusLabel = (status: string) => {
     const statusMap: { [key: string]: string } = {
-      'en_attente': 'En attente',
-      'accepted': 'Accepté',
-      'refused': 'Refusé',
-      'en_cours': 'En cours',
-      'finish': 'Terminé',
+      'en_attente': t('En attente'),
+      'accepted': t('Accepté'),
+      'refused': t('Refusé'),
+      'en_cours': t('En cours'),
+      'finish': t('Terminé'),
     };
     return statusMap[status] || status;
   };
@@ -192,7 +196,7 @@ export default function TodayPage() {
   const handleStatusChange = async (appointmentId: string, newStatus: 'en_attente' | 'accepted' | 'refused' | 'en_cours' | 'finish') => {
     try {
       if (!token || !user) {
-        setError("Token d'authentification manquant");
+        setError(t("Token d'authentification manquant"));
         return;
       }
 
@@ -218,14 +222,14 @@ export default function TodayPage() {
       await finishAppointment(appointmentId, newStatus, undefined, false);
     } catch (error) {
       console.error('Error updating appointment status:', error);
-      setError("Erreur de connexion. Veuillez réessayer.");
+      setError(t("Erreur de connexion. Veuillez réessayer."));
     }
   };
 
   const finishAppointment = async (appointmentId: string, newStatus: 'en_attente' | 'accepted' | 'refused' | 'en_cours' | 'finish', service?: 'mécanique' | 'vérification peinture' | 'mécanique & peinture', createFacture: boolean = true) => {
     try {
       if (!token || !user) {
-        setError("Token d'authentification manquant");
+        setError(t("Token d'authentification manquant"));
         return;
       }
 
@@ -243,14 +247,14 @@ export default function TodayPage() {
       if (!contentType || !contentType.includes("application/json")) {
         const text = await res.text();
         console.error("Non-JSON response:", text.substring(0, 200));
-        setError("Erreur serveur: réponse invalide");
+        setError(t("Erreur serveur: réponse invalide"));
         return;
       }
 
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data?.message || "Erreur lors de la mise à jour du statut");
+        setError(data?.message || t("Erreur lors de la mise à jour du statut"));
         return;
       }
 
@@ -352,7 +356,7 @@ export default function TodayPage() {
       }
     } catch (error) {
       console.error('Error finishing appointment:', error);
-      setError("Erreur de connexion. Veuillez réessayer.");
+      setError(t("Erreur de connexion. Veuillez réessayer."));
     }
   };
 
@@ -379,7 +383,7 @@ export default function TodayPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data?.message || "Erreur lors de l'upload des images");
+        setError(data?.message || t("Erreur lors de l'upload des images"));
         setUploadingImages(false);
         return;
       }
@@ -423,7 +427,7 @@ export default function TodayPage() {
         setSuccessMessage('');
       } else {
         // Images uploaded but PDF not yet, keep modal open
-        setSuccessMessage(`Images uploadées avec succès ! (${selectedImages.length} image(s))`);
+        setSuccessMessage(t('Images uploadées avec succès ! ({n} image(s))', { n: selectedImages.length }));
         setSelectedImages([]);
         setTimeout(() => {
           setSuccessMessage('');
@@ -432,7 +436,7 @@ export default function TodayPage() {
       setUploadingImages(false);
     } catch (error) {
       console.error('Error uploading images:', error);
-      setError("Erreur de connexion. Veuillez réessayer.");
+      setError(t("Erreur de connexion. Veuillez réessayer."));
       setUploadingImages(false);
     }
   };
@@ -458,7 +462,7 @@ export default function TodayPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data?.message || "Erreur lors de l'upload du PDF");
+        setError(data?.message || t("Erreur lors de l'upload du PDF"));
         setUploadingPdf(false);
         return;
       }
@@ -503,7 +507,7 @@ export default function TodayPage() {
         setSuccessMessage('');
       } else {
         // PDF uploaded but images not yet, keep modal open
-        setSuccessMessage('PDF uploadé avec succès !');
+        setSuccessMessage(t('PDF uploadé avec succès !'));
         setSelectedPdf(null);
         setTimeout(() => {
           setSuccessMessage('');
@@ -512,7 +516,7 @@ export default function TodayPage() {
       setUploadingPdf(false);
     } catch (error) {
       console.error('Error uploading PDF:', error);
-      setError("Erreur de connexion. Veuillez réessayer.");
+      setError(t("Erreur de connexion. Veuillez réessayer."));
       setUploadingPdf(false);
     }
   };
@@ -525,13 +529,14 @@ export default function TodayPage() {
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
           </svg>
-          <p className="mt-4 text-gray-600">Chargement...</p>
+          <p className="mt-4 text-gray-600">{t('Chargement...')}</p>
         </div>
       </div>
     );
   }
 
-  const today = new Date().toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  const locale = language === 'ar' ? 'ar-DZ' : language === 'en' ? 'en-US' : 'fr-FR';
+  const today = new Date().toLocaleDateString(locale, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
   // Count today's appointments (excluding finished ones)
   const todayAppointmentsCount = appointments.filter(a => a.status !== 'finish').length;
@@ -543,7 +548,7 @@ export default function TodayPage() {
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 font-[var(--font-poppins)] mb-2 flex items-center gap-3">
-            Liste du jour
+            {t('Liste du jour')}
             {todayAppointmentsCount > 0 && (
               <span className="px-3 py-1 bg-blue-500 text-white rounded-full text-sm font-bold">
                 {todayAppointmentsCount}
@@ -558,7 +563,7 @@ export default function TodayPage() {
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              {pendingTodayCount} rendez-vous en attente
+              {t('{n} rendez-vous en attente', { n: pendingTodayCount })}
             </p>
           </div>
         )}
@@ -568,19 +573,19 @@ export default function TodayPage() {
       <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-200 mb-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-bold text-gray-900 font-[var(--font-poppins)]">
-            Notifications
+            {t('Notifications')}
           </h2>
           {unreadNotificationsCount > 0 ? (
             <span className="px-3 py-1 bg-red-500 text-white rounded-full text-sm font-bold">
               {unreadNotificationsCount}
             </span>
           ) : (
-            <span className="text-sm text-gray-500">Aucune</span>
+            <span className="text-sm text-gray-500">{t('Aucune')}</span>
           )}
         </div>
 
         {notifications.length === 0 ? (
-          <p className="text-sm text-gray-600">Aucune notification.</p>
+          <p className="text-sm text-gray-600">{t('Aucune notification.')}</p>
         ) : (
           <div className="max-h-56 overflow-y-auto space-y-3">
             {notifications.map((n: any) => (
@@ -593,10 +598,10 @@ export default function TodayPage() {
                 <p className="text-sm font-semibold text-gray-900">{n.message}</p>
                 <div className="flex items-center justify-between gap-3 mt-2">
                   <span className="text-xs text-gray-500">
-                    {n.type ? `Type: ${n.type}` : "Type: notification"}
+                    {n.type ? t('Type: {type}', { type: n.type }) : t('Type: notification')}
                   </span>
                   <span className="text-xs text-gray-400">
-                    {n.createdAt ? new Date(n.createdAt).toLocaleString("fr-FR") : ""}
+                    {n.createdAt ? new Date(n.createdAt).toLocaleString(locale) : ""}
                   </span>
                 </div>
               </div>
@@ -618,7 +623,7 @@ export default function TodayPage() {
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          <span>Acceptés</span>
+          <span>{t('Acceptés')}</span>
           <span className={`px-3 py-1 rounded-full text-xs font-bold ${
             activeTab === 'accepted' ? 'bg-white/30 text-white' : 'bg-green-100 text-green-700'
           }`}>
@@ -638,7 +643,7 @@ export default function TodayPage() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          <span>En cours</span>
+          <span>{t('En cours')}</span>
           <span className={`px-3 py-1 rounded-full text-xs font-bold ${
             activeTab === 'en_cours' ? 'bg-white/30 text-white' : 'bg-blue-100 text-blue-700'
           }`}>
@@ -657,7 +662,7 @@ export default function TodayPage() {
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          <span>Terminés</span>
+          <span>{t('Terminés')}</span>
           <span className={`px-3 py-1 rounded-full text-xs font-bold ${
             activeTab === 'finish' ? 'bg-white/30 text-white' : 'bg-purple-100 text-purple-700'
           }`}>
@@ -669,10 +674,10 @@ export default function TodayPage() {
       {/* Progress Card */}
       <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-200 mb-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-bold text-gray-900 font-[var(--font-poppins)]">Progression du jour</h2>
+          <h2 className="text-xl font-bold text-gray-900 font-[var(--font-poppins)]">{t('Progression du jour')}</h2>
           <div className="text-right">
             <p className="text-3xl font-bold text-blue-600 font-[var(--font-poppins)]">{stats.progress}%</p>
-            <p className="text-sm text-gray-600">{stats.completed} / {stats.total} terminés</p>
+            <p className="text-sm text-gray-600">{t('{done} / {total} terminés', { done: stats.completed, total: stats.total })}</p>
           </div>
         </div>
         
@@ -691,15 +696,15 @@ export default function TodayPage() {
         <div className="grid grid-cols-3 gap-4 mt-6">
           <div className="text-center p-4 bg-blue-50 rounded-xl">
             <p className="text-2xl font-bold text-blue-600 font-[var(--font-poppins)]">{stats.total}</p>
-            <p className="text-sm text-gray-600 mt-1">Total</p>
+            <p className="text-sm text-gray-600 mt-1">{t('Total')}</p>
           </div>
           <div className="text-center p-4 bg-green-50 rounded-xl">
             <p className="text-2xl font-bold text-green-600 font-[var(--font-poppins)]">{stats.completed}</p>
-            <p className="text-sm text-gray-600 mt-1">Terminés</p>
+            <p className="text-sm text-gray-600 mt-1">{t('Terminés')}</p>
           </div>
           <div className="text-center p-4 bg-orange-50 rounded-xl">
             <p className="text-2xl font-bold text-orange-600 font-[var(--font-poppins)]">{stats.pending}</p>
-            <p className="text-sm text-gray-600 mt-1">En attente</p>
+            <p className="text-sm text-gray-600 mt-1">{t('En attente')}</p>
           </div>
         </div>
       </div>
@@ -725,7 +730,7 @@ export default function TodayPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            Rendez-vous en cours ({appointments.filter(a => a.status === 'en_cours').length})
+            {t('Rendez-vous en cours')} ({appointments.filter(a => a.status === 'en_cours').length})
           </h2>
         </div>
         
@@ -735,7 +740,7 @@ export default function TodayPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            <p className="text-lg font-medium">Aucun rendez-vous en cours aujourd'hui</p>
+            <p className="text-lg font-medium">{t("Aucun rendez-vous en cours aujourd'hui")}</p>
           </div>
         ) : (
           <div className="space-y-4">
@@ -759,7 +764,7 @@ export default function TodayPage() {
                         />
                       ) : (
                         <div className="w-full h-full bg-gray-100 flex items-center justify-center text-gray-400 text-sm">
-                          Aucune image
+                          {t('Aucune image')}
                         </div>
                       )}
                     </div>
@@ -792,14 +797,14 @@ export default function TodayPage() {
                                     <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                                       <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                                     </svg>
-                                    VIN Valide
+                                    {t('VIN Valide')}
                                   </>
                                 ) : (
                                   <>
                                     <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                                       <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
                                     </svg>
-                                    VIN Non Valide
+                                    {t('VIN Non Valide')}
                                   </>
                                 )}
                               </span>
@@ -810,7 +815,7 @@ export default function TodayPage() {
 
                       {/* Owner Information */}
                       <div className="bg-white rounded-lg p-4 mb-4 border border-blue-200">
-                        <h4 className="text-sm font-semibold text-gray-700 mb-3">Informations du client</h4>
+                        <h4 className="text-sm font-semibold text-gray-700 mb-3">{t('Informations du client')}</h4>
                         <div className="space-y-2 text-sm text-gray-600">
                           <p className="font-medium">{appointment.id_owner_car?.firstName} {appointment.id_owner_car?.lastName}</p>
                           <div className="flex items-center gap-2">
@@ -846,7 +851,7 @@ export default function TodayPage() {
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                             </svg>
-                            Ajouter images/PDF
+                            {t('Ajouter images/PDF')}
                           </button>
                         )}
                         {/* Only show "Terminer" button if both images and PDF are uploaded */}
@@ -858,7 +863,7 @@ export default function TodayPage() {
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
-                            Terminer la vérification
+                            {t('Terminer la vérification')}
                           </button>
                         )}
                         <a
@@ -868,7 +873,7 @@ export default function TodayPage() {
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                           </svg>
-                          Appeler
+                          {t('Appeler')}
                         </a>
                       </div>
                     </div>
@@ -888,7 +893,7 @@ export default function TodayPage() {
             <svg className="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            Rendez-vous acceptés ({appointments.filter(a => a.status === 'accepted').length})
+            {t('Rendez-vous acceptés')} ({appointments.filter(a => a.status === 'accepted').length})
           </h2>
         </div>
         
@@ -897,7 +902,7 @@ export default function TodayPage() {
             <svg className="w-16 h-16 mx-auto mb-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            <p className="text-lg font-medium">Aucun rendez-vous accepté aujourd'hui</p>
+            <p className="text-lg font-medium">{t("Aucun rendez-vous accepté aujourd'hui")}</p>
           </div>
         ) : (
           <div className="space-y-4">
@@ -921,7 +926,7 @@ export default function TodayPage() {
                         />
                       ) : (
                         <div className="w-full h-full bg-gray-100 flex items-center justify-center text-gray-400 text-sm">
-                          Aucune image
+                          {t('Aucune image')}
                         </div>
                       )}
                     </div>
@@ -948,14 +953,14 @@ export default function TodayPage() {
                                     <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                                       <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                                     </svg>
-                                    VIN Valide
+                                    {t('VIN Valide')}
                                   </>
                                 ) : (
                                   <>
                                     <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                                       <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
                                     </svg>
-                                    VIN Non Valide
+                                    {t('VIN Non Valide')}
                                   </>
                                 )}
                               </span>
@@ -972,7 +977,7 @@ export default function TodayPage() {
 
                       {/* Owner Information */}
                       <div className="bg-white rounded-lg p-4 mb-4 border border-green-200">
-                        <h4 className="text-sm font-semibold text-gray-700 mb-3">Informations du client</h4>
+                        <h4 className="text-sm font-semibold text-gray-700 mb-3">{t('Informations du client')}</h4>
                         <div className="space-y-2 text-sm text-gray-600">
                           <p className="font-medium">{appointment.id_owner_car?.firstName} {appointment.id_owner_car?.lastName}</p>
                           <div className="flex items-center gap-2">
@@ -1004,7 +1009,7 @@ export default function TodayPage() {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                           </svg>
-                          Commencer la vérification
+                          {t('Commencer la vérification')}
                         </button>
                         <a
                           href={`tel:${appointment.id_owner_car?.phone}`}
@@ -1013,7 +1018,7 @@ export default function TodayPage() {
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                           </svg>
-                          Appeler
+                          {t('Appeler')}
                         </a>
                       </div>
                     </div>
@@ -1033,7 +1038,7 @@ export default function TodayPage() {
             <svg className="w-6 h-6 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            Rendez-vous terminés ({appointments.filter(a => a.status === 'finish').length})
+            {t('Rendez-vous terminés')} ({appointments.filter(a => a.status === 'finish').length})
           </h2>
         </div>
         
@@ -1042,7 +1047,7 @@ export default function TodayPage() {
             <svg className="w-16 h-16 mx-auto mb-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            <p className="text-lg font-medium">Aucun rendez-vous terminé aujourd'hui</p>
+            <p className="text-lg font-medium">{t("Aucun rendez-vous terminé aujourd'hui")}</p>
           </div>
         ) : (
           <div className="space-y-4">
@@ -1066,7 +1071,7 @@ export default function TodayPage() {
                         />
                       ) : (
                         <div className="w-full h-full bg-gray-100 flex items-center justify-center text-gray-400 text-sm">
-                          Aucune image
+                          {t('Aucune image')}
                         </div>
                       )}
                     </div>
@@ -1093,14 +1098,14 @@ export default function TodayPage() {
                                     <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                                       <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                                     </svg>
-                                    VIN Valide
+                                    {t('VIN Valide')}
                                   </>
                                 ) : (
                                   <>
                                     <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                                       <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
                                     </svg>
-                                    VIN Non Valide
+                                    {t('VIN Non Valide')}
                                   </>
                                 )}
                               </span>
@@ -1117,7 +1122,7 @@ export default function TodayPage() {
 
                       {/* Owner Information */}
                       <div className="bg-white rounded-lg p-4 mb-4 border border-purple-200">
-                        <h4 className="text-sm font-semibold text-gray-700 mb-3">Informations du client</h4>
+                        <h4 className="text-sm font-semibold text-gray-700 mb-3">{t('Informations du client')}</h4>
                         <div className="space-y-2 text-sm text-gray-600">
                           <p className="font-medium">{appointment.id_owner_car?.firstName} {appointment.id_owner_car?.lastName}</p>
                           <div className="flex items-center gap-2">
@@ -1142,10 +1147,10 @@ export default function TodayPage() {
                       {/* Show uploaded images and PDF if available */}
                       {(appointment.images && appointment.images.length > 0) || appointment.rapport_pdf ? (
                         <div className="bg-white rounded-lg p-4 mb-4 border border-purple-200">
-                          <h4 className="text-sm font-semibold text-gray-700 mb-3">Fichiers de vérification</h4>
+                          <h4 className="text-sm font-semibold text-gray-700 mb-3">{t('Fichiers de vérification')}</h4>
                           {appointment.images && appointment.images.length > 0 && (
                             <div className="mb-3">
-                              <p className="text-xs text-gray-600 mb-2">Images ({appointment.images.length})</p>
+                              <p className="text-xs text-gray-600 mb-2">{t('Images')} ({appointment.images.length})</p>
                               <div className="grid grid-cols-4 gap-2">
                                 {appointment.images.slice(0, 4).map((image, index) => (
                                   <div key={index} className="relative h-16 rounded-lg overflow-hidden border border-gray-200">
@@ -1172,7 +1177,7 @@ export default function TodayPage() {
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
                                 </svg>
-                                Voir le rapport PDF
+                                {t('Voir le rapport PDF')}
                               </a>
                             </div>
                           )}
@@ -1186,7 +1191,7 @@ export default function TodayPage() {
                             <svg className="w-5 h-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
                             </svg>
-                            Code QR de vérification
+                            {t('Code QR de vérification')}
                           </h4>
                           <div className="flex items-center gap-4">
                             {appointment.id_car.qr ? (
@@ -1235,7 +1240,7 @@ export default function TodayPage() {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                           </svg>
-                          Voir/Gérer fichiers
+                          {t('Voir/Gérer fichiers')}
                         </button>
                         <a
                           href={`tel:${appointment.id_owner_car?.phone}`}
@@ -1244,7 +1249,7 @@ export default function TodayPage() {
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                           </svg>
-                          Appeler
+                          {t('Appeler')}
                         </a>
                       </div>
                     </div>
@@ -1311,7 +1316,7 @@ export default function TodayPage() {
                       <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                       </svg>
-                      Images existantes ({selectedAppointment.images.length})
+                      {t('Images existantes ({n})', { n: selectedAppointment.images.length })}
                     </h3>
                     <div className="grid grid-cols-3 gap-4">
                       {selectedAppointment.images.map((image, index) => (
@@ -1336,7 +1341,7 @@ export default function TodayPage() {
                     <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                     </svg>
-                    Ajouter des images
+                    {t('Ajouter des images')}
                   </label>
                   <input
                     type="file"
@@ -1350,7 +1355,7 @@ export default function TodayPage() {
                   />
                   {selectedImages.length > 0 && (
                     <div className="mt-3 p-3 bg-white rounded-lg border border-blue-200">
-                      <p className="text-sm font-medium text-blue-700">{selectedImages.length} image(s) sélectionnée(s)</p>
+                      <p className="text-sm font-medium text-blue-700">{t('{n} image(s) sélectionnée(s)', { n: selectedImages.length })}</p>
                     </div>
                   )}
                   <button
@@ -1364,14 +1369,14 @@ export default function TodayPage() {
                           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                         </svg>
-                        Upload en cours...
+                        {t('Upload en cours...')}
                       </>
                     ) : (
                       <>
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                         </svg>
-                        Uploader les images
+                        {t('Uploader les images')}
                       </>
                     )}
                   </button>
@@ -1396,7 +1401,7 @@ export default function TodayPage() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                       </svg>
-                      Voir le PDF actuel
+                      {t('Voir le PDF actuel')}
                     </a>
                   )}
                   <input
@@ -1431,14 +1436,14 @@ export default function TodayPage() {
                           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                         </svg>
-                        Upload en cours...
+                        {t('Upload en cours...')}
                       </>
                     ) : (
                       <>
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                         </svg>
-                        {selectedAppointment.rapport_pdf ? 'Remplacer le PDF' : 'Uploader le PDF'}
+                        {selectedAppointment.rapport_pdf ? t('Remplacer le PDF') : t('Uploader le PDF')}
                       </>
                     )}
                   </button>
@@ -1472,7 +1477,7 @@ export default function TodayPage() {
                     </div>
                     <div>
                       <h2 className="text-2xl font-bold text-white font-[var(--font-poppins)]">
-                        Sélectionner le service
+                        {t('Sélectionner le service')}
                       </h2>
                       <p className="text-sm text-purple-50 mt-1">
                         Choisissez le service à facturer
@@ -1604,7 +1609,7 @@ export default function TodayPage() {
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
-                    Terminer la vérification
+                    {t('Terminer la vérification')}
                   </button>
                 </div>
               </div>
@@ -1635,7 +1640,7 @@ export default function TodayPage() {
                     </div>
                     <div>
                       <h2 className="text-2xl font-bold text-white font-[var(--font-poppins)]">
-                        Créer une facture ?
+                        {t('Créer une facture ?')}
                       </h2>
                       <p className="text-sm text-blue-50 mt-1">
                         Voulez-vous créer une facture pour cette vérification ?

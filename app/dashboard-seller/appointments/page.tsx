@@ -8,6 +8,7 @@ import Image from "next/image";
 import { getImageUrl } from "@/utils/backend";
 import { io, Socket } from 'socket.io-client';
 import { getBackendUrl } from '@/utils/backend';
+import { useT } from "@/utils/i18n";
 
 interface Workshop {
   _id: string;
@@ -35,6 +36,7 @@ interface Car {
 }
 
 export default function AppointmentsPage() {
+  const t = useT();
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, isLoading: userLoading } = useUser();
@@ -431,7 +433,7 @@ export default function AppointmentsPage() {
 
   const handleBookAppointment = (workshop: Workshop) => {
     if (cars.length === 0) {
-      setError("Vous devez avoir au moins une voiture pour prendre un rendez-vous");
+      setError(t("Vous devez avoir au moins une voiture pour prendre un rendez-vous"));
       return;
     }
     setSelectedWorkshop(workshop);
@@ -447,7 +449,7 @@ export default function AppointmentsPage() {
 
   const handleCreateAppointment = async () => {
     if (!selectedWorkshop || !selectedCar || !appointmentDate || !appointmentTime) {
-      setError("Veuillez remplir tous les champs");
+      setError(t("Veuillez remplir tous les champs"));
       return;
     }
 
@@ -480,7 +482,7 @@ export default function AppointmentsPage() {
       if (!contentType || !contentType.includes("application/json")) {
         const text = await res.text();
         console.error("Non-JSON response:", text.substring(0, 200));
-        setError("Erreur serveur: réponse invalide");
+        setError(t("Erreur serveur: réponse invalide"));
         setIsCreating(false);
         return;
       }
@@ -501,7 +503,7 @@ export default function AppointmentsPage() {
         return;
       }
 
-      setSuccess("Rendez-vous créé avec succès !");
+      setSuccess(t("Rendez-vous créé avec succès !"));
       setShowBookingModal(false);
       setSelectedWorkshop(null);
       setSelectedCar(null);
@@ -527,7 +529,7 @@ export default function AppointmentsPage() {
       setTimeout(() => setSuccess(''), 3000);
     } catch (error) {
       console.error('Error creating appointment:', error);
-      setError("Erreur de connexion. Veuillez réessayer.");
+      setError(t("Erreur de connexion. Veuillez réessayer."));
       setIsCreating(false);
     }
   };
@@ -546,7 +548,7 @@ export default function AppointmentsPage() {
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
           </svg>
-          <p className="mt-4 text-gray-600">Chargement...</p>
+          <p className="mt-4 text-gray-600">{t('Chargement...')}</p>
         </div>
       </div>
     );
@@ -554,11 +556,11 @@ export default function AppointmentsPage() {
 
   const getStatusLabel = (status: string) => {
     const labels: Record<string, string> = {
-      'en_attente': 'En attente',
-      'accepted': 'Accepté',
-      'refused': 'Refusé',
-      'en_cours': 'En cours',
-      'finish': 'Terminé',
+      'en_attente': t('En attente'),
+      'accepted': t('Accepté'),
+      'refused': t('Refusé'),
+      'en_cours': t('En cours'),
+      'finish': t('Terminé'),
     };
     return labels[status] || status;
   };
@@ -578,9 +580,9 @@ export default function AppointmentsPage() {
     <div className="p-6 bg-gradient-to-br from-gray-50 via-teal-50/30 to-gray-100">
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-gray-900 font-[var(--font-poppins)] mb-2">
-          Rendez-vous pour atelier
+          {t('Rendez-vous pour atelier')}
         </h1>
-        <p className="text-gray-600">Réservez un rendez-vous avec un atelier pour vérifier votre véhicule</p>
+        <p className="text-gray-600">{t('Réservez un rendez-vous avec un atelier pour vérifier votre véhicule')}</p>
       </div>
 
       {/* Tabs */}
@@ -593,7 +595,7 @@ export default function AppointmentsPage() {
               : 'bg-transparent text-gray-700 hover:bg-gray-100'
           }`}
         >
-          Réserver un rendez-vous
+          {t('Réserver un rendez-vous')}
         </button>
         <button
           onClick={() => setActiveTab('my-appointments')}
@@ -603,7 +605,7 @@ export default function AppointmentsPage() {
               : 'bg-transparent text-gray-700 hover:bg-gray-100'
           }`}
         >
-          <span>Mes rendez-vous</span>
+          <span>{t('Mes rendez-vous')}</span>
         </button>
       </div>
 
@@ -637,7 +639,7 @@ export default function AppointmentsPage() {
           {!loadingWorkshops && workshops.length > 0 && (
             <div className="mb-6 bg-white rounded-2xl shadow-lg p-4 border border-gray-200">
               <label htmlFor="address-filter" className="block text-sm font-medium text-gray-700 mb-2">
-                Filtrer par adresse
+                {t('Filtrer par adresse')}
               </label>
               <div className="relative">
                 <input
@@ -645,7 +647,7 @@ export default function AppointmentsPage() {
                   id="address-filter"
                   value={addressFilter}
                   onChange={(e) => setAddressFilter(e.target.value)}
-                  placeholder="Rechercher par adresse (ex: Alger, Oran, Constantine...)"
+                  placeholder={t('Rechercher par adresse (ex: Alger, Oran, Constantine...)')}
                   className="w-full px-4 py-3 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
                 />
                 <svg 
@@ -671,7 +673,7 @@ export default function AppointmentsPage() {
                 <p className="mt-2 text-sm text-gray-600">
                   {workshops.filter((w) => 
                     w.adr && w.adr.toLowerCase().includes(addressFilter.toLowerCase())
-                  ).length} atelier(s) trouvé(s)
+                  ).length} {t('atelier(s) trouvé(s)')}
                 </p>
               )}
             </div>
@@ -690,7 +692,7 @@ export default function AppointmentsPage() {
           <svg className="mx-auto w-16 h-16 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
           </svg>
-          <p className="text-gray-600">Aucun atelier disponible pour le moment</p>
+          <p className="text-gray-600">{t('Aucun atelier disponible pour le moment')}</p>
         </div>
       ) : (
         <>
@@ -702,12 +704,12 @@ export default function AppointmentsPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
-              <p className="text-gray-600 mb-2">Aucun atelier trouvé pour cette adresse</p>
+              <p className="text-gray-600 mb-2">{t('Aucun atelier trouvé pour cette adresse')}</p>
               <button
                 onClick={() => setAddressFilter('')}
                 className="text-teal-600 hover:text-teal-700 font-medium"
               >
-                Réinitialiser le filtre
+                {t('Réinitialiser le filtre')}
               </button>
             </div>
           ) : (
@@ -774,10 +776,13 @@ export default function AppointmentsPage() {
                           <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                           </svg>
-                          {workshop.type === 'mechanic' ? 'Mécanique' : 
-                           workshop.type === 'paint_vehicle' ? 'Peinture véhicule' : 
-                           workshop.type === 'mechanic_paint_inspector' ? 'Mécanique & Peinture' : 
-                           workshop.type}
+                          {workshop.type === 'mechanic'
+                            ? t('Mécanique')
+                            : workshop.type === 'paint_vehicle'
+                              ? t('Peinture véhicule')
+                              : workshop.type === 'mechanic_paint_inspector'
+                                ? t('Mécanique & Peinture')
+                                : workshop.type}
                         </span>
                       )}
                       {/* Rating Display */}
@@ -830,8 +835,8 @@ export default function AppointmentsPage() {
                         </svg>
                       </div>
                       <div className="flex-1">
-                        <span className="text-[10px] text-teal-100 block leading-tight">Mécanique</span>
-                        <span className="text-sm leading-tight">{workshop.price_visit_mec} DA</span>
+                        <span className="text-[10px] text-teal-100 block leading-tight">{t('Mécanique')}</span>
+                        <span className="text-sm leading-tight">{workshop.price_visit_mec} {t('DA')}</span>
                       </div>
                     </div>
                   )}
@@ -843,8 +848,8 @@ export default function AppointmentsPage() {
                         </svg>
                       </div>
                       <div className="flex-1">
-                        <span className="text-[10px] text-teal-100 block leading-tight">Peinture</span>
-                        <span className="text-sm leading-tight">{workshop.price_visit_paint} DA</span>
+                        <span className="text-[10px] text-teal-100 block leading-tight">{t('Peinture')}</span>
+                        <span className="text-sm leading-tight">{workshop.price_visit_paint} {t('DA')}</span>
                       </div>
                     </div>
                   )}
@@ -858,8 +863,8 @@ export default function AppointmentsPage() {
                             </svg>
                           </div>
                           <div className="flex-1">
-                            <span className="text-[10px] text-teal-100 block leading-tight">Mécanique</span>
-                            <span className="text-sm leading-tight">{workshop.price_visit_mec} DA</span>
+                            <span className="text-[10px] text-teal-100 block leading-tight">{t('Mécanique')}</span>
+                            <span className="text-sm leading-tight">{workshop.price_visit_mec} {t('DA')}</span>
                           </div>
                         </div>
                       )}
@@ -871,8 +876,8 @@ export default function AppointmentsPage() {
                             </svg>
                           </div>
                           <div className="flex-1">
-                            <span className="text-[10px] text-teal-100 block leading-tight">Peinture</span>
-                            <span className="text-sm leading-tight">{workshop.price_visit_paint} DA</span>
+                            <span className="text-[10px] text-teal-100 block leading-tight">{t('Peinture')}</span>
+                            <span className="text-sm leading-tight">{workshop.price_visit_paint} {t('DA')}</span>
                           </div>
                         </div>
                       )}
@@ -918,7 +923,7 @@ export default function AppointmentsPage() {
                   </svg>
                   
                   {/* Text */}
-                  <span className="relative z-10">Réserver</span>
+                  <span className="relative z-10">{t('Réserver')}</span>
                   
                   {/* Arrow icon on hover */}
                   <svg className="w-4 h-4 relative z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -939,7 +944,7 @@ export default function AppointmentsPage() {
           <div className="bg-white rounded-2xl shadow-2xl max-w-5xl w-full p-6 my-8">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-bold text-gray-900 font-[var(--font-poppins)]">
-                Réserver un rendez-vous
+                {t('Réserver un rendez-vous')}
               </h2>
               <button
                 onClick={() => {
@@ -959,14 +964,14 @@ export default function AppointmentsPage() {
             </div>
 
             <div className="mb-4 p-4 bg-gray-50 rounded-lg">
-              <p className="text-sm text-gray-600 mb-1">Atelier</p>
+              <p className="text-sm text-gray-600 mb-1">{t('Atelier')}</p>
               <p className="font-semibold text-gray-900">{selectedWorkshop.name}</p>
             </div>
 
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Sélectionner une voiture *
+                  {t('Sélectionner une voiture')} *
                 </label>
                 {loadingCars ? (
                   <div className="text-center py-4">
@@ -976,7 +981,7 @@ export default function AppointmentsPage() {
                     </svg>
                   </div>
                 ) : cars.length === 0 ? (
-                  <p className="text-sm text-red-600">Vous n'avez aucune voiture. Veuillez d'abord ajouter une voiture.</p>
+                  <p className="text-sm text-red-600">{t("Vous n'avez aucune voiture. Veuillez d'abord ajouter une voiture.")}</p>
                 ) : (
                   <select
                     value={selectedCar?._id || selectedCar?.id || ''}
@@ -987,7 +992,7 @@ export default function AppointmentsPage() {
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
                     required
                   >
-                    <option value="">Sélectionner une voiture</option>
+                    <option value="">{t('Sélectionner une voiture')}</option>
                     {cars.map((car) => (
                       <option key={car._id || car.id} value={car._id || car.id}>
                         {car.brand} {car.model} {car.year}
@@ -999,7 +1004,7 @@ export default function AppointmentsPage() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Date *
+                  {t('Date')} *
                 </label>
                 <input
                   type="date"
@@ -1016,7 +1021,7 @@ export default function AppointmentsPage() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Heure *
+                  {t('Heure')} *
                 </label>
                 {loadingTimes ? (
                   <div className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 flex items-center justify-center">
@@ -1024,11 +1029,11 @@ export default function AppointmentsPage() {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    <span className="ml-2 text-sm text-gray-600">Chargement des créneaux...</span>
+                    <span className="ml-2 text-sm text-gray-600">{t('Chargement des créneaux...')}</span>
                   </div>
                 ) : availableTimes.length === 0 && appointmentDate ? (
                   <div className="w-full px-4 py-3 border border-red-300 rounded-lg bg-red-50">
-                    <p className="text-sm text-red-600">Aucun créneau disponible pour cette date</p>
+                    <p className="text-sm text-red-600">{t('Aucun créneau disponible pour cette date')}</p>
                   </div>
                 ) : (
                   <>
@@ -1039,7 +1044,7 @@ export default function AppointmentsPage() {
                       required
                       disabled={!appointmentDate || availableTimes.length === 0}
                     >
-                      <option value="">Sélectionner une heure dans la liste ci-dessous</option>
+                      <option value="">{t('Sélectionner une heure dans la liste ci-dessous')}</option>
                       {availableTimes.map((time) => (
                         <option key={time} value={time}>
                           {time}
@@ -1051,7 +1056,7 @@ export default function AppointmentsPage() {
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                         </svg>
-                        Heure sélectionnée : <span className="font-bold">{appointmentTime}</span>
+                        {t('Heure sélectionnée :')} <span className="font-bold">{appointmentTime}</span>
                       </p>
                     )}
                     
@@ -1062,7 +1067,7 @@ export default function AppointmentsPage() {
                           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                           </svg>
-                          Créneaux disponibles ({availableTimes.length}) - Cliquez pour sélectionner :
+                          {t('Créneaux disponibles ({n}) - Cliquez pour sélectionner :', { n: availableTimes.length })}
                         </p>
                         <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-10 lg:grid-cols-12 gap-2">
                           {availableTimes.map((time) => (
@@ -1090,7 +1095,7 @@ export default function AppointmentsPage() {
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                           </svg>
-                          Créneaux non disponibles ({unavailableTimes.length}) :
+                          {t('Créneaux non disponibles ({n}) :', { n: unavailableTimes.length })}
                         </p>
                         <div className="flex flex-wrap gap-2">
                           {unavailableTimes.map((time) => (
@@ -1115,7 +1120,7 @@ export default function AppointmentsPage() {
                 disabled={isCreating || !selectedCar || !appointmentDate || !appointmentTime}
                 className="flex-1 px-6 py-3 bg-teal-500 hover:bg-teal-600 text-white rounded-lg font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isCreating ? 'Création...' : 'Confirmer'}
+                {isCreating ? t('Création...') : t('Confirmer')}
               </button>
               <button
                 onClick={() => {
@@ -1128,7 +1133,7 @@ export default function AppointmentsPage() {
                 }}
                 className="px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-semibold transition-colors"
               >
-                Annuler
+                {t('Annuler')}
               </button>
             </div>
           </div>
@@ -1143,7 +1148,7 @@ export default function AppointmentsPage() {
           {/* Section Header with Badge */}
           <div className="mb-6 flex items-center justify-between">
             <h2 className="text-2xl font-bold text-gray-900 font-[var(--font-poppins)] flex items-center gap-3">
-              Mes rendez-vous
+              {t('Mes rendez-vous')}
               {rdvNotificationCount > 0 && (
                 <span className="px-3 py-1 bg-red-500 text-white rounded-full text-sm font-bold">
                   {rdvNotificationCount > 9 ? '9+' : rdvNotificationCount}
@@ -1155,7 +1160,7 @@ export default function AppointmentsPage() {
           {/* Filter by workshop name/address */}
           <div className="mb-6 bg-white rounded-2xl shadow-lg p-4 border border-gray-200">
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Filtrer par atelier (nom ou adresse)
+              {t('Filtrer par atelier (nom ou adresse)')}
             </label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -1167,7 +1172,7 @@ export default function AppointmentsPage() {
                 type="text"
                 value={myRdvWorkshopFilter}
                 onChange={(e) => setMyRdvWorkshopFilter(e.target.value)}
-                placeholder="Ex: Atelier ABC, Alger, Oran..."
+                placeholder={t('Ex: Atelier ABC, Alger, Oran...')}
                 className="w-full px-4 py-3 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
               />
               {myRdvWorkshopFilter && (
@@ -1200,7 +1205,7 @@ export default function AppointmentsPage() {
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <span>En attente</span>
+              <span>{t('En attente')}</span>
               <span className={`px-3 py-1 rounded-full text-xs font-bold ${
                 appointmentFilter === 'en_attente' ? 'bg-white/30 text-white' : 'bg-yellow-100 text-yellow-700'
               }`}>
@@ -1225,7 +1230,7 @@ export default function AppointmentsPage() {
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <span>Acceptés</span>
+              <span>{t('Acceptés')}</span>
               <span className={`px-3 py-1 rounded-full text-xs font-bold ${
                 appointmentFilter === 'accepted' ? 'bg-white/30 text-white' : 'bg-green-100 text-green-700'
               }`}>
@@ -1251,7 +1256,7 @@ export default function AppointmentsPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <span>En cours</span>
+              <span>{t('En cours')}</span>
               <span className={`px-3 py-1 rounded-full text-xs font-bold ${
                 appointmentFilter === 'en_cours' ? 'bg-white/30 text-white' : 'bg-blue-100 text-blue-700'
               }`}>
@@ -1276,7 +1281,7 @@ export default function AppointmentsPage() {
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <span>Terminés</span>
+              <span>{t('Terminés')}</span>
               <span className={`px-3 py-1 rounded-full text-xs font-bold ${
                 appointmentFilter === 'finish' ? 'bg-white/30 text-white' : 'bg-purple-100 text-purple-700'
               }`}>
@@ -1300,14 +1305,25 @@ export default function AppointmentsPage() {
               <svg className="mx-auto w-16 h-16 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
-              <p className="text-gray-600">Aucun rendez-vous trouvé</p>
+              <p className="text-gray-600">{t('Aucun rendez-vous trouvé')}</p>
             </div>
           ) : filteredMyAppointments.length === 0 ? (
             <div className="text-center py-12 bg-white rounded-2xl shadow-lg border border-gray-200">
               <svg className="mx-auto w-16 h-16 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
-              <p className="text-gray-600">Aucun rendez-vous {appointmentFilter === 'en_attente' ? 'en attente' : appointmentFilter === 'accepted' ? 'accepté' : appointmentFilter === 'en_cours' ? 'en cours' : 'terminé'} trouvé</p>
+              <p className="text-gray-600">
+                {t('Aucun rendez-vous {status} trouvé', {
+                  status:
+                    appointmentFilter === 'en_attente'
+                      ? t('en attente')
+                      : appointmentFilter === 'accepted'
+                        ? t('accepté')
+                        : appointmentFilter === 'en_cours'
+                          ? t('en cours')
+                          : t('terminé'),
+                })}
+              </p>
             </div>
           ) : (
         <div className="space-y-4">
@@ -1331,14 +1347,14 @@ export default function AppointmentsPage() {
 
                       {/* Workshop Information */}
                       <div className="bg-gray-50 rounded-lg p-4 mb-4">
-                        <h4 className="text-sm font-semibold text-gray-700 mb-3">Informations de l'atelier</h4>
+                        <h4 className="text-sm font-semibold text-gray-700 mb-3">{t("Informations de l'atelier")}</h4>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
                           <div className="flex items-center gap-2">
                             <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                             </svg>
                             <span className="text-gray-600 font-medium">
-                              {appointment.id_workshop?.name || 'Atelier'}
+                              {appointment.id_workshop?.name || t('Atelier')}
                         </span>
                           </div>
                           <div className="flex items-center gap-2">
@@ -1397,19 +1413,21 @@ export default function AppointmentsPage() {
                             <svg className="w-5 h-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                           </svg>
-                            Rapport de vérification
+                            {t('Rapport de vérification')}
                           </h4>
                           
                           {/* Images */}
                           {appointment.images && appointment.images.length > 0 && (
                             <div className="mb-4">
-                              <p className="text-xs text-gray-600 mb-2 font-medium">Images ({appointment.images.length})</p>
+                              <p className="text-xs text-gray-600 mb-2 font-medium">
+                                {t('Images ({n})', { n: appointment.images.length })}
+                              </p>
                               <div className="grid grid-cols-3 gap-3">
                                 {appointment.images.map((image: string, index: number) => (
                                   <div key={index} className="relative h-24 rounded-lg overflow-hidden border border-gray-300 shadow-sm hover:shadow-md transition-shadow cursor-pointer group">
                                     <Image
                                       src={getImageUrl(image) || image}
-                                      alt={`Image de vérification ${index + 1}`}
+                                      alt={t('Image de vérification {n}', { n: index + 1 })}
                                       fill
                                       className="object-cover group-hover:scale-105 transition-transform"
                                       unoptimized
@@ -1423,7 +1441,7 @@ export default function AppointmentsPage() {
                           {/* PDF Report */}
                           {appointment.rapport_pdf && (
                             <div>
-                              <p className="text-xs text-gray-600 mb-2 font-medium">Rapport PDF</p>
+                              <p className="text-xs text-gray-600 mb-2 font-medium">{t('Rapport PDF')}</p>
                               <a
                                 href={getImageUrl(appointment.rapport_pdf) || appointment.rapport_pdf}
                                 target="_blank"
@@ -1433,13 +1451,13 @@ export default function AppointmentsPage() {
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
                           </svg>
-                                Voir le rapport PDF
+                                {t('Voir le rapport PDF')}
                         </a>
                       </div>
                           )}
 
                           {(!appointment.images || appointment.images.length === 0) && !appointment.rapport_pdf && (
-                            <p className="text-sm text-gray-500 italic">Aucun fichier disponible pour le moment</p>
+                            <p className="text-sm text-gray-500 italic">{t('Aucun fichier disponible pour le moment')}</p>
                           )}
                         </div>
                       )}

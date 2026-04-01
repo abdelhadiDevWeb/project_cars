@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useUser } from "@/contexts/UserContext";
+import { useT } from "@/utils/i18n";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface Facture {
   _id: string;
@@ -21,6 +23,8 @@ interface Facture {
 
 export default function FacturesPage() {
   const { user, token } = useUser();
+  const t = useT();
+  const { language } = useLanguage();
   const [factures, setFactures] = useState<Facture[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -42,7 +46,7 @@ export default function FacturesPage() {
         if (!contentType || !contentType.includes("application/json")) {
           const text = await res.text();
           console.error("Non-JSON response:", text.substring(0, 200));
-          setError("Erreur serveur: réponse invalide");
+          setError(t("Erreur serveur: réponse invalide"));
           setLoading(false);
           return;
         }
@@ -52,11 +56,11 @@ export default function FacturesPage() {
         if (res.ok && data.ok) {
           setFactures(data.factures || []);
         } else {
-          setError(data?.message || "Erreur lors du chargement des factures");
+          setError(data?.message || t("Erreur lors du chargement des factures"));
         }
       } catch (error) {
         console.error('Error fetching factures:', error);
-        setError("Erreur de connexion. Veuillez réessayer.");
+        setError(t("Erreur de connexion. Veuillez réessayer."));
       } finally {
         setLoading(false);
       }
@@ -70,6 +74,7 @@ export default function FacturesPage() {
   const handlePrint = (facture: Facture) => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
+    const locale = language === 'ar' ? 'ar-DZ' : language === 'en' ? 'en-US' : 'fr-FR';
 
     const printContent = `
       <!DOCTYPE html>
@@ -160,20 +165,20 @@ export default function FacturesPage() {
         </head>
         <body>
           <div class="header">
-            <h1>FACTURE</h1>
-            <p>CarSure DZ</p>
+            <h1>${t('FACTURE')}</h1>
+            <p>${t('CarSure DZ')}</p>
           </div>
           
           <div class="info-section">
             <div class="info-box">
-              <h3>Atelier</h3>
+              <h3>${t('Atelier')}</h3>
               <p><strong>${user?.name || 'Atelier'}</strong></p>
               <p>${user?.email || ''}</p>
               <p>${user?.phone || ''}</p>
               <p>${user?.adr || ''}</p>
             </div>
             <div class="info-box">
-              <h3>Client</h3>
+              <h3>${t('Client')}</h3>
               <p><strong>${facture.id_user.firstName} ${facture.id_user.lastName}</strong></p>
               <p>${facture.id_user.email}</p>
               <p>${facture.id_user.phone}</p>
@@ -181,37 +186,37 @@ export default function FacturesPage() {
           </div>
 
           <div class="facture-details">
-            <p><strong>Date:</strong> ${new Date(facture.date).toLocaleDateString('fr-FR', {
+            <p><strong>${t('Date')}:</strong> ${new Date(facture.date).toLocaleDateString(locale, {
               day: 'numeric',
               month: 'long',
               year: 'numeric'
             })}</p>
-            <p><strong>Numéro de facture:</strong> #${facture._id.substring(0, 8).toUpperCase()}</p>
+            <p><strong>${t('Numéro de facture')}:</strong> #${facture._id.substring(0, 8).toUpperCase()}</p>
           </div>
 
           <table class="facture-table">
             <thead>
               <tr>
-                <th>Description</th>
-                <th style="text-align: right;">Montant</th>
+                <th>${t('Description')}</th>
+                <th style="text-align: right;">${t('Montant')}</th>
               </tr>
             </thead>
             <tbody>
               <tr>
                 <td>${facture.service}</td>
-                <td style="text-align: right;">${facture.total.toLocaleString()} DA</td>
+                <td style="text-align: right;">${facture.total.toLocaleString()} ${t('DA')}</td>
               </tr>
             </tbody>
           </table>
 
           <div class="total-section">
-            <p><strong>Total:</strong></p>
-            <div class="total-amount">${facture.total.toLocaleString()} DA</div>
+            <p><strong>${t('Total')}:</strong></p>
+            <div class="total-amount">${facture.total.toLocaleString()} ${t('DA')}</div>
           </div>
 
           <div class="footer">
-            <p>Merci pour votre confiance!</p>
-            <p>CarSure DZ - Votre plateforme de confiance</p>
+            <p>${t('Merci pour votre confiance!')}</p>
+            <p>${t('CarSure DZ - Votre plateforme de confiance')}</p>
           </div>
         </body>
       </html>
@@ -233,7 +238,7 @@ export default function FacturesPage() {
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
           </svg>
-          <p className="mt-4 text-gray-600">Chargement...</p>
+          <p className="mt-4 text-gray-600">{t('Chargement...')}</p>
         </div>
       </div>
     );
@@ -246,9 +251,9 @@ export default function FacturesPage() {
           <svg className="w-8 h-8 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
           </svg>
-          Mes Factures
+          {t('Mes Factures')}
         </h1>
-        <p className="text-gray-600">Gérez et imprimez toutes vos factures</p>
+        <p className="text-gray-600">{t('Gérez et imprimez toutes vos factures')}</p>
       </div>
 
       {error && (
@@ -267,8 +272,8 @@ export default function FacturesPage() {
           <svg className="w-16 h-16 mx-auto mb-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
           </svg>
-          <p className="text-lg font-medium text-gray-500">Aucune facture pour le moment</p>
-          <p className="text-sm text-gray-400 mt-2">Les factures seront créées automatiquement lors de la finalisation des vérifications</p>
+          <p className="text-lg font-medium text-gray-500">{t('Aucune facture pour le moment')}</p>
+          <p className="text-sm text-gray-400 mt-2">{t('Les factures seront créées automatiquement lors de la finalisation des vérifications')}</p>
         </div>
       ) : (
         <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
@@ -276,18 +281,18 @@ export default function FacturesPage() {
             <table className="w-full">
               <thead className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white">
                 <tr>
-                  <th className="px-6 py-4 text-left text-sm font-semibold">Date</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold">Client</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold">Service</th>
-                  <th className="px-6 py-4 text-right text-sm font-semibold">Total</th>
-                  <th className="px-6 py-4 text-center text-sm font-semibold">Actions</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold">{t('Date')}</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold">{t('Client')}</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold">{t('Service')}</th>
+                  <th className="px-6 py-4 text-right text-sm font-semibold">{t('Total')}</th>
+                  <th className="px-6 py-4 text-center text-sm font-semibold">{t('Actions')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
                 {factures.map((facture) => (
                   <tr key={facture._id || facture.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                      {new Date(facture.date).toLocaleDateString('fr-FR', {
+                      {new Date(facture.date).toLocaleDateString(language === 'ar' ? 'ar-DZ' : language === 'en' ? 'en-US' : 'fr-FR', {
                         day: 'numeric',
                         month: 'short',
                         year: 'numeric'
@@ -314,7 +319,7 @@ export default function FacturesPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right">
                       <p className="text-sm font-bold text-gray-900">
-                        {facture.total.toLocaleString()} DA
+                        {facture.total.toLocaleString()} {t('DA')}
                       </p>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-center">
@@ -325,7 +330,7 @@ export default function FacturesPage() {
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                         </svg>
-                        Imprimer
+                        {t('Imprimer')}
                       </button>
                     </td>
                   </tr>

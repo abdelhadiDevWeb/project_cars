@@ -4,9 +4,11 @@ import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useT } from "@/utils/i18n";
 
 export default function AddCarPage() {
   const router = useRouter();
+  const t = useT();
   const [formData, setFormData] = useState({
     brand: '',
     model: '',
@@ -60,7 +62,7 @@ export default function AddCarPage() {
       // Validate price: must be at least 200000
       const numValue = parseFloat(stringValue);
       if (stringValue !== '' && (!isNaN(numValue) && numValue < 200000)) {
-        setError('Le prix minimum est de 200,000.00 DA');
+        setError(t('Le prix minimum est de 200,000.00 DA'));
       } else {
         setError('');
       }
@@ -113,7 +115,7 @@ export default function AddCarPage() {
         const token = localStorage.getItem('token');
         if (!token) {
           setVinValid(false);
-          setVinError('Vous devez être connecté pour vérifier le VIN.');
+          setVinError(t('Vous devez être connecté pour vérifier le VIN.'));
           setVinValidating(false);
           return;
         }
@@ -143,12 +145,12 @@ export default function AddCarPage() {
         if (response.ok && data.ok && data.valid) {
           setVinValid(true);
           setVinError('');
-          setVinRemark(data.remark || 'VIN vérifié');
+          setVinRemark(data.remark || t('VIN vérifié'));
           setVinDetails(data.details || null);
         } else {
           // VIN is invalid or doesn't exist
           setVinValid(false);
-          let errorMessage = 'VIN invalide ou non trouvé. Veuillez vérifier le numéro.';
+          let errorMessage = t('VIN invalide ou non trouvé. Veuillez vérifier le numéro.');
           
           // Handle different error formats from API
           if (data.message) {
@@ -176,7 +178,7 @@ export default function AddCarPage() {
           // If status is 400 or 404, it means VIN doesn't exist or is invalid
           if (response.status === 400 || response.status === 404) {
             if (!errorMessage.includes('VIN') && !errorMessage.includes('vin')) {
-              errorMessage = `VIN invalide ou non trouvé. ${errorMessage}`;
+              errorMessage = `${t('VIN invalide ou non trouvé.')} ${errorMessage}`;
             }
           }
           
@@ -187,7 +189,7 @@ export default function AddCarPage() {
       } catch (error: any) {
         console.error('Error verifying VIN:', error);
         setVinValid(false);
-        setVinError(error?.message || 'Erreur de connexion lors de la vérification du VIN. Veuillez réessayer.');
+        setVinError(error?.message || t('Erreur de connexion lors de la vérification du VIN. Veuillez réessayer.'));
         setVinRemark('');
         setVinDetails(null);
       } finally {
@@ -201,13 +203,13 @@ export default function AddCarPage() {
       const files = Array.from(e.target.files);
       // Limit to 10 images
       if (files.length > 10) {
-        setError('Vous ne pouvez télécharger que 10 images maximum');
+        setError(t('Vous ne pouvez télécharger que 10 images maximum'));
         return;
       }
       // Validate file sizes (5MB max per file)
       const invalidFiles = files.filter(file => file.size > 5 * 1024 * 1024);
       if (invalidFiles.length > 0) {
-        setError('Certains fichiers dépassent 5MB. Veuillez réduire leur taille.');
+        setError(t('Certains fichiers dépassent 5MB. Veuillez réduire leur taille.'));
         return;
       }
       setImages(files);
@@ -244,14 +246,30 @@ export default function AddCarPage() {
     if (!brandMatch || !modelMatch) {
       let errorDetails = [];
       if (!brandMatch) {
-        errorDetails.push(`La marque "${brand}" ne correspond pas à "${vinDetails.make}" du VIN`);
+        errorDetails.push(
+          t('La marque "{brand}" ne correspond pas à "{vinMake}" du VIN', {
+            brand,
+            vinMake: vinDetails.make,
+          })
+        );
       }
       if (!modelMatch) {
-        errorDetails.push(`Le modèle "${model}" ne correspond pas à "${vinDetails.model}" du VIN`);
+        errorDetails.push(
+          t('Le modèle "{model}" ne correspond pas à "{vinModel}" du VIN', {
+            model,
+            vinModel: vinDetails.model,
+          })
+        );
       }
       return {
         match: false,
-        error: `Les informations du véhicule ne correspondent pas au VIN vérifié.\n\n${errorDetails.join('\n')}\n\nVIN vérifié: ${vinDetails.make} ${vinDetails.model}${vinDetails.year ? ` (${vinDetails.year})` : ''}`
+        error: `${t('Les informations du véhicule ne correspondent pas au VIN vérifié.')}
+\n\n${errorDetails.join('\n')}
+\n\n${t('VIN vérifié: {make} {model}{year}', {
+          make: vinDetails.make,
+          model: vinDetails.model,
+          year: vinDetails.year ? ` (${vinDetails.year})` : '',
+        })}`
       };
     }
 
@@ -265,38 +283,38 @@ export default function AddCarPage() {
     // Validation
     const finalBrand = showCustomBrand ? customBrand.trim() : formData.brand;
     if (!finalBrand || !formData.model || !formData.year || !formData.km || !formData.price) {
-      setError('Veuillez remplir tous les champs obligatoires');
+      setError(t('Veuillez remplir tous les champs obligatoires'));
       return;
     }
 
     // Validate price: must be at least 200000
     const price = parseFloat(formData.price);
     if (isNaN(price) || price < 200000) {
-      setError('Le prix minimum est de 200,000.00 DA');
+      setError(t('Le prix minimum est de 200,000.00 DA'));
       return;
     }
 
     // Validate VIN if provided (unless bypass is enabled)
     if (formData.vin && formData.vin.length === 17 && !bypassVin) {
       if (vinValid === false || vinValidating) {
-        setError('Veuillez vérifier que le VIN est valide avant de continuer');
+        setError(t('Veuillez vérifier que le VIN est valide avant de continuer'));
         return;
       }
       if (vinValid === null) {
-        setError('Veuillez attendre la vérification du VIN');
+        setError(t('Veuillez attendre la vérification du VIN'));
         return;
       }
 
       // Check if brand and model match VIN data
       const matchResult = checkBrandModelMatch(finalBrand, formData.model);
       if (!matchResult.match) {
-        setError(matchResult.error || 'Les informations du véhicule ne correspondent pas au VIN vérifié');
+        setError(matchResult.error || t('Les informations du véhicule ne correspondent pas au VIN vérifié'));
         return;
       }
     }
 
     if (images.length === 0) {
-      setError('Veuillez télécharger au moins une image');
+      setError(t('Veuillez télécharger au moins une image'));
       return;
     }
 
@@ -307,7 +325,7 @@ export default function AddCarPage() {
       console.log("🔑 Frontend - Token from localStorage:", token ? "Present" : "Missing");
       
       if (!token) {
-        setError('Vous devez être connecté pour ajouter une voiture');
+        setError(t('Vous devez être connecté pour ajouter une voiture'));
         setIsSubmitting(false);
         router.push('/login');
         return;
@@ -366,13 +384,13 @@ export default function AddCarPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data?.message || "Erreur lors de l'ajout de la voiture");
+        setError(data?.message || t("Erreur lors de l'ajout de la voiture"));
         setIsSubmitting(false);
         return;
       }
 
       // Success - show success message
-      setSuccessMessage("Voiture ajoutée avec succès!");
+      setSuccessMessage(t('Voiture ajoutée avec succès!'));
       setIsSubmitting(false);
       
       // Reset form
@@ -405,7 +423,7 @@ export default function AddCarPage() {
       }, 2000);
     } catch (error) {
       console.error('Error adding car:', error);
-      setError("Erreur de connexion. Veuillez réessayer.");
+      setError(t("Erreur de connexion. Veuillez réessayer."));
       setIsSubmitting(false);
     }
   };
@@ -413,8 +431,8 @@ export default function AddCarPage() {
   return (
     <div className="p-6 bg-gradient-to-br from-gray-50 via-teal-50/30 to-gray-100">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900 font-[var(--font-poppins)] mb-2">Ajouter une voiture</h1>
-        <p className="text-gray-600">Remplissez les informations de votre véhicule</p>
+        <h1 className="text-3xl font-bold text-gray-900 font-[var(--font-poppins)] mb-2">{t('Ajouter une voiture')}</h1>
+        <p className="text-gray-600">{t('Remplissez les informations de votre véhicule')}</p>
       </div>
 
       <div className="max-w-4xl mx-auto">
@@ -427,7 +445,7 @@ export default function AddCarPage() {
                 </svg>
               </div>
               <div className="flex-1">
-                <p className="font-bold text-red-900 mb-1">Erreur de validation</p>
+                <p className="font-bold text-red-900 mb-1">{t('Erreur de validation')}</p>
                 <div className="text-sm text-red-800 whitespace-pre-line leading-relaxed">{error}</div>
               </div>
               <button onClick={() => setError('')} className="text-red-600 hover:text-red-800 flex-shrink-0">
@@ -458,12 +476,12 @@ export default function AddCarPage() {
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Basic Information */}
           <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-200">
-            <h2 className="text-xl font-bold text-gray-900 mb-6 font-[var(--font-poppins)]">Informations de base</h2>
+            <h2 className="text-xl font-bold text-gray-900 mb-6 font-[var(--font-poppins)]">{t('Informations de base')}</h2>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label htmlFor="brand" className="block text-sm font-medium text-gray-700 mb-2">
-                  Marque *
+                  {t('Marque')} *
                 </label>
                 <select
                   id="brand"
@@ -473,7 +491,7 @@ export default function AddCarPage() {
                   onChange={handleChange}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
                 >
-                  <option value="">Sélectionner une marque</option>
+                  <option value="">{t('Sélectionner une marque')}</option>
                   <option value="Volkswagen">Volkswagen</option>
                   <option value="Hyundai">Hyundai</option>
                   <option value="Renault">Renault</option>
@@ -482,7 +500,7 @@ export default function AddCarPage() {
                   <option value="Mercedes">Mercedes</option>
                   <option value="Audi">Audi</option>
                   <option value="Toyota">Toyota</option>
-                  <option value="other">Autre</option>
+                  <option value="other">{t('Autre')}</option>
                 </select>
                 {showCustomBrand && (
                   <input
@@ -492,7 +510,7 @@ export default function AddCarPage() {
                     required
                     value={customBrand}
                     onChange={handleCustomBrandChange}
-                    placeholder="Entrez le nom de la marque"
+                    placeholder={t('Entrez le nom de la marque')}
                     className="w-full mt-2 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
                   />
                 )}
@@ -500,7 +518,7 @@ export default function AddCarPage() {
 
               <div>
                 <label htmlFor="model" className="block text-sm font-medium text-gray-700 mb-2">
-                  Modèle *
+                  {t('Modèle')} *
                 </label>
                 <input
                   type="text"
@@ -510,13 +528,13 @@ export default function AddCarPage() {
                   value={formData.model}
                   onChange={handleChange}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
-                  placeholder="Ex: Golf, Tucson, Clio"
+                  placeholder={t('Ex: Golf, Tucson, Clio')}
                 />
               </div>
 
               <div>
                 <label htmlFor="year" className="block text-sm font-medium text-gray-700 mb-2">
-                  Année *
+                  {t('Année')} *
                 </label>
                 <input
                   type="number"
@@ -533,7 +551,7 @@ export default function AddCarPage() {
 
               <div>
                 <label htmlFor="price" className="block text-sm font-medium text-gray-700 mb-2">
-                  Prix (DA) *
+                  {t('Prix (DA) *')}
                 </label>
                 <input
                   type="number"
@@ -549,27 +567,27 @@ export default function AddCarPage() {
                       ? 'border-red-500 bg-red-50'
                       : 'border-gray-300'
                   }`}
-                  placeholder="Ex: 2200000"
+                  placeholder={t('Ex: 2200000')}
                 />
                 <div className="mt-1 flex items-center gap-1">
-                  <span className="text-xs text-gray-500">Format:</span>
+                  <span className="text-xs text-gray-500">{t('Format:')}</span>
                   <span className="text-xs font-semibold text-gray-700">
-                    {formData.price || '0'},00 DA
+                    {formData.price || '0'},00 {t('DA')}
                   </span>
                 </div>
                 <p className="mt-1 text-xs text-gray-500">
-                  Prix minimum: 200,000.00 DA
+                  {t('Prix minimum: 200,000.00 DA')}
                 </p>
                 {formData.price && parseFloat(formData.price) < 200000 && (
                   <p className="mt-1 text-xs text-red-600 font-medium">
-                    Le prix doit être d'au moins 200,000.00 DA
+                    {t("Le prix doit être d'au moins 200,000.00 DA")}
                   </p>
                 )}
               </div>
 
               <div>
                 <label htmlFor="km" className="block text-sm font-medium text-gray-700 mb-2">
-                  Kilométrage (km) *
+                  {t('Kilométrage (km)')} *
                 </label>
                 <input
                   type="number"
@@ -580,13 +598,13 @@ export default function AddCarPage() {
                   value={formData.km}
                   onChange={handleChange}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
-                  placeholder="Ex: 80000"
+                  placeholder={t('Ex: 80000')}
                 />
               </div>
 
               <div>
                 <label htmlFor="vin" className="block text-sm font-medium text-gray-700 mb-2">
-                  VIN (Numéro d'identification du véhicule)
+                  {t("VIN (Numéro d'identification du véhicule)")}
                 </label>
                 <div className="relative">
                   <input
@@ -603,7 +621,7 @@ export default function AddCarPage() {
                         ? 'border-green-500 bg-green-50 focus:border-green-500 focus:ring-green-500' 
                         : 'border-gray-300'
                     }`}
-                    placeholder="Ex: 1HGBH41JXMN109186"
+                    placeholder={t('Ex: 1HGBH41JXMN109186')}
                   />
                   {vinValidating && (
                     <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
@@ -628,7 +646,7 @@ export default function AddCarPage() {
                 {vinValidating && (
                   <div className="mt-2 flex items-center gap-2 text-sm text-teal-600">
                     <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-teal-500"></div>
-                    <span>Vérification du VIN en cours...</span>
+                    <span>{t('Vérification du VIN en cours...')}</span>
                   </div>
                 )}
                 {vinError && vinValid === false && !vinValidating && !bypassVin && (
@@ -640,7 +658,7 @@ export default function AddCarPage() {
                         </svg>
                       </div>
                       <div className="flex-1">
-                        <p className="text-sm font-bold text-red-900 mb-1">VIN invalide ou non trouvé</p>
+                        <p className="text-sm font-bold text-red-900 mb-1">{t('VIN invalide ou non trouvé')}</p>
                         <p className="text-sm text-red-800 leading-relaxed mb-3">{vinError}</p>
                         <button
                           type="button"
@@ -653,7 +671,7 @@ export default function AddCarPage() {
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                           </svg>
-                          Créer quand même (VIN non vérifié)
+                          {t('Créer quand même (VIN non vérifié)')}
                         </button>
                       </div>
                     </div>
@@ -668,15 +686,15 @@ export default function AddCarPage() {
                         </svg>
                       </div>
                       <div className="flex-1">
-                        <p className="text-sm font-bold text-orange-900">Mode contournement activé</p>
-                        <p className="text-sm text-orange-800">Le véhicule sera créé sans vérification du VIN</p>
+                        <p className="text-sm font-bold text-orange-900">{t('Mode contournement activé')}</p>
+                        <p className="text-sm text-orange-800">{t('Le véhicule sera créé sans vérification du VIN')}</p>
                       </div>
                       <button
                         type="button"
                         onClick={() => setBypassVin(false)}
                         className="text-orange-600 hover:text-orange-800 font-semibold text-sm"
                       >
-                        Annuler
+                        {t('Annuler')}
                       </button>
                     </div>
                   </div>
@@ -690,77 +708,77 @@ export default function AddCarPage() {
                         </svg>
                       </div>
                       <div className="flex-1">
-                        <p className="text-sm font-bold text-green-900 mb-2">VIN valide et vérifié ✓</p>
+                        <p className="text-sm font-bold text-green-900 mb-2">{t('VIN valide et vérifié ✓')}</p>
                         {vinRemark && (
                           <p className="text-sm text-green-800 font-semibold mb-3">{vinRemark}</p>
                         )}
                         {vinDetails && (
                           <div className="mt-3 pt-3 border-t border-green-200">
-                            <p className="text-xs font-semibold text-green-900 mb-2 uppercase tracking-wide">Détails du véhicule :</p>
+                            <p className="text-xs font-semibold text-green-900 mb-2 uppercase tracking-wide">{t('Détails du véhicule :')}</p>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                               {vinDetails.make && (
                                 <div className="flex items-center gap-2">
-                                  <span className="text-green-700 font-medium min-w-[80px]">Marque:</span>
+                                  <span className="text-green-700 font-medium min-w-[80px]">{t('Marque:')}</span>
                                   <span className="text-green-900">{vinDetails.make}</span>
                                 </div>
                               )}
                               {vinDetails.model && (
                                 <div className="flex items-center gap-2">
-                                  <span className="text-green-700 font-medium min-w-[80px]">Modèle:</span>
+                                  <span className="text-green-700 font-medium min-w-[80px]">{t('Modèle:')}</span>
                                   <span className="text-green-900">{vinDetails.model}</span>
                                 </div>
                               )}
                               {vinDetails.year && (
                                 <div className="flex items-center gap-2">
-                                  <span className="text-green-700 font-medium min-w-[80px]">Année:</span>
+                                  <span className="text-green-700 font-medium min-w-[80px]">{t('Année:')}</span>
                                   <span className="text-green-900">{vinDetails.year}</span>
                                 </div>
                               )}
                               {vinDetails.bodyType && (
                                 <div className="flex items-center gap-2">
-                                  <span className="text-green-700 font-medium min-w-[80px]">Type:</span>
+                                  <span className="text-green-700 font-medium min-w-[80px]">{t('Type:')}</span>
                                   <span className="text-green-900">{vinDetails.bodyType}</span>
                                 </div>
                               )}
                               {vinDetails.engine && (
                                 <div className="flex items-center gap-2">
-                                  <span className="text-green-700 font-medium min-w-[80px]">Moteur:</span>
+                                  <span className="text-green-700 font-medium min-w-[80px]">{t('Moteur:')}</span>
                                   <span className="text-green-900">{vinDetails.engine}</span>
                                 </div>
                               )}
                               {vinDetails.transmission && (
                                 <div className="flex items-center gap-2">
-                                  <span className="text-green-700 font-medium min-w-[80px]">Transmission:</span>
+                                  <span className="text-green-700 font-medium min-w-[80px]">{t('Transmission:')}</span>
                                   <span className="text-green-900">{vinDetails.transmission}</span>
                                 </div>
                               )}
                               {vinDetails.driveType && (
                                 <div className="flex items-center gap-2">
-                                  <span className="text-green-700 font-medium min-w-[80px]">Traction:</span>
+                                  <span className="text-green-700 font-medium min-w-[80px]">{t('Traction:')}</span>
                                   <span className="text-green-900">{vinDetails.driveType}</span>
                                 </div>
                               )}
                               {vinDetails.fuelType && (
                                 <div className="flex items-center gap-2">
-                                  <span className="text-green-700 font-medium min-w-[80px]">Carburant:</span>
+                                  <span className="text-green-700 font-medium min-w-[80px]">{t('Carburant:')}</span>
                                   <span className="text-green-900">{vinDetails.fuelType}</span>
                                 </div>
                               )}
                               {vinDetails.doors && (
                                 <div className="flex items-center gap-2">
-                                  <span className="text-green-700 font-medium min-w-[80px]">Portes:</span>
+                                  <span className="text-green-700 font-medium min-w-[80px]">{t('Portes:')}</span>
                                   <span className="text-green-900">{vinDetails.doors}</span>
                                 </div>
                               )}
                               {vinDetails.seats && (
                                 <div className="flex items-center gap-2">
-                                  <span className="text-green-700 font-medium min-w-[80px]">Places:</span>
+                                  <span className="text-green-700 font-medium min-w-[80px]">{t('Places:')}</span>
                                   <span className="text-green-900">{vinDetails.seats}</span>
                                 </div>
                               )}
                               {vinDetails.color && (
                                 <div className="flex items-center gap-2">
-                                  <span className="text-green-700 font-medium min-w-[80px]">Couleur:</span>
+                                  <span className="text-green-700 font-medium min-w-[80px]">{t('Couleur:')}</span>
                                   <span className="text-green-900">{vinDetails.color}</span>
                                 </div>
                               )}
@@ -777,7 +795,7 @@ export default function AddCarPage() {
                   </p>
                 )}
                 {formData.vin.length === 0 && (
-                  <p className="mt-1 text-xs text-gray-500">17 caractères alphanumériques (sans I, O, Q)</p>
+                  <p className="mt-1 text-xs text-gray-500">{t('17 caractères alphanumériques (sans I, O, Q)')}</p>
                 )}
               </div>
             </div>
@@ -785,12 +803,12 @@ export default function AddCarPage() {
 
           {/* Additional Information */}
           <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-200">
-            <h2 className="text-xl font-bold text-gray-900 mb-6 font-[var(--font-poppins)]">Informations supplémentaires</h2>
+            <h2 className="text-xl font-bold text-gray-900 mb-6 font-[var(--font-poppins)]">{t('Informations supplémentaires')}</h2>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label htmlFor="color" className="block text-sm font-medium text-gray-700 mb-2">
-                  Couleur
+                  {t('Couleur')}
                 </label>
                 <input
                   type="text"
@@ -799,13 +817,13 @@ export default function AddCarPage() {
                   value={formData.color ?? ''}
                   onChange={handleChange}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
-                  placeholder="Ex: Noir, Blanc, Rouge"
+                  placeholder={t('Ex: Noir, Blanc, Rouge')}
                 />
               </div>
 
               <div>
                 <label htmlFor="ports" className="block text-sm font-medium text-gray-700 mb-2">
-                  Nombre de portes
+                  {t('Nombre de portes')}
                 </label>
                 <input
                   type="number"
@@ -816,13 +834,13 @@ export default function AddCarPage() {
                   value={formData.ports ?? ''}
                   onChange={handleChange}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
-                  placeholder="Ex: 3, 4, 5"
+                  placeholder={t('Ex: 3, 4, 5')}
                 />
               </div>
 
               <div>
                 <label htmlFor="boite" className="block text-sm font-medium text-gray-700 mb-2">
-                  Boîte de vitesses
+                  {t('Boîte de vitesses')}
                 </label>
                 <select
                   id="boite"
@@ -831,16 +849,16 @@ export default function AddCarPage() {
                   onChange={handleChange}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
                 >
-                  <option value="">Sélectionner</option>
-                  <option value="manuelle">Manuelle</option>
-                  <option value="auto">Automatique</option>
-                  <option value="semi-auto">Semi-automatique</option>
+                  <option value="">{t('Sélectionner')}</option>
+                  <option value="manuelle">{t('Manuelle')}</option>
+                  <option value="auto">{t('Automatique')}</option>
+                  <option value="semi-auto">{t('Semi-automatique')}</option>
                 </select>
               </div>
 
               <div>
                 <label htmlFor="type_gaz" className="block text-sm font-medium text-gray-700 mb-2">
-                  Type de carburant
+                  {t('Type de carburant')}
                 </label>
                 <select
                   id="type_gaz"
@@ -849,17 +867,17 @@ export default function AddCarPage() {
                   onChange={handleChange}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
                 >
-                  <option value="">Sélectionner</option>
-                  <option value="diesel">Diesel</option>
-                  <option value="gaz">Gaz</option>
-                  <option value="essence">Essence</option>
-                  <option value="electrique">Électrique</option>
+                  <option value="">{t('Sélectionner')}</option>
+                  <option value="diesel">{t('Diesel')}</option>
+                  <option value="gaz">{t('Gaz')}</option>
+                  <option value="essence">{t('Essence')}</option>
+                  <option value="electrique">{t('Électrique')}</option>
                 </select>
               </div>
 
               <div>
                 <label htmlFor="type_enegine" className="block text-sm font-medium text-gray-700 mb-2">
-                  Type de moteur
+                  {t('Type de moteur')}
                 </label>
                 <input
                   type="text"
@@ -868,13 +886,13 @@ export default function AddCarPage() {
                   value={formData.type_enegine ?? ''}
                   onChange={handleChange}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
-                  placeholder="Ex: 1.6L, 2.0L Turbo"
+                  placeholder={t('Ex: 1.6L, 2.0L Turbo')}
                 />
               </div>
 
               <div>
                 <label htmlFor="usedby" className="block text-sm font-medium text-gray-700 mb-2">
-                  Utilisé par
+                  {t('Utilisé par')}
                 </label>
                 <input
                   type="text"
@@ -883,7 +901,7 @@ export default function AddCarPage() {
                   value={formData.usedby ?? ''}
                   onChange={handleChange}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
-                  placeholder="Ex: Particulier, Professionnel"
+                  placeholder={t('Ex: Particulier, Professionnel')}
                 />
               </div>
 
@@ -898,14 +916,14 @@ export default function AddCarPage() {
                     className="w-5 h-5 text-teal-600 border-gray-300 rounded focus:ring-teal-500"
                   />
                   <span className="text-sm font-medium text-gray-700">
-                    Le véhicule a été impliqué dans un accident
+                    {t('Le véhicule a été impliqué dans un accident')}
                   </span>
                 </label>
               </div>
 
               <div className="md:col-span-2">
                 <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-2">
-                  Description
+                  {t('Description')}
                 </label>
                 <textarea
                   id="description"
@@ -915,10 +933,10 @@ export default function AddCarPage() {
                   rows={5}
                   maxLength={2000}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 resize-none"
-                  placeholder="Décrivez votre véhicule (état, équipements, historique, etc.)"
+                  placeholder={t('Décrivez votre véhicule (état, équipements, historique, etc.)')}
                 />
                 <p className="mt-1 text-xs text-gray-500">
-                  {(formData.description || '').length}/2000 caractères
+                  {t('{n}/2000 caractères', { n: (formData.description || '').length })}
                 </p>
               </div>
             </div>
@@ -926,8 +944,8 @@ export default function AddCarPage() {
 
           {/* Images */}
           <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-200">
-            <h2 className="text-xl font-bold text-gray-900 mb-6 font-[var(--font-poppins)]">Photos *</h2>
-            <p className="text-sm text-gray-600 mb-4">Téléchargez au moins une image (maximum 10 images, 5MB par image)</p>
+            <h2 className="text-xl font-bold text-gray-900 mb-6 font-[var(--font-poppins)]">{t('Photos *')}</h2>
+            <p className="text-sm text-gray-600 mb-4">{t('Téléchargez au moins une image (maximum 10 images, 5MB par image)')}</p>
             <div className="mb-4">
               <label className="block w-full px-6 py-12 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-teal-500 transition-colors text-center">
                 <input
@@ -942,9 +960,9 @@ export default function AddCarPage() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                   </svg>
                   <p className="text-sm text-gray-600">
-                    Cliquez pour télécharger ou glissez-déposez
+                    {t('Cliquez pour télécharger ou glissez-déposez')}
                   </p>
-                  <p className="text-xs text-gray-500">JPEG, PNG, WEBP, GIF jusqu&apos;à 5MB par image</p>
+                  <p className="text-xs text-gray-500">{t("JPEG, PNG, WEBP, GIF jusqu'à 5MB par image")}</p>
                 </div>
               </label>
             </div>
@@ -954,7 +972,7 @@ export default function AddCarPage() {
                   <div key={index} className="relative aspect-square rounded-lg overflow-hidden border border-gray-200 group">
                     <Image
                       src={URL.createObjectURL(image)}
-                      alt={`Preview ${index + 1}`}
+                      alt={t('Aperçu {n}', { n: index + 1 })}
                       fill
                       className="object-cover"
                     />
@@ -988,17 +1006,17 @@ export default function AddCarPage() {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  <span>Publication en cours...</span>
+                  <span>{t('Publication en cours...')}</span>
                 </>
               ) : (
-                'Publier la voiture'
+                t('Publier la voiture')
               )}
             </button>
             <Link
               href="/dashboard-seller/my-cars"
               className="px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-semibold transition-colors"
             >
-              Annuler
+              {t('Annuler')}
             </Link>
           </div>
         </form>

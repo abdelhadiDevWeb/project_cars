@@ -4,10 +4,12 @@ import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useUser } from "@/contexts/UserContext";
+import { useT } from "@/utils/i18n";
 
 export default function LoginPage() {
   const router = useRouter();
   const { login } = useUser();
+  const t = useT();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -36,7 +38,7 @@ export default function LoginPage() {
           setIsLoading(false);
           return;
         }
-        setError(data?.message || "Erreur lors de la connexion");
+        setError(data?.message || t('Erreur lors de la connexion'));
         setIsLoading(false);
         return;
       }
@@ -64,7 +66,7 @@ export default function LoginPage() {
         router.push('/');
       }
     } catch (error) {
-      setError("Erreur de connexion. Veuillez réessayer.");
+      setError(t("Erreur de connexion. Veuillez réessayer."));
     } finally {
       setIsLoading(false);
     }
@@ -87,10 +89,10 @@ export default function LoginPage() {
             </svg>
           </div>
           <h2 className="text-4xl font-bold bg-gradient-to-r from-blue-900 via-teal-700 to-cyan-600 bg-clip-text text-transparent font-[var(--font-poppins)] mb-2">
-            Se Connecter
+            {t('Se Connecter')}
           </h2>
           <p className="text-base text-gray-600">
-            Connectez-vous à votre compte pour continuer
+            {t('Connectez-vous à votre compte pour continuer')}
           </p>
         </div>
 
@@ -99,7 +101,7 @@ export default function LoginPage() {
           <div className="space-y-5">
             <div>
               <label htmlFor="email" className="block text-sm font-semibold text-gray-700 mb-2">
-                Email
+                {t('Email')}
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none z-10">
@@ -125,7 +127,7 @@ export default function LoginPage() {
 
             <div>
               <label htmlFor="password" className="block text-sm font-semibold text-gray-700 mb-2">
-                Mot de passe
+                {t('Mot de passe')}
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none z-10">
@@ -175,13 +177,13 @@ export default function LoginPage() {
                 className="h-4 w-4 text-teal-600 focus:ring-teal-500 border-gray-300 rounded"
               />
               <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-700">
-                Se souvenir de moi
+                {t('Se souvenir de moi')}
               </label>
             </div>
 
             <div className="text-sm">
               <Link href="/forgot-password" className="font-medium text-teal-600 hover:text-teal-500">
-                Mot de passe oublié?
+                {t('Mot de passe oublié?')}
               </Link>
             </div>
           </div>
@@ -207,10 +209,10 @@ export default function LoginPage() {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  <span>Connexion...</span>
+                  <span>{t('Connexion...')}</span>
                 </>
               ) : (
-                "Se Connecter"
+                t('Se Connecter')
               )}
             </button>
           </div>
@@ -231,7 +233,7 @@ export default function LoginPage() {
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
             </svg>
-            Retour à l&apos;accueil
+            {t("Retour à l'accueil")}
           </Link>
         </div>
       </div>
@@ -250,20 +252,20 @@ export default function LoginPage() {
 
               {/* Title */}
               <h2 className="text-2xl font-bold text-gray-900 mb-4 font-[var(--font-poppins)]">
-                Compte en attente d&apos;activation
+                {t("Compte en attente d'activation")}
               </h2>
 
               {/* Message */}
               <div className="text-gray-600 mb-6 space-y-3">
                 <p className="text-base leading-relaxed">
-                  Votre compte n&apos;est pas encore activé par l&apos;administrateur.
+                  {t("Votre compte n'est pas encore activé par l'administrateur.")}
                 </p>
                 <p className="text-base leading-relaxed">
-                  Veuillez patienter jusqu&apos;à ce que votre compte soit activé.
+                  {t("Veuillez patienter jusqu'à ce que votre compte soit activé.")}
                 </p>
                 <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
                   <p className="text-sm text-gray-700 mb-2 font-medium">
-                    Besoin d&apos;aide ?
+                    {t("Besoin d'aide ?")}
                   </p>
                   <a 
                     href="tel:0562232628" 
@@ -282,7 +284,7 @@ export default function LoginPage() {
                 onClick={() => setShowActivationModal(false)}
                 className="w-full py-3.5 bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-600 hover:to-cyan-600 text-white rounded-xl font-bold transition-all duration-200 shadow-xl hover:shadow-2xl hover:scale-105"
               >
-                Compris
+                {t('Compris')}
               </button>
             </div>
           </div>

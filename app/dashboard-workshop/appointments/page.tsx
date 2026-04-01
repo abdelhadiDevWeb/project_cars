@@ -7,6 +7,8 @@ import Image from "next/image";
 import { getImageUrl, getBackendUrl } from "@/utils/backend";
 import { io, Socket } from 'socket.io-client';
 import { QRCodeSVG } from "react-qr-code";
+import { useT } from "@/utils/i18n";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface Appointment {
   _id: string;
@@ -37,6 +39,8 @@ interface Appointment {
 }
 
 export default function WorkshopAppointmentsPage() {
+  const t = useT();
+  const { language } = useLanguage();
   const router = useRouter();
   const { user, token, isLoading: userLoading } = useUser();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -86,7 +90,7 @@ export default function WorkshopAppointmentsPage() {
       if (!contentType || !contentType.includes("application/json")) {
         const text = await res.text();
         console.error("Non-JSON response:", text.substring(0, 200));
-        setError("Erreur serveur: réponse invalide");
+        setError(t("Erreur serveur: réponse invalide"));
         setLoading(false);
         return;
       }
@@ -94,7 +98,7 @@ export default function WorkshopAppointmentsPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data?.message || "Erreur lors de la récupération des rendez-vous");
+        setError(data?.message || t("Erreur lors de la récupération des rendez-vous"));
         setLoading(false);
         return;
       }
@@ -104,7 +108,7 @@ export default function WorkshopAppointmentsPage() {
       }
     } catch (error) {
       console.error('Error fetching appointments:', error);
-      setError("Erreur de connexion. Veuillez réessayer.");
+      setError(t("Erreur de connexion. Veuillez réessayer."));
     } finally {
       setLoading(false);
     }
@@ -223,7 +227,7 @@ export default function WorkshopAppointmentsPage() {
     })() : false;
     try {
       if (!token) {
-        setError("Token d'authentification manquant");
+        setError(t("Token d'authentification manquant"));
         return;
       }
 
@@ -240,14 +244,14 @@ export default function WorkshopAppointmentsPage() {
       if (!contentType || !contentType.includes("application/json")) {
         const text = await res.text();
         console.error("Non-JSON response:", text.substring(0, 200));
-        setError("Erreur serveur: réponse invalide");
+        setError(t("Erreur serveur: réponse invalide"));
         return;
       }
 
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data?.message || "Erreur lors de la mise à jour du statut");
+        setError(data?.message || t("Erreur lors de la mise à jour du statut"));
         return;
       }
 
@@ -282,7 +286,7 @@ export default function WorkshopAppointmentsPage() {
       }
     } catch (error) {
       console.error('Error updating appointment status:', error);
-      setError("Erreur de connexion. Veuillez réessayer.");
+      setError(t("Erreur de connexion. Veuillez réessayer."));
     }
   };
 
@@ -310,7 +314,7 @@ export default function WorkshopAppointmentsPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data?.message || "Erreur lors de l'upload des images");
+        setError(data?.message || t("Erreur lors de l'upload des images"));
         setUploadingImages(false);
         return;
       }
@@ -355,7 +359,7 @@ export default function WorkshopAppointmentsPage() {
         setSuccessMessage('');
       } else {
         // Images uploaded but PDF not yet, keep modal open
-        setSuccessMessage(`Images uploadées avec succès ! (${selectedImages.length} image(s))`);
+        setSuccessMessage(t('Images uploadées avec succès ! ({n} image(s))', { n: selectedImages.length }));
         setSelectedImages([]);
         setTimeout(() => {
           setSuccessMessage('');
@@ -364,7 +368,7 @@ export default function WorkshopAppointmentsPage() {
       setUploadingImages(false);
     } catch (error) {
       console.error('Error uploading images:', error);
-      setError("Erreur de connexion. Veuillez réessayer.");
+      setError(t("Erreur de connexion. Veuillez réessayer."));
       setUploadingImages(false);
     }
   };
@@ -391,7 +395,7 @@ export default function WorkshopAppointmentsPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data?.message || "Erreur lors de l'upload du PDF");
+        setError(data?.message || t("Erreur lors de l'upload du PDF"));
         setUploadingPdf(false);
         return;
       }
@@ -430,7 +434,7 @@ export default function WorkshopAppointmentsPage() {
         setSuccessMessage('');
       } else {
         // PDF uploaded but images not yet, keep modal open
-        setSuccessMessage('PDF uploadé avec succès !');
+        setSuccessMessage(t('PDF uploadé avec succès !'));
         setSelectedPdf(null);
         setTimeout(() => {
           setSuccessMessage('');
@@ -439,7 +443,7 @@ export default function WorkshopAppointmentsPage() {
       setUploadingPdf(false);
     } catch (error) {
       console.error('Error uploading PDF:', error);
-      setError("Erreur de connexion. Veuillez réessayer.");
+      setError(t("Erreur de connexion. Veuillez réessayer."));
       setUploadingPdf(false);
     }
   };
@@ -464,11 +468,11 @@ export default function WorkshopAppointmentsPage() {
 
   const getStatusLabel = (status: 'en_attente' | 'accepted' | 'refused' | 'en_cours' | 'finish') => {
     const labels: Record<string, string> = {
-      'en_attente': 'En attente',
-      'accepted': 'Accepté',
-      'refused': 'Refusé',
-      'en_cours': 'En cours',
-      'finish': 'Terminé',
+      'en_attente': t('En attente'),
+      'accepted': t('Accepté'),
+      'refused': t('Refusé'),
+      'en_cours': t('En cours'),
+      'finish': t('Terminé'),
     };
     return labels[status] || status;
   };
@@ -492,7 +496,7 @@ export default function WorkshopAppointmentsPage() {
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
           </svg>
-          <p className="mt-4 text-gray-600">Chargement...</p>
+          <p className="mt-4 text-gray-600">{t('Chargement...')}</p>
         </div>
       </div>
     );
@@ -501,8 +505,8 @@ export default function WorkshopAppointmentsPage() {
   return (
     <div className="p-6 bg-gradient-to-br from-gray-50 via-blue-50/30 to-gray-100">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900 font-[var(--font-poppins)] mb-2">Rendez-vous</h1>
-        <p className="text-gray-600">Gérez les demandes de rendez-vous des clients</p>
+        <h1 className="text-3xl font-bold text-gray-900 font-[var(--font-poppins)] mb-2">{t('Rendez-vous')}</h1>
+        <p className="text-gray-600">{t('Gérez les demandes de rendez-vous des clients')}</p>
       </div>
 
       {/* Error Message */}
@@ -529,7 +533,7 @@ export default function WorkshopAppointmentsPage() {
             </div>
             <input
               type="text"
-              placeholder="Rechercher par nom du client ou voiture (marque, modèle)..."
+              placeholder={t('Rechercher par nom du client ou voiture (marque, modèle)...')}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-gray-50 hover:bg-white"
@@ -550,12 +554,12 @@ export default function WorkshopAppointmentsPage() {
         {/* Status Filters */}
         <div className="flex flex-wrap gap-3">
           {[
-            { value: 'all' as const, label: 'Tous', count: appointments.length },
-            { value: 'en_attente' as const, label: 'En attente', count: appointments.filter(a => a.status === 'en_attente').length },
-            { value: 'accepted' as const, label: 'Acceptés', count: appointments.filter(a => a.status === 'accepted').length },
-            { value: 'en_cours' as const, label: 'En cours', count: appointments.filter(a => a.status === 'en_cours').length },
-            { value: 'finish' as const, label: 'Terminés', count: appointments.filter(a => a.status === 'finish').length },
-            { value: 'refused' as const, label: 'Refusés', count: appointments.filter(a => a.status === 'refused').length },
+            { value: 'all' as const, label: t('Tous'), count: appointments.length },
+            { value: 'en_attente' as const, label: t('En attente'), count: appointments.filter(a => a.status === 'en_attente').length },
+            { value: 'accepted' as const, label: t('Acceptés'), count: appointments.filter(a => a.status === 'accepted').length },
+            { value: 'en_cours' as const, label: t('En cours'), count: appointments.filter(a => a.status === 'en_cours').length },
+            { value: 'finish' as const, label: t('Terminés'), count: appointments.filter(a => a.status === 'finish').length },
+            { value: 'refused' as const, label: t('Refusés'), count: appointments.filter(a => a.status === 'refused').length },
           ].map((filterOption) => (
             <button
               key={filterOption.value}
@@ -589,13 +593,13 @@ export default function WorkshopAppointmentsPage() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
           </svg>
           <p className="text-gray-600">
-            Aucun rendez-vous {
+            {t('Aucun rendez-vous')} {
               filter !== 'all' 
-                ? filter === 'en_attente' ? 'en attente' 
-                : filter === 'accepted' ? 'accepté' 
-                : 'refusé'
+                ? filter === 'en_attente' ? t('en attente') 
+                : filter === 'accepted' ? t('accepté') 
+                : t('refusé')
                 : ''
-            } trouvé
+            } {t('trouvé')}
           </p>
         </div>
       ) : (
@@ -608,7 +612,7 @@ export default function WorkshopAppointmentsPage() {
                   {appointment.id_car && appointment.id_car.images && appointment.id_car.images.length > 0 && getImageUrl(appointment.id_car.images[0]) ? (
                     <Image
                       src={getImageUrl(appointment.id_car.images[0])!}
-                      alt={appointment.id_car ? `${appointment.id_car.brand} ${appointment.id_car.model}` : 'Image de voiture'}
+                      alt={appointment.id_car ? `${appointment.id_car.brand} ${appointment.id_car.model}` : t('Image de voiture')}
                       fill
                       className="object-cover"
                       unoptimized
@@ -627,7 +631,7 @@ export default function WorkshopAppointmentsPage() {
                   <div className="flex items-start justify-between mb-4">
                     <div>
                       <h3 className="text-xl font-bold text-gray-900 font-[var(--font-poppins)] mb-2">
-                        {appointment.id_car ? `${appointment.id_car.brand} ${appointment.id_car.model} ${appointment.id_car.year}` : 'Voiture non disponible'}
+                        {appointment.id_car ? `${appointment.id_car.brand} ${appointment.id_car.model} ${appointment.id_car.year}` : t('Voiture non disponible')}
                       </h3>
                       <div className="flex items-center gap-4 mb-3">
                         <span className={`px-3 py-1.5 rounded-full text-xs font-bold border ${getStatusColor(appointment.status)}`}>
@@ -639,7 +643,7 @@ export default function WorkshopAppointmentsPage() {
 
                   {/* Client Information */}
                   <div className="bg-gray-50 rounded-lg p-4 mb-4">
-                    <h4 className="text-sm font-semibold text-gray-700 mb-3">Informations du client</h4>
+                    <h4 className="text-sm font-semibold text-gray-700 mb-3">{t('Informations du client')}</h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
               <div className="flex items-center gap-2">
                         <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -653,7 +657,7 @@ export default function WorkshopAppointmentsPage() {
                             <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                             </svg>
-                            Certifié
+                            {t('Certifié')}
                           </span>
                         )}
               </div>
@@ -682,7 +686,7 @@ export default function WorkshopAppointmentsPage() {
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                       </svg>
-                      {new Date(appointment.date).toLocaleDateString('fr-FR', {
+                      {new Date(appointment.date).toLocaleDateString(language === 'ar' ? 'ar-DZ' : language === 'en' ? 'en-US' : 'fr-FR', {
                         weekday: 'long',
                         year: 'numeric',
                         month: 'long',
@@ -705,13 +709,13 @@ export default function WorkshopAppointmentsPage() {
                           onClick={() => handleStatusChange(appointment._id || appointment.id!, 'accepted')}
                           className="px-6 py-2.5 bg-green-500 hover:bg-green-600 text-white rounded-lg font-semibold transition-colors text-sm"
                         >
-                          Accepter
+                          {t('Accepter')}
                         </button>
                         <button
                           onClick={() => handleStatusChange(appointment._id || appointment.id!, 'refused')}
                           className="px-6 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-lg font-semibold transition-colors text-sm"
                         >
-                          Refuser
+                          {t('Refuser')}
                         </button>
                       </>
                     )}
@@ -726,7 +730,7 @@ export default function WorkshopAppointmentsPage() {
                             }}
                             className="px-6 py-2.5 bg-purple-500 hover:bg-purple-600 text-white rounded-lg font-semibold transition-colors text-sm"
                           >
-                            Ajouter images/PDF
+                            {t('Ajouter images/PDF')}
                           </button>
                         )}
                         {/* Only show "Terminer" button if both images and PDF are uploaded */}
@@ -735,7 +739,7 @@ export default function WorkshopAppointmentsPage() {
                             onClick={() => handleStatusChange(appointment._id || appointment.id!, 'finish')}
                             className="px-6 py-2.5 bg-green-500 hover:bg-green-600 text-white rounded-lg font-semibold transition-colors text-sm"
                           >
-                            Terminer
+                            {t('Terminer')}
                           </button>
                         )}
                       </>
@@ -749,7 +753,7 @@ export default function WorkshopAppointmentsPage() {
                           }}
                           className="px-6 py-2.5 bg-purple-500 hover:bg-purple-600 text-white rounded-lg font-semibold transition-colors text-sm"
                         >
-                          Voir/Gérer images/PDF
+                          {t('Voir/Gérer images/PDF')}
                         </button>
                         {/* QR Code Display for Finished Appointments */}
                         {appointment.id_car?._id && (
@@ -758,14 +762,14 @@ export default function WorkshopAppointmentsPage() {
                               <svg className="w-4 h-4 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
                               </svg>
-                              Code QR de vérification
+                              {t('Code QR de vérification')}
                             </h4>
                             <div className="flex flex-col items-center gap-2">
                               {appointment.id_car.qr ? (
                                 <div className="bg-white p-3 rounded-lg border-2 border-purple-300">
                                   <img 
                                     src={appointment.id_car.qr} 
-                                    alt="QR Code" 
+                                    alt={t('QR Code')} 
                                     className="w-32 h-32"
                                   />
                                 </div>
@@ -781,7 +785,7 @@ export default function WorkshopAppointmentsPage() {
                                 </div>
                               )}
                               <p className="text-xs text-gray-600 text-center">
-                                Scannez pour vérifier le statut
+                                {t('Scannez pour vérifier le statut')}
                               </p>
                             </div>
                           </div>
@@ -794,13 +798,13 @@ export default function WorkshopAppointmentsPage() {
                           onClick={() => handleStatusChange(appointment._id || appointment.id!, 'accepted')}
                           className="px-6 py-2.5 bg-green-500 hover:bg-green-600 text-white rounded-lg font-semibold transition-colors text-sm"
                         >
-                          Accepter
+                          {t('Accepter')}
                         </button>
                         <button
                           onClick={() => handleStatusChange(appointment._id || appointment.id!, 'en_attente')}
                           className="px-6 py-2.5 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-semibold transition-colors text-sm"
                         >
-                          Remettre en attente
+                          {t('Remettre en attente')}
                         </button>
                       </>
                     )}
@@ -811,7 +815,7 @@ export default function WorkshopAppointmentsPage() {
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                 </svg>
-                      Appeler
+                      {t('Appeler')}
                     </a>
                   </div>
                 </div>
@@ -906,7 +910,7 @@ export default function WorkshopAppointmentsPage() {
                       <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                       </svg>
-                      Images existantes ({selectedAppointment.images.length})
+                      {t('Images existantes ({n})', { n: selectedAppointment.images.length })}
                     </h3>
                     <div className="grid grid-cols-3 gap-4">
                       {selectedAppointment.images.map((image, index) => (
@@ -945,7 +949,9 @@ export default function WorkshopAppointmentsPage() {
                   />
                   {selectedImages.length > 0 && (
                     <div className="mt-3 p-3 bg-white rounded-lg border border-blue-200">
-                      <p className="text-sm font-medium text-blue-700">{selectedImages.length} image(s) sélectionnée(s)</p>
+                      <p className="text-sm font-medium text-blue-700">
+                        {t('{n} image(s) sélectionnée(s)', { n: selectedImages.length })}
+                      </p>
                     </div>
                   )}
                   <button
@@ -991,7 +997,7 @@ export default function WorkshopAppointmentsPage() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                       </svg>
-                      Voir le PDF actuel
+                      {t('Voir le PDF actuel')}
                     </a>
                   )}
                   <input

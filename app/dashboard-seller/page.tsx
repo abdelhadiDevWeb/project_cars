@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useUser } from "@/contexts/UserContext";
 import { useRouter } from "next/navigation";
+import { useT } from "@/utils/i18n";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface Stats {
   activeCars: number;
@@ -45,8 +47,10 @@ interface RecentNotification {
 }
 
 export default function DashboardSellerPage() {
+  const t = useT();
   const router = useRouter();
   const { user, token, isLoading: userLoading } = useUser();
+  const { language } = useLanguage();
   const [stats, setStats] = useState<Stats>({
     activeCars: 0,
     totalCars: 0,
@@ -103,11 +107,11 @@ export default function DashboardSellerPage() {
     const past = new Date(date);
     const diffInSeconds = Math.floor((now.getTime() - past.getTime()) / 1000);
 
-    if (diffInSeconds < 60) return 'Il y a quelques secondes';
-    if (diffInSeconds < 3600) return `Il y a ${Math.floor(diffInSeconds / 60)} minutes`;
-    if (diffInSeconds < 86400) return `Il y a ${Math.floor(diffInSeconds / 3600)} heures`;
-    if (diffInSeconds < 604800) return `Il y a ${Math.floor(diffInSeconds / 86400)} jours`;
-    return new Date(date).toLocaleDateString('fr-FR');
+    if (diffInSeconds < 60) return t('Il y a quelques secondes');
+    if (diffInSeconds < 3600) return t('Il y a {n} minutes', { n: Math.floor(diffInSeconds / 60) });
+    if (diffInSeconds < 86400) return t('Il y a {n} heures', { n: Math.floor(diffInSeconds / 3600) });
+    if (diffInSeconds < 604800) return t('Il y a {n} jours', { n: Math.floor(diffInSeconds / 86400) });
+    return new Date(date).toLocaleDateString(language === 'ar' ? 'ar' : language === 'en' ? 'en-US' : 'fr-FR');
   };
 
   if (userLoading || loading) {
@@ -118,7 +122,7 @@ export default function DashboardSellerPage() {
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
           </svg>
-          <p className="mt-4 text-gray-600">Chargement...</p>
+          <p className="mt-4 text-gray-600">{t('Chargement...')}</p>
         </div>
       </div>
     );
@@ -126,32 +130,32 @@ export default function DashboardSellerPage() {
 
   const statsCards = [
     { 
-      title: 'Véhicules Actifs', 
+      title: t('Véhicules Actifs'), 
       value: stats.activeCars.toString(), 
       icon: 'car', 
       color: 'blue', 
-      change: `${stats.totalCars} au total` 
+      change: t('{n} au total', { n: stats.totalCars }) 
     },
     { 
-      title: 'Messages', 
+      title: t('Messages'), 
       value: stats.unreadNotifications.toString(), 
       icon: 'message', 
       color: 'purple', 
-      change: `${stats.totalNotifications} messages` 
+      change: t('{n} messages', { n: stats.totalNotifications }) 
     },
     { 
-      title: 'Rendez-vous', 
+      title: t('Rendez-vous'), 
       value: stats.totalAppointments.toString(), 
       icon: 'appointment', 
       color: 'orange', 
-      change: `${stats.upcomingAppointments} à venir` 
+      change: t('{n} à venir', { n: stats.upcomingAppointments }) 
     },
     { 
-      title: 'Véhicules Total', 
+      title: t('Véhicules Total'), 
       value: stats.totalCars.toString(), 
       icon: 'car', 
       color: 'green', 
-      change: `${stats.activeCars} actifs` 
+      change: t('{n} actifs', { n: stats.activeCars }) 
     },
   ];
 
@@ -161,7 +165,7 @@ export default function DashboardSellerPage() {
       type: 'appointment' as const,
       car: `${apt.id_car?.brand} ${apt.id_car?.model} ${apt.id_car?.year}`,
       time: formatTimeAgo(apt.createdAt),
-      user: apt.id_workshop?.name || 'Atelier',
+      user: apt.id_workshop?.name || t('Atelier'),
       status: apt.status,
     })),
     ...recentNotifications.filter(notif => notif.type !== 'other').map(notif => ({
@@ -171,7 +175,7 @@ export default function DashboardSellerPage() {
       user: notif.id_sender?.name || 
             (notif.id_sender?.firstName && notif.id_sender?.lastName 
               ? `${notif.id_sender.firstName} ${notif.id_sender.lastName}` 
-              : 'Utilisateur'),
+              : t('Utilisateur')),
       message: notif.message,
     })),
   ].sort((a, b) => {
@@ -188,8 +192,8 @@ export default function DashboardSellerPage() {
   return (
     <div className="p-6 bg-gradient-to-br from-gray-50 via-teal-50/30 to-gray-100">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900 font-[var(--font-poppins)] mb-2">Tableau de bord</h1>
-        <p className="text-gray-600">Bienvenue dans votre espace vendeur</p>
+        <h1 className="text-3xl font-bold text-gray-900 font-[var(--font-poppins)] mb-2">{t('Tableau de bord')}</h1>
+        <p className="text-gray-600">{t('Bienvenue dans votre espace vendeur')}</p>
       </div>
 
       {/* Stats Cards */}
@@ -273,8 +277,8 @@ export default function DashboardSellerPage() {
               </svg>
             </div>
             <div>
-              <h3 className="text-lg font-bold text-gray-900 font-[var(--font-poppins)]">Ajouter une voiture</h3>
-              <p className="text-sm text-gray-600">Publiez un nouveau véhicule</p>
+              <h3 className="text-lg font-bold text-gray-900 font-[var(--font-poppins)]">{t('Ajouter une voiture')}</h3>
+              <p className="text-sm text-gray-600">{t('Publiez un nouveau véhicule')}</p>
             </div>
           </div>
         </Link>
@@ -288,8 +292,8 @@ export default function DashboardSellerPage() {
               </svg>
             </div>
             <div>
-              <h3 className="text-lg font-bold text-gray-900 font-[var(--font-poppins)]">Mes voitures</h3>
-              <p className="text-sm text-gray-600">Gérez vos annonces</p>
+              <h3 className="text-lg font-bold text-gray-900 font-[var(--font-poppins)]">{t('Mes voitures')}</h3>
+              <p className="text-sm text-gray-600">{t('Gérez vos annonces')}</p>
             </div>
           </div>
         </Link>
@@ -302,8 +306,8 @@ export default function DashboardSellerPage() {
               </svg>
             </div>
             <div>
-              <h3 className="text-lg font-bold text-gray-900 font-[var(--font-poppins)]">Rendez-vous</h3>
-              <p className="text-sm text-gray-600">Voir les demandes</p>
+              <h3 className="text-lg font-bold text-gray-900 font-[var(--font-poppins)]">{t('Rendez-vous')}</h3>
+              <p className="text-sm text-gray-600">{t('Voir les demandes')}</p>
             </div>
           </div>
         </Link>
@@ -311,13 +315,13 @@ export default function DashboardSellerPage() {
 
       {/* Recent Activity */}
       <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-200">
-        <h2 className="text-xl font-bold text-gray-900 mb-6 font-[var(--font-poppins)]">Activité récente</h2>
+        <h2 className="text-xl font-bold text-gray-900 mb-6 font-[var(--font-poppins)]">{t('Activité récente')}</h2>
         {recentActivity.length === 0 ? (
           <div className="text-center py-8 text-gray-500">
             <svg className="w-12 h-12 mx-auto mb-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            <p>Aucune activité récente</p>
+            <p>{t('Aucune activité récente')}</p>
           </div>
         ) : (
           <div className="space-y-4">
@@ -340,7 +344,7 @@ export default function DashboardSellerPage() {
                 <div className="flex-1">
                   {activity.type === 'appointment' && (
                     <p className="font-semibold text-gray-900">
-                      Rendez-vous avec {activity.user} pour {activity.car}
+                      {t('Rendez-vous avec {user} pour {car}', { user: activity.user, car: activity.car })}
                     </p>
                   )}
                   {activity.type === 'message' && (
