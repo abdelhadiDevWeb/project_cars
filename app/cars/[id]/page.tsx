@@ -9,7 +9,7 @@ import ChatModal from "@/components/ChatModal";
 import { useUser } from "@/contexts/UserContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useT } from "@/utils/i18n";
-import { QRCodeSVG } from "react-qr-code";
+import QRCode from "react-qr-code";
 
 interface Car {
   _id: string;
@@ -476,7 +476,7 @@ export default function CarDetailsPage() {
             <div className="relative h-96 lg:h-[500px] rounded-2xl overflow-hidden border border-gray-200">
               {car.images && car.images.length > 0 ? (
               <Image
-                  src={getImageUrl(car.images[selectedImage])}
+                  src={getImageUrl(car.images[selectedImage]) || '/images/car1.png'}
                   alt={carName}
                 fill
                 className="object-cover"
@@ -506,7 +506,7 @@ export default function CarDetailsPage() {
                   }`}
                 >
                   <Image
-                      src={getImageUrl(img)}
+                      src={getImageUrl(img) || '/images/car1.png'}
                       alt={`${carName} ${index + 1}`}
                     fill
                     className="object-cover"

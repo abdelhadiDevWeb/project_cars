@@ -199,7 +199,7 @@ export default function DashboardSellerPage() {
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
         {statsCards.map((stat, index) => {
-          const colorClasses = {
+          const colorMap = {
             blue: {
               bg: 'bg-gradient-to-br from-blue-50 to-blue-100',
               border: 'border-blue-200/50',
@@ -232,7 +232,8 @@ export default function DashboardSellerPage() {
               textLight: 'text-orange-600',
               icon: 'bg-gradient-to-br from-orange-500 to-orange-600',
             },
-          }[stat.color as keyof typeof colorClasses];
+          };
+          const colorClasses = colorMap[stat.color as keyof typeof colorMap];
           
           return (
             <div key={index} className={`${colorClasses.bg} rounded-2xl shadow-lg p-6 border ${colorClasses.border} hover:shadow-xl transition-all duration-300 hover:-translate-y-1`}>

@@ -174,7 +174,7 @@ export default function WorkshopDashboardPage() {
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
         {statsCards.map((stat, index) => {
-          const colorClasses = {
+          const colorMap = {
             orange: {
               bg: 'bg-gradient-to-br from-orange-50 to-orange-100',
               border: 'border-orange-200/50',
@@ -207,7 +207,8 @@ export default function WorkshopDashboardPage() {
               textLight: 'text-purple-600',
               icon: 'bg-gradient-to-br from-purple-500 to-purple-600',
             },
-          }[stat.color as keyof typeof colorClasses];
+          };
+          const colorClasses = colorMap[stat.color as keyof typeof colorMap];
           
           return (
             <div key={index} className={`${colorClasses.bg} rounded-2xl shadow-lg p-6 border ${colorClasses.border} hover:shadow-xl transition-all duration-300 hover:-translate-y-1`}>

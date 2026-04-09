@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { getImageUrl, getBackendUrl } from "@/utils/backend";
 import { io, Socket } from 'socket.io-client';
-import { QRCodeSVG } from "react-qr-code";
+import QRCode from "react-qr-code";
 import { useT } from "@/utils/i18n";
 import { useLanguage } from "@/contexts/LanguageContext";
 
@@ -325,26 +325,19 @@ export default function WorkshopAppointmentsPage() {
           'Authorization': `Bearer ${token}`,
         },
       });
+      let updatedAppointment: Appointment | undefined;
       if (refreshRes.ok) {
         const refreshData = await refreshRes.json();
         if (refreshData.ok && refreshData.appointments) {
           setAppointments(refreshData.appointments);
           // Update selectedAppointment with new data
-          const updatedAppointment = refreshData.appointments.find(
+          updatedAppointment = refreshData.appointments.find(
             (apt: Appointment) => (apt._id || apt.id) === (selectedAppointment._id || selectedAppointment.id)
           );
           if (updatedAppointment) {
             setSelectedAppointment(updatedAppointment);
           }
         }
-      }
-
-      // Update selectedAppointment with new data
-      const updatedAppointment = refreshData.appointments.find(
-        (apt: Appointment) => (apt._id || apt.id) === (selectedAppointment._id || selectedAppointment.id)
-      );
-      if (updatedAppointment) {
-        setSelectedAppointment(updatedAppointment);
       }
 
       // Only close modal if both images and PDF are uploaded
@@ -406,19 +399,19 @@ export default function WorkshopAppointmentsPage() {
           'Authorization': `Bearer ${token}`,
         },
       });
+      let updatedAppointment: Appointment | undefined;
       if (refreshRes.ok) {
         const refreshData = await refreshRes.json();
         if (refreshData.ok && refreshData.appointments) {
           setAppointments(refreshData.appointments);
+          // Update selectedAppointment with new data
+          updatedAppointment = refreshData.appointments.find(
+            (apt: Appointment) => (apt._id || apt.id) === (selectedAppointment._id || selectedAppointment.id)
+          );
+          if (updatedAppointment) {
+            setSelectedAppointment(updatedAppointment);
+          }
         }
-      }
-
-      // Update selectedAppointment with new data
-      const updatedAppointment = refreshData.appointments.find(
-        (apt: Appointment) => (apt._id || apt.id) === (selectedAppointment._id || selectedAppointment.id)
-      );
-      if (updatedAppointment) {
-        setSelectedAppointment(updatedAppointment);
       }
 
       // Only close modal if both images and PDF are uploaded
@@ -775,7 +768,7 @@ export default function WorkshopAppointmentsPage() {
                                 </div>
                               ) : (
                                 <div className="bg-white p-3 rounded-lg border-2 border-purple-300">
-                                  <QRCodeSVG 
+                                  <QRCode
                                     value={`${typeof window !== 'undefined' ? window.location.origin : ''}/verify-car/${appointment.id_car._id}`}
                                     size={128}
                                     level="M"
@@ -853,7 +846,9 @@ export default function WorkshopAppointmentsPage() {
                         Gérer les fichiers
                       </h2>
                       <p className="text-sm text-blue-50 mt-1">
-                        {selectedAppointment.id_car.brand} {selectedAppointment.id_car.model} {selectedAppointment.id_car.year}
+                        {selectedAppointment.id_car
+                          ? `${selectedAppointment.id_car.brand} ${selectedAppointment.id_car.model} ${selectedAppointment.id_car.year}`
+                          : t('Véhicule')}
                       </p>
                     </div>
                   </div>

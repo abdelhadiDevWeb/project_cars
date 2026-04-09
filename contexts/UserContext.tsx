@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 
 interface User {
   _id: string;
+  id?: string; // Some API responses may use `id` instead of `_id`
   firstName?: string; // For regular users
   lastName?: string; // For regular users
   name?: string; // For workshops

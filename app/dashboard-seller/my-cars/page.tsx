@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getImageUrl } from "@/utils/backend";
-import { QRCodeSVG } from "react-qr-code";
+import QRCode from "react-qr-code";
 import { useT } from "@/utils/i18n";
 
 interface Car {
@@ -592,7 +592,7 @@ export default function MyCarsPage() {
                 </div>
 
                     {/* Show finished appointments with images and PDF */}
-                    {carAppointments[car._id || car.id]?.some((apt: any) => apt.status === 'finish') && (
+                    {carAppointments[car._id]?.some((apt: any) => apt.status === 'finish') && (
                       <div className="bg-purple-50 rounded-lg p-3 border border-purple-200">
                         <h4 className="text-xs font-semibold text-gray-700 mb-2 flex items-center gap-1">
                           <svg className="w-4 h-4 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -600,7 +600,7 @@ export default function MyCarsPage() {
                     </svg>
                           Rapport de vérification
                         </h4>
-                        {carAppointments[car._id || car.id]
+                        {carAppointments[car._id]
                           .filter((apt: any) => apt.status === 'finish')
                           .map((apt: any, idx: number) => (
                             <div key={idx} className="space-y-2">
@@ -659,11 +659,11 @@ export default function MyCarsPage() {
                     {t('Modifier')}
                   </button>
                       <button 
-                        onClick={() => handleDelete(car._id || car.id)}
-                        disabled={deletingCarId === (car._id || car.id)}
+                        onClick={() => handleDelete((car._id || car.id)!)}
+                        disabled={deletingCarId === (car._id || car.id)!}
                         className="px-4 py-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg font-semibold transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        {deletingCarId === (car._id || car.id) ? t('Suppression...') : t('Supprimer')}
+                        {deletingCarId === (car._id || car.id)! ? t('Suppression...') : t('Supprimer')}
                   </button>
                 </div>
               </div>
@@ -1079,7 +1079,7 @@ export default function MyCarsPage() {
                     {/* Action Buttons */}
                     <div className="flex gap-4 pt-4 border-t border-gray-200 mt-auto">
                       <button
-                        onClick={() => handleUpdate(editingCar._id || editingCar.id)}
+                        onClick={() => handleUpdate((editingCar._id || editingCar.id)!)}
                         disabled={isUpdating}
                         className="flex-1 px-6 py-3 bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 text-white rounded-xl font-semibold transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                       >

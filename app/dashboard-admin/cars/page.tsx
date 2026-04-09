@@ -237,7 +237,7 @@ export default function CarsPage() {
                         <div className="relative w-full h-48 bg-gray-100 overflow-hidden">
                           {car.images && car.images.length > 0 ? (
                             <Image
-                              src={getImageUrl(car.images[0])}
+                              src={getImageUrl(car.images[0]) || '/images/car1.png'}
                               alt={`${car.brand} ${car.model}`}
                               fill
                               className="object-cover group-hover:scale-105 transition-transform duration-300"

@@ -6,7 +6,9 @@ type Dictionary = Record<AppLanguage, Record<string, string>>;
 // Minimal dictionary for the UI strings we are updating first.
 // More keys can be added incrementally page-by-page.
 const DICT: Dictionary = {
-  fr: {
+  fr: Object.assign(
+    {},
+    {
     // Header / Navigation (Home)
     'Vendeurs Certifiés': 'Vendeurs Certifiés',
     'Ateliers': 'Ateliers',
@@ -92,7 +94,6 @@ const DICT: Dictionary = {
     'Analysez vos performances de vente': 'Analysez vos performances de vente',
     'Semaine': 'Semaine',
     'Mois': 'Mois',
-    'Année': 'Année',
     'Véhicules Actifs': 'Véhicules Actifs',
     'Véhicules Total': 'Véhicules Total',
     'Atelier': 'Atelier',
@@ -124,6 +125,8 @@ const DICT: Dictionary = {
     'Prix moyen': 'Prix moyen',
     'Par véhicule vendu': 'Par véhicule vendu',
 
+    },
+    {
     // Login / Register (small set)
     'Se Connecter (Login)': 'Se Connecter',
     'Erreur lors de la connexion': 'Erreur lors de la connexion',
@@ -152,11 +155,9 @@ const DICT: Dictionary = {
     'Mes voitures': 'Mes voitures',
     'Rendez-vous': 'Rendez-vous',
     'Messages': 'Messages',
-    'Statistiques': 'Statistiques',
     'Profil': 'Profil',
     "Aujourd'hui": "Aujourd'hui",
     'Factures': 'Factures',
-    'Dashboard': 'Dashboard',
     'Utilisateurs': 'Utilisateurs',
     'Abonnements': 'Abonnements',
     'Véhicules': 'Véhicules',
@@ -248,6 +249,8 @@ const DICT: Dictionary = {
     'Aperçu {n}': 'Aperçu {n}',
     'Publication en cours...': 'Publication en cours...',
     'Publier la voiture': 'Publier la voiture',
+    },
+    {
     // RDV / Appointments (Seller + Workshop dashboards)
     'Vous devez être connecté pour voir vos messages': 'Vous devez être connecté pour voir vos messages',
     'Se connecter': 'Se connecter',
@@ -344,7 +347,6 @@ const DICT: Dictionary = {
     'Compte en attente': 'Compte en attente',
     'Compte activé': 'Compte activé',
     'Mécanique & Peinture Inspecteur': 'Mécanique & Peinture Inspecteur',
-    "Informations de l'atelier": "Informations de l'atelier",
     "L'email ne peut pas être modifié": "L'email ne peut pas être modifié",
     'Ex: 5000': 'Ex: 5000',
     'Ce prix sera visible par les clients lors de la réservation': 'Ce prix sera visible par les clients lors de la réservation',
@@ -356,7 +358,6 @@ const DICT: Dictionary = {
     'Revenu total': 'Revenu total',
     'Moyenne par facture': 'Moyenne par facture',
     'Vérification Peinture': 'Vérification Peinture',
-    'Mécanique & Peinture': 'Mécanique & Peinture',
     'Répartition par statut': 'Répartition par statut',
     'Refusés': 'Refusés',
     'VIN Valide': 'VIN Valide',
@@ -368,12 +369,8 @@ const DICT: Dictionary = {
     'Gérez vos rendez-vous': 'Gérez vos rendez-vous',
     'visite': 'visite',
     'Email': 'Email',
-    'Peinture véhicule': 'Peinture véhicule',
-    'Mécanique & Peinture Inspecteur': 'Mécanique & Peinture Inspecteur',
     '{done} / {total} terminés': '{done} / {total} terminés',
-    'Images existantes ({n})': 'Images existantes ({n})',
     'Ajouter des images': 'Ajouter des images',
-    '{n} image(s) sélectionnée(s)': '{n} image(s) sélectionnée(s)',
     'Upload en cours...': 'Upload en cours...',
     'Uploader les images': 'Uploader les images',
     'Remplacer le PDF': 'Remplacer le PDF',
@@ -383,20 +380,15 @@ const DICT: Dictionary = {
     'Rendez-vous récents': 'Rendez-vous récents',
     'Voir tout': 'Voir tout',
     'Aucun rendez-vous récent': 'Aucun rendez-vous récent',
-    'Refusés': 'Refusés',
-    'en attente': 'en attente',
-    'accepté': 'accepté',
     'refusé': 'refusé',
     'trouvé': 'trouvé',
     "Analysez vos performances d'atelier": "Analysez vos performances d'atelier",
     'Rendez-vous total': 'Rendez-vous total',
     '{n} ce mois': '{n} ce mois',
-    '{n} à venir': '{n} à venir',
     'Taux': 'Taux',
     '{n} refusés': '{n} refusés',
     'Évolution mensuelle': 'Évolution mensuelle',
     'Aucune donnée disponible': 'Aucune donnée disponible',
-    'Rendez-vous': 'Rendez-vous',
     'Nouveaux rendez-vous': 'Nouveaux rendez-vous',
     'Taux de complétion': 'Taux de complétion',
     'Rendez-vous terminés / Total': 'Rendez-vous terminés / Total',
@@ -405,18 +397,19 @@ const DICT: Dictionary = {
     'FACTURE': 'FACTURE',
     'Date': 'Date',
     'Numéro de facture': 'Numéro de facture',
-    'Description': 'Description',
     'Montant': 'Montant',
     'Merci pour votre confiance!': 'Merci pour votre confiance!',
     'CarSure DZ - Votre plateforme de confiance': 'CarSure DZ - Votre plateforme de confiance',
     'Mes Factures': 'Mes Factures',
     'Gérez et imprimez toutes vos factures': 'Gérez et imprimez toutes vos factures',
-    '{n} au total': '{n} au total',
     'Rendez-vous en attente': 'Rendez-vous en attente',
     'Rendez-vous ce mois': 'Rendez-vous ce mois',
     'Rendez-vous à venir': 'Rendez-vous à venir',
     'Total rendez-vous': 'Total rendez-vous',
     'Cette semaine': 'Cette semaine',
+
+    },
+    {
     'Tous les temps': 'Tous les temps',
     'Bienvenue dans votre espace atelier': 'Bienvenue dans votre espace atelier',
     'Token d\'authentification manquant': 'Token d\'authentification manquant',
@@ -492,6 +485,8 @@ const DICT: Dictionary = {
       'Les informations du véhicule ne correspondent pas au VIN vérifié.',
     'VIN vérifié: {make} {model}{year}': 'VIN vérifié: {make} {model}{year}',
 
+    },
+    {
     // Notifications (dashboard)
     'Notifications': 'Notifications',
     'Tout marquer comme lu': 'Tout marquer comme lu',
@@ -572,6 +567,8 @@ const DICT: Dictionary = {
     'Mettre à jour': 'Mettre à jour',
     'Envoyer': 'Envoyer',
 
+    },
+    {
     // Login
     'Connectez-vous à votre compte pour continuer': 'Connectez-vous à votre compte pour continuer',
     'Email': 'Email',
@@ -595,6 +592,8 @@ const DICT: Dictionary = {
     'Envoyer': 'Envoyer',
     "Erreur lors de l'envoi du message": "Erreur lors de l'envoi du message",
 
+    },
+    {
     // Register
     'Créer un compte': 'Créer un compte',
     'Utilisateur non trouvé': 'Utilisateur non trouvé',
@@ -631,8 +630,6 @@ const DICT: Dictionary = {
     'Aucun atelier disponible pour le moment': 'Aucun atelier disponible pour le moment',
     'Revenez bientôt pour découvrir nos ateliers certifiés.': 'Revenez bientôt pour découvrir nos ateliers certifiés.',
     'Mécanique': 'Mécanique',
-    'Peinture véhicule': 'Peinture véhicule',
-    'Mécanique & Peinture Inspecteur': 'Mécanique & Peinture Inspecteur',
     'Vérification mécanique:': 'Vérification mécanique:',
     'Vérification peinture:': 'Vérification peinture:',
     'Chargement des vendeurs certifiés...': 'Chargement des vendeurs certifiés...',
@@ -641,6 +638,9 @@ const DICT: Dictionary = {
     'Revenez bientôt pour découvrir nos vendeurs vérifiés.': 'Revenez bientôt pour découvrir nos vendeurs vérifiés.',
     "Rejoignez CarSure DZ et commencez à acheter/vendre des véhicules certifiés":
       "Rejoignez CarSure DZ et commencez à acheter/vendre des véhicules certifiés",
+
+    },
+    {
     "Choisissez d'abord le type de compte (Client ou Atelier).":
       "Choisissez d'abord le type de compte (Client ou Atelier).",
     'Client': 'Client',
@@ -728,8 +728,11 @@ const DICT: Dictionary = {
       "Rejoignez CarSure DZ dès aujourd'hui et découvrez une nouvelle façon transparente et sécurisée d'acheter et vendre des véhicules en Algérie.",
     'FAQ_CTA_CREATE_ACCOUNT': 'Créer un compte',
     'FAQ_CTA_VIEW_CARS': 'Voir les véhicules',
-  },
-  en: {
+    },
+  ),
+  en: Object.assign(
+    {},
+    {
     // Header / Navigation (Home)
     'Vendeurs Certifiés': 'Certified Sellers',
     'Ateliers': 'Workshops',
@@ -810,6 +813,9 @@ const DICT: Dictionary = {
     'Blog': 'Blog',
     'Suivez-nous': 'Follow us',
     'Tous droits réservés.': 'All rights reserved.',
+
+    },
+    {
     'Prix non défini': 'Price not set',
     'Statistiques': 'Statistics',
     'Analysez vos performances de vente': 'Analyze your sales performance',
@@ -847,6 +853,8 @@ const DICT: Dictionary = {
     'Prix moyen': 'Average price',
     'Par véhicule vendu': 'Per vehicle sold',
 
+    },
+    {
     // Login / Register (small set)
     'Se Connecter (Login)': 'Sign in',
     'Erreur lors de la connexion': 'Login error',
@@ -1067,6 +1075,9 @@ const DICT: Dictionary = {
     'Compte en attente': 'Pending account',
     'Compte activé': 'Active account',
     'Mécanique & Peinture Inspecteur': 'Mechanic & Paint Inspector',
+
+    },
+    {
     "Informations de l'atelier": 'Workshop information',
     "L'email ne peut pas être modifié": "Email can't be changed",
     'Ex: 5000': 'Ex: 5000',
@@ -1104,6 +1115,9 @@ const DICT: Dictionary = {
     'Voir et accepter les rendez-vous': 'View and accept appointments',
     "Voir les rendez-vous d'aujourd'hui": "View today's appointments",
     'Rendez-vous récents': 'Recent appointments',
+
+    },
+    {
     'Voir tout': 'View all',
     'Aucun rendez-vous récent': 'No recent appointments',
     'Refusés': 'Refused',
@@ -1189,6 +1203,8 @@ const DICT: Dictionary = {
     "Erreur lors de la mise à jour du profil": 'Error while updating profile',
     "Erreur lors du changement de mot de passe": 'Error while changing password',
     'Heure sélectionnée :': 'Selected time:',
+    },
+    {
     'Date': 'Date',
     'Heure': 'Time',
     'Créneaux disponibles ({n}) - Cliquez pour sélectionner :':
@@ -1197,7 +1213,8 @@ const DICT: Dictionary = {
     'Création...': 'Creating...',
     'Confirmer': 'Confirm',
     'Image de vérification {n}': 'Verification image {n}',
-    'Voir le rapport PDF': 'View PDF report',
+    },
+    {
     'Notifications par email': 'Email notifications',
     'Recevoir des emails pour les nouveaux messages': 'Receive emails for new messages',
     'Recevoir des emails pour les nouvelles commandes': 'Receive emails for new orders',
@@ -1315,6 +1332,8 @@ const DICT: Dictionary = {
     // Chat modal
     'Aucun message. Commencez la conversation !': 'No messages. Start the conversation!',
     'Tapez votre message...': 'Type your message...',
+    },
+    {
     'Envoyer': 'Send',
     "Erreur lors de l'envoi du message": 'Error sending the message',
 
@@ -1364,6 +1383,8 @@ const DICT: Dictionary = {
     'Revenez bientôt pour découvrir nos vendeurs vérifiés.': 'Come back soon to discover our verified sellers.',
     "Rejoignez CarSure DZ et commencez à acheter/vendre des véhicules certifiés":
       'Join CarSure DZ and start buying/selling certified vehicles',
+    },
+    {
     "Choisissez d'abord le type de compte (Client ou Atelier).":
       'Choose your account type first (Client or Workshop).',
     'Client': 'Client',
@@ -1451,7 +1472,8 @@ const DICT: Dictionary = {
       'Join CarSure DZ today and discover a new transparent and secure way to buy and sell vehicles in Algeria.',
     'FAQ_CTA_CREATE_ACCOUNT': 'Create an account',
     'FAQ_CTA_VIEW_CARS': 'View vehicles',
-  },
+    },
+  ),
   ar: {
     // Header / Navigation (Home)
     'Vendeurs Certifiés': 'البائعون المعتمدون',
@@ -1538,7 +1560,6 @@ const DICT: Dictionary = {
     'Analysez vos performances de vente': 'حلّل أداء مبيعاتك',
     'Semaine': 'أسبوع',
     'Mois': 'شهر',
-    'Année': 'سنة',
     'Véhicules Actifs': 'مركبات نشطة',
     'Véhicules Total': 'إجمالي المركبات',
     'Atelier': 'ورشة',
@@ -1598,11 +1619,9 @@ const DICT: Dictionary = {
     'Mes voitures': 'مركباتي',
     'Rendez-vous': 'المواعيد',
     'Messages': 'الرسائل',
-    'Statistiques': 'الإحصائيات',
     'Profil': 'الملف الشخصي',
     "Aujourd'hui": 'اليوم',
     'Factures': 'الفواتير',
-    'Dashboard': 'لوحة التحكم',
     'Utilisateurs': 'المستخدمون',
     'Abonnements': 'الاشتراكات',
     'Véhicules': 'المركبات',
@@ -1790,7 +1809,6 @@ const DICT: Dictionary = {
     'Compte en attente': 'حساب قيد الانتظار',
     'Compte activé': 'حساب مُفعّل',
     'Mécanique & Peinture Inspecteur': 'ميكانيك وطلاء مُفتش',
-    "Informations de l'atelier": 'معلومات الورشة',
     "L'email ne peut pas être modifié": 'لا يمكن تعديل البريد الإلكتروني',
     'Ex: 5000': 'مثال: 5000',
     'Ce prix sera visible par les clients lors de la réservation': 'سيكون هذا السعر مرئيًا للعملاء عند الحجز',
@@ -1802,7 +1820,6 @@ const DICT: Dictionary = {
     'Revenu total': 'إجمالي الإيرادات',
     'Moyenne par facture': 'المتوسط لكل فاتورة',
     'Vérification Peinture': 'فحص الطلاء',
-    'Mécanique & Peinture': 'ميكانيك وطلاء',
     'Répartition par statut': 'توزيع حسب الحالة',
     'Refusés': 'مرفوضة',
     'VIN Valide': 'رقم VIN صالح',
@@ -1814,12 +1831,8 @@ const DICT: Dictionary = {
     'Gérez vos rendez-vous': 'قم بإدارة مواعيدك',
     'visite': 'زيارة',
     'Email': 'البريد الإلكتروني',
-    'Peinture véhicule': 'طلاء السيارة',
-    'Mécanique & Peinture Inspecteur': 'ميكانيك وطلاء (فحص)',
     '{done} / {total} terminés': '{done} / {total} منتهية',
-    'Images existantes ({n})': 'الصور الحالية ({n})',
     'Ajouter des images': 'إضافة صور',
-    '{n} image(s) sélectionnée(s)': 'تم اختيار {n} صورة',
     'Upload en cours...': 'جارٍ الرفع...',
     'Uploader les images': 'رفع الصور',
     'Remplacer le PDF': 'استبدال PDF',
@@ -1829,20 +1842,14 @@ const DICT: Dictionary = {
     'Rendez-vous récents': 'المواعيد الأخيرة',
     'Voir tout': 'عرض الكل',
     'Aucun rendez-vous récent': 'لا توجد مواعيد حديثة',
-    'Refusés': 'مرفوضة',
-    'en attente': 'قيد الانتظار',
-    'accepté': 'مقبول',
-    'refusé': 'مرفوض',
     'trouvé': 'تم العثور',
     "Analysez vos performances d'atelier": 'حلّل أداء ورشتك',
     'Rendez-vous total': 'إجمالي المواعيد',
     '{n} ce mois': '{n} هذا الشهر',
-    '{n} à venir': '{n} قادمة',
     'Taux': 'النسبة',
     '{n} refusés': '{n} مرفوضة',
     'Évolution mensuelle': 'التطور الشهري',
     'Aucune donnée disponible': 'لا توجد بيانات متاحة',
-    'Rendez-vous': 'المواعيد',
     'Nouveaux rendez-vous': 'مواعيد جديدة',
     'Taux de complétion': 'معدل الإكمال',
     'Rendez-vous terminés / Total': 'المواعيد المنتهية / الإجمالي',
@@ -1851,13 +1858,11 @@ const DICT: Dictionary = {
     'FACTURE': 'فاتورة',
     'Date': 'التاريخ',
     'Numéro de facture': 'رقم الفاتورة',
-    'Description': 'الوصف',
     'Montant': 'المبلغ',
     'Merci pour votre confiance!': 'شكرًا لثقتك!',
     'CarSure DZ - Votre plateforme de confiance': 'CarSure DZ - منصتك الموثوقة',
     'Mes Factures': 'فواتيري',
     'Gérez et imprimez toutes vos factures': 'قم بإدارة وطباعة جميع فواتيرك',
-    '{n} au total': '{n} إجماليًا',
     'Rendez-vous en attente': 'مواعيد قيد الانتظار',
     'Rendez-vous ce mois': 'مواعيد هذا الشهر',
     'Rendez-vous à venir': 'مواعيد قادمة',
@@ -1865,20 +1870,13 @@ const DICT: Dictionary = {
     'Cette semaine': 'هذا الأسبوع',
     'Tous les temps': 'كل الوقت',
     'Bienvenue dans votre espace atelier': 'مرحبًا بك في مساحة الورشة الخاصة بك',
-    'Token d\'authentification manquant': 'رمز المصادقة مفقود',
-    'Erreur lors de la mise à jour du statut': 'خطأ أثناء تحديث الحالة',
-    'Erreur lors de l\'upload des images': 'خطأ أثناء رفع الصور',
-    'Erreur lors de l\'upload du PDF': 'خطأ أثناء رفع ملف PDF',
     'Liste du jour': 'قائمة اليوم',
     '{n} rendez-vous en attente': '{n} موعد(مواعيد) قيد الانتظار',
     'Notifications': 'الإشعارات',
     'Aucune': 'لا يوجد',
     'Aucune notification.': 'لا توجد إشعارات.',
-    'Acceptés': 'مقبولة',
-    'Terminés': 'منتهية',
     'Progression du jour': 'تقدّم اليوم',
     'Total': 'الإجمالي',
-    'Rendez-vous en cours': 'المواعيد الجارية',
     "Aucun rendez-vous en cours aujourd'hui": 'لا توجد مواعيد جارية اليوم',
     "Aucun rendez-vous accepté aujourd'hui": 'لا توجد مواعيد مقبولة اليوم',
     "Aucun rendez-vous terminé aujourd'hui": 'لا توجد مواعيد منتهية اليوم',
@@ -1887,7 +1885,6 @@ const DICT: Dictionary = {
     'Voir le PDF actuel': 'عرض ملف PDF الحالي',
     'Sélectionner le service': 'اختر الخدمة',
     'Créer une facture ?': 'إنشاء فاتورة؟',
-    'Retour': 'رجوع',
     'Voiture non trouvée': 'السيارة غير موجودة',
     'Erreur lors de la mise à jour': 'خطأ أثناء التحديث',
     'Erreur lors de la suppression': 'خطأ أثناء الحذف',
@@ -1895,7 +1892,6 @@ const DICT: Dictionary = {
     'Vous devez être connecté pour supprimer cette voiture': 'يجب تسجيل الدخول لحذف هذه السيارة',
     "Êtes-vous sûr de vouloir supprimer cette voiture ? Cette action est irréversible.":
       'هل أنت متأكد أنك تريد حذف هذه السيارة؟ هذا الإجراء لا رجعة فيه.',
-    'Kilométrage (km)': 'المسافة المقطوعة (كم)',
     'Kilométrage': 'المسافة المقطوعة',
     'Numéro VIN': 'رقم VIN',
     'Mot de passe actuel': 'كلمة المرور الحالية',
@@ -1912,7 +1908,6 @@ const DICT: Dictionary = {
     "Erreur lors de la mise à jour du profil": 'خطأ أثناء تحديث الملف الشخصي',
     "Erreur lors du changement de mot de passe": 'خطأ أثناء تغيير كلمة المرور',
     'Heure sélectionnée :': 'الوقت المحدد:',
-    'Date': 'التاريخ',
     'Heure': 'الوقت',
     'Créneaux disponibles ({n}) - Cliquez pour sélectionner :':
       'الأوقات المتاحة ({n}) - اضغط للاختيار:',
@@ -1939,7 +1934,6 @@ const DICT: Dictionary = {
     'VIN vérifié: {make} {model}{year}': 'VIN المُتحقق: {make} {model}{year}',
 
     // Notifications (dashboard)
-    'Notifications': 'الإشعارات',
     'Tout marquer comme lu': 'تمييز الكل كمقروء',
     'Aucune notification': 'لا توجد إشعارات',
     'Nouvelles inscriptions': 'طلبات تسجيل جديدة',
@@ -1952,15 +1946,12 @@ const DICT: Dictionary = {
     'Actives': 'نشطة',
     'Vendues': 'مباعة',
     'Chargement de vos voitures...': 'جارٍ تحميل مركباتك...',
-    'Aucune image': 'لا توجد صورة',
     'Voir': 'عرض',
     "Êtes-vous sûr de vouloir supprimer cette voiture ?": 'هل أنت متأكد أنك تريد حذف هذه السيارة؟',
     'Informations générales': 'معلومات عامة',
     'Supprimer cette image': 'حذف هذه الصورة',
     'Aucune image existante': 'لا توجد صور موجودة',
     'Statut': 'الحالة',
-    'Erreur lors de la mise à jour': 'خطأ أثناء التحديث',
-    'Erreur lors de la suppression': 'خطأ أثناء الحذف',
     'Veuillez patienter': 'يرجى الانتظار',
     "Véhicule non trouvé": 'لم يتم العثور على مركبة',
     'Vous êtes le propriétaire de cette voiture': 'أنت مالك هذه المركبة',
@@ -1969,31 +1960,13 @@ const DICT: Dictionary = {
     'Supprimer': 'حذف',
     'Modifier la voiture': 'تعديل المركبة',
     'Prix (DA) *': 'السعر (دج) *',
-    'Mise à jour...': 'جارٍ التحديث...',
     'Enregistrer': 'حفظ',
     'Non traité': 'غير معالج',
-    'En attente': 'قيد الانتظار',
     'Actif': 'نشط',
     'Vendu': 'تم البيع',
     'Prix': 'السعر',
-    'Couleur': 'اللون',
-    'Nombre de portes': 'عدد الأبواب',
-    'Boîte de vitesses': 'ناقل الحركة',
-    'Type de carburant': 'نوع الوقود',
-    'Type de moteur': 'نوع المحرك',
-    'Utilisé par': 'مستخدم بواسطة',
-    'Accident': 'حادث',
-    'Oui': 'نعم',
-    'Non': 'لا',
-    'Description': 'الوصف',
-    'Code QR de vérification': 'رمز QR للتحقق',
     'Scannez ce code QR pour vérifier le statut de vérification de ce véhicule':
       'امسح رمز QR هذا للتحقق من حالة التحقق لهذه المركبة',
-    'Rapport de vérification': 'تقرير التحقق',
-    'Atelier de vérification': 'ورشة التحقق',
-    'Images de vérification': 'صور التحقق',
-    'Rapport PDF': 'تقرير PDF',
-    'Voir le rapport PDF': 'عرض تقرير PDF',
     'Vendeur': 'البائع',
     'Vendeur vérifié': 'بائع معتمد',
     'Contacter le vendeur': 'اتصل بالبائع',
@@ -2020,7 +1993,6 @@ const DICT: Dictionary = {
 
     // Login
     'Connectez-vous à votre compte pour continuer': 'سجّل الدخول إلى حسابك للمتابعة',
-    'Email': 'البريد الإلكتروني',
     'Mot de passe': 'كلمة المرور',
     'Se souvenir de moi': 'تذكرني',
     'Mot de passe oublié?': 'هل نسيت كلمة المرور؟',
@@ -2038,7 +2010,6 @@ const DICT: Dictionary = {
     // Chat modal
     'Aucun message. Commencez la conversation !': 'لا توجد رسائل. ابدأ المحادثة!',
     'Tapez votre message...': 'اكتب رسالتك...',
-    'Envoyer': 'إرسال',
     "Erreur lors de l'envoi du message": 'حدث خطأ أثناء إرسال الرسالة',
 
     // Register
@@ -2049,7 +2020,6 @@ const DICT: Dictionary = {
     'Note mise à jour avec succès': 'تم تحديث التقييم بنجاح',
     'Note ajoutée avec succès': 'تمت إضافة التقييم بنجاح',
     'Compte vérifié': 'حساب مُوثَّق',
-    'Compte en attente': 'حساب قيد الانتظار',
     'avis': 'تقييمات',
     'caractères': 'حرف',
     'Noter ce vendeur': 'قيّم هذا البائع',
@@ -2059,7 +2029,6 @@ const DICT: Dictionary = {
     'Votre avis (optionnel)': 'رأيك (اختياري)',
     'Mécanicien': 'ميكانيكي',
     'Mécanicien & Peinture Inspecteur': 'ميكانيكي وطلاء (مفتش)',
-    'Atelier': 'ورشة',
     'Atelier actif': 'ورشة نشطة',
     'Atelier en attente': 'ورشة قيد الانتظار',
     'Prix de visite mécanique': 'سعر زيارة الميكانيك',
@@ -2074,11 +2043,7 @@ const DICT: Dictionary = {
     'Chargement des ateliers...': 'جاري تحميل الورش...',
     'Ateliers Certifiés': 'ورش معتمدة',
     'Découvrez nos ateliers de vérification agréés': 'اكتشف ورش الفحص المعتمدة لدينا',
-    'Aucun atelier disponible pour le moment': 'لا توجد ورش متاحة حالياً',
     'Revenez bientôt pour découvrir nos ateliers certifiés.': 'عد قريباً لاكتشاف ورشنا المعتمدة.',
-    'Mécanique': 'ميكانيك',
-    'Peinture véhicule': 'طلاء المركبة',
-    'Mécanique & Peinture Inspecteur': 'ميكانيك وطلاء (مفتش)',
     'Vérification mécanique:': 'فحص ميكانيكي:',
     'Vérification peinture:': 'فحص الطلاء:',
     'Chargement des vendeurs certifiés...': 'جاري تحميل البائعين المعتمدين...',
@@ -2091,7 +2056,6 @@ const DICT: Dictionary = {
       'اختر نوع الحساب أولاً (عميل أو ورشة).',
     'Client': 'عميل',
     'Acheteur / vendeur': 'مشتري / بائع',
-    'Atelier': 'ورشة',
     'Partenaire / inspection': 'شريك / فحص',
     'Les mots de passe ne correspondent pas': 'كلمتا المرور غير متطابقتين',
     'Code invalide ou expiré': 'رمز غير صالح أو منتهي الصلاحية',

@@ -1655,7 +1655,6 @@ export default function Home() {
               <div className="flex items-center gap-2 mb-4">
                 <div className="relative w-12 h-12">
                   <Image
-                  src={logo}
                     src={logo}
                     alt="CarSure DZ Logo"
                     fill
