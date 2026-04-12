@@ -19,8 +19,11 @@ const nextConfig: NextConfig = {
   },
   async rewrites() {
     // Proxy Next.js /api/* to Bun backend.
-    // Set URLBACKEND in client env (e.g. http://localhost:8001)
-    const rawBackend = process.env.URLBACKEND || process.env.BACKEND_URL || "http://localhost:8001";
+    // Set BACKEND_URL or NEXT_PUBLIC_BACKEND_URL (e.g. http://localhost:8001)
+    const rawBackend =
+      process.env.BACKEND_URL ||
+      process.env.NEXT_PUBLIC_BACKEND_URL ||
+      "http://localhost:8001";
     const backend = rawBackend.endsWith("/") ? rawBackend.slice(0, -1) : rawBackend;
     return [
       {

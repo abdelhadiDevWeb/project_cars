@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useUser } from '@/contexts/UserContext';
 import { io, Socket } from 'socket.io-client';
 import { useT } from '@/utils/i18n';
+import { getBackendUrl } from '@/utils/backend';
 
 interface Chat {
   id: string;
@@ -71,7 +72,7 @@ export default function MessagesPage() {
   useEffect(() => {
     if (!isAuthenticated || !user || !token) return;
 
-    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8001';
+    const backendUrl = getBackendUrl();
     const newSocket = io(backendUrl, {
       transports: ['websocket'],
       reconnection: true,

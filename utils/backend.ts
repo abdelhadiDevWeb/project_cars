@@ -2,25 +2,19 @@
  * Get the backend URL from environment variables
  * Falls back to default if not set
  * 
- * Note: For client-side access, use NEXT_PUBLIC_ prefix in .env.local
- * Example: NEXT_PUBLIC_URLBACKEND=http://localhost:8001
+ * Note: For client-side access, use NEXT_PUBLIC_BACKEND_URL in .env.local
  */
 export function getBackendUrl(): string {
   // In Next.js, environment variables prefixed with NEXT_PUBLIC_ are available on the client
   if (typeof window !== 'undefined') {
-    // Client-side: use NEXT_PUBLIC_ prefixed env vars
-    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 
-                       process.env.NEXT_PUBLIC_URLBACKEND || 
-                       process.env.URLBACKEND ||
-                       'http://localhost:7000';
-    // Remove trailing slash if present
-    return backendUrl.replace(/\/$/, '');
+    const backendUrl =
+      process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:7000";
+    return backendUrl.replace(/\/$/, "");
   }
-  // Server-side
-  const backendUrl = process.env.BACKEND_URL || 
-                     process.env.NEXT_PUBLIC_BACKEND_URL ||
-                     process.env.URLBACKEND || 
-                     'http://localhost:7000';
+  const backendUrl =
+    process.env.BACKEND_URL ||
+    process.env.NEXT_PUBLIC_BACKEND_URL ||
+    "http://localhost:7000";
   // Remove trailing slash if present
   return backendUrl.replace(/\/$/, '');
 }

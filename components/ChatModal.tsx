@@ -5,6 +5,7 @@ import { io, Socket } from 'socket.io-client';
 import { useUser } from '@/contexts/UserContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useT } from '@/utils/i18n';
+import { getBackendUrl } from '@/utils/backend';
 
 interface Message {
   id: string;
@@ -53,7 +54,7 @@ export default function ChatModal({ isOpen, onClose, otherUserId, otherUserName,
   useEffect(() => {
     if (!isOpen || !user || !token) return;
 
-    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8001';
+    const backendUrl = getBackendUrl();
     const newSocket = io(backendUrl, {
       transports: ['websocket'],
       reconnection: true,
