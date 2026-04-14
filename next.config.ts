@@ -1,6 +1,14 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Avoid webpack's persistent pack cache in dev — on some Windows setups it triggers
+  // "Array buffer allocation failed" (PackFileCacheStrategy) during compile.
+  webpack: (config, { dev }) => {
+    if (dev) {
+      config.cache = false;
+    }
+    return config;
+  },
   images: {
     remotePatterns: [
       {
