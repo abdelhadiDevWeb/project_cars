@@ -586,6 +586,43 @@ const DICT: Dictionary = {
     'Compris': 'Compris',
     "Retour à l'accueil": "Retour à l'accueil",
 
+    // Forgot password
+    'Mot de passe oublié': 'Mot de passe oublié',
+    'Entrez votre email : nous enverrons un code de réinitialisation (valide 15 minutes).':
+      'Entrez votre email : nous enverrons un code de réinitialisation (valide 15 minutes).',
+    'Saisissez le code à 6 chiffres reçu par email.': 'Saisissez le code à 6 chiffres reçu par email.',
+    'Choisissez un nouveau mot de passe sécurisé.': 'Choisissez un nouveau mot de passe sécurisé.',
+    'Adresse email': 'Adresse email',
+    'Envoyer le code': 'Envoyer le code',
+    'Code (6 chiffres)': 'Code (6 chiffres)',
+    'Continuer': 'Continuer',
+    "Modifier l'email": "Modifier l'email",
+    'FORGOT_PASSWORD_HINT':
+      'Au moins 8 caractères, une majuscule, une minuscule, un chiffre et un caractère spécial (@$!%*?&)',
+    'Confirmer le mot de passe': 'Confirmer le mot de passe',
+    'Masquer': 'Masquer',
+    'Afficher': 'Afficher',
+    'Enregistrement...': 'Enregistrement...',
+    'Réinitialiser le mot de passe': 'Réinitialiser le mot de passe',
+    'Retour à la connexion': 'Retour à la connexion',
+    'Mot de passe mis à jour': 'Mot de passe mis à jour',
+    'Vous pouvez maintenant vous connecter avec votre nouveau mot de passe.':
+      'Vous pouvez maintenant vous connecter avec votre nouveau mot de passe.',
+    'Une erreur est survenue': 'Une erreur est survenue',
+    'Session expirée. Recommencez.': 'Session expirée. Recommencez.',
+    'Session expirée. Recommencez la réinitialisation.':
+      'Session expirée. Recommencez la réinitialisation.',
+    'Impossible de réinitialiser le mot de passe': 'Impossible de réinitialiser le mot de passe',
+    'Connexion impossible après vérification': 'Connexion impossible après vérification',
+    'Impossible de renvoyer le code': 'Impossible de renvoyer le code',
+    'Aucun compte trouvé avec cet email.': 'Aucun compte trouvé avec cet email.',
+    'Code invalide.': 'Code invalide.',
+    'Code expiré.': 'Code expiré.',
+    "Impossible d'envoyer le code de réinitialisation.":
+      "Impossible d'envoyer le code de réinitialisation.",
+    'Token de réinitialisation invalide.': 'Token de réinitialisation invalide.',
+    'Compte introuvable.': 'Compte introuvable.',
+
     // Chat modal
     'Aucun message. Commencez la conversation !': 'Aucun message. Commencez la conversation !',
     'Tapez votre message...': 'Tapez votre message...',
@@ -1329,6 +1366,43 @@ const DICT: Dictionary = {
     'Compris': 'Got it',
     "Retour à l'accueil": 'Back to home',
 
+    // Forgot password
+    'Mot de passe oublié': 'Forgot password',
+    'Entrez votre email : nous enverrons un code de réinitialisation (valide 15 minutes).':
+      'Enter your email: we will send a reset code (valid for 15 minutes).',
+    'Saisissez le code à 6 chiffres reçu par email.': 'Enter the 6-digit code you received by email.',
+    'Choisissez un nouveau mot de passe sécurisé.': 'Choose a strong new password.',
+    'Adresse email': 'Email address',
+    'Envoyer le code': 'Send code',
+    'Code (6 chiffres)': 'Code (6 digits)',
+    'Continuer': 'Continue',
+    "Modifier l'email": 'Change email',
+    'FORGOT_PASSWORD_HINT':
+      'At least 8 characters, one uppercase, one lowercase, one number and a special character (@$!%*?&)',
+    'Confirmer le mot de passe': 'Confirm password',
+    'Masquer': 'Hide',
+    'Afficher': 'Show',
+    'Enregistrement...': 'Saving...',
+    'Réinitialiser le mot de passe': 'Reset password',
+    'Retour à la connexion': 'Back to sign in',
+    'Mot de passe mis à jour': 'Password updated',
+    'Vous pouvez maintenant vous connecter avec votre nouveau mot de passe.':
+      'You can now sign in with your new password.',
+    'Une erreur est survenue': 'Something went wrong',
+    'Session expirée. Recommencez.': 'Session expired. Please start again.',
+    'Session expirée. Recommencez la réinitialisation.':
+      'Session expired. Please start the reset process again.',
+    'Impossible de réinitialiser le mot de passe': 'Could not reset the password',
+    'Connexion impossible après vérification': 'Could not sign in after verification',
+    'Impossible de renvoyer le code': 'Could not resend the code',
+    'Aucun compte trouvé avec cet email.': 'No account found with this email.',
+    'Code invalide.': 'Invalid code.',
+    'Code expiré.': 'Code expired.',
+    "Impossible d'envoyer le code de réinitialisation.":
+      'Could not send the reset code.',
+    'Token de réinitialisation invalide.': 'Invalid reset token.',
+    'Compte introuvable.': 'Account not found.',
+
     // Chat modal
     'Aucun message. Commencez la conversation !': 'No messages. Start the conversation!',
     'Tapez votre message...': 'Type your message...',
@@ -2006,6 +2080,43 @@ const DICT: Dictionary = {
     "Besoin d'aide ?": 'هل تحتاج إلى مساعدة؟',
     'Compris': 'حسناً',
     "Retour à l'accueil": 'العودة إلى الصفحة الرئيسية',
+
+    // Forgot password
+    'Mot de passe oublié': 'نسيت كلمة المرور',
+    'Entrez votre email : nous enverrons un code de réinitialisation (valide 15 minutes).':
+      'أدخل بريدك الإلكتروني: سنرسل رمز إعادة التعيين (صالح لمدة 15 دقيقة).',
+    'Saisissez le code à 6 chiffres reçu par email.': 'أدخل الرمز المكوّن من 6 أرقام الذي وصل إلى بريدك.',
+    'Choisissez un nouveau mot de passe sécurisé.': 'اختر كلمة مرور جديدة قوية.',
+    'Adresse email': 'عنوان البريد الإلكتروني',
+    'Envoyer le code': 'إرسال الرمز',
+    'Code (6 chiffres)': 'الرمز (6 أرقام)',
+    'Continuer': 'متابعة',
+    "Modifier l'email": 'تعديل البريد',
+    'FORGOT_PASSWORD_HINT':
+      '8 أحرف على الأقل، حرف كبير وصغير ورقم ورمز خاص (@$!%*?&)',
+    'Confirmer le mot de passe': 'تأكيد كلمة المرور',
+    'Masquer': 'إخفاء',
+    'Afficher': 'إظهار',
+    'Enregistrement...': 'جارٍ الحفظ...',
+    'Réinitialiser le mot de passe': 'إعادة تعيين كلمة المرور',
+    'Retour à la connexion': 'العودة لتسجيل الدخول',
+    'Mot de passe mis à jour': 'تم تحديث كلمة المرور',
+    'Vous pouvez maintenant vous connecter avec votre nouveau mot de passe.':
+      'يمكنك الآن تسجيل الدخول بكلمة المرور الجديدة.',
+    'Une erreur est survenue': 'حدث خطأ',
+    'Session expirée. Recommencez.': 'انتهت الجلسة. ابدأ من جديد.',
+    'Session expirée. Recommencez la réinitialisation.':
+      'انتهت الجلسة. أعد عملية إعادة التعيين من البداية.',
+    'Impossible de réinitialiser le mot de passe': 'تعذّر إعادة تعيين كلمة المرور',
+    'Connexion impossible après vérification': 'تعذّر تسجيل الدخول بعد التحقق',
+    'Impossible de renvoyer le code': 'تعذّر إعادة إرسال الرمز',
+    'Aucun compte trouvé avec cet email.': 'لا يوجد حساب بهذا البريد الإلكتروني.',
+    'Code invalide.': 'رمز غير صالح.',
+    'Code expiré.': 'انتهت صلاحية الرمز.',
+    "Impossible d'envoyer le code de réinitialisation.":
+      'تعذّر إرسال رمز إعادة التعيين.',
+    'Token de réinitialisation invalide.': 'رمز إعادة التعيين غير صالح.',
+    'Compte introuvable.': 'الحساب غير موجود.',
 
     // Chat modal
     'Aucun message. Commencez la conversation !': 'لا توجد رسائل. ابدأ المحادثة!',

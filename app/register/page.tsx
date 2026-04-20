@@ -52,9 +52,15 @@ export default function RegisterPage() {
   };
 
   const handleWorkshopChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    let value = e.target.value;
+    if (e.target.name === "phone") {
+      // Keep only digits and enforce max length of 10.
+      value = value.replace(/\D/g, "").slice(0, 10);
+    }
+
     setWorkshopData({
       ...workshopData,
-      [e.target.name]: e.target.value,
+      [e.target.name]: value,
     });
     // Clear error when user starts typing
     if (formError) setFormError("");
@@ -130,6 +136,12 @@ export default function RegisterPage() {
         setIsSubmitting(false);
         return;
       }
+      const normalizedWorkshopPhone = workshopData.phone.trim();
+      if (!/^0\d{9}$/.test(normalizedWorkshopPhone)) {
+        setFormError("Le numéro de téléphone doit contenir 10 chiffres, commencer par 0 et contenir uniquement des chiffres.");
+        setIsSubmitting(false);
+        return;
+      }
       try {
         const res = await fetch("/api/auth/register/workshop", {
           method: "POST",
@@ -138,7 +150,7 @@ export default function RegisterPage() {
             name: workshopData.name,
             email: workshopData.email.trim(),
             adr: workshopData.adr,
-            phone: workshopData.phone.trim(),
+            phone: normalizedWorkshopPhone,
             type: workshopData.type,
             password: workshopData.password,
           }),
@@ -734,8 +746,11 @@ export default function RegisterPage() {
                   required
                   value={workshopData.phone}
                   onChange={handleWorkshopChange}
+                  maxLength={10}
+                  inputMode="numeric"
+                  pattern="0[0-9]{9}"
                   className="appearance-none relative block w-full px-4 py-3.5 bg-gradient-to-br from-gray-50 to-white border-2 border-gray-200 placeholder-gray-400 text-gray-900 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all shadow-sm hover:shadow-md"
-                  placeholder="+213 XXX XX XX XX"
+                  placeholder="0XXXXXXXXX"
                 />
               </div>
 

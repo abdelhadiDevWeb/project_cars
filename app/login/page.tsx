@@ -16,6 +16,40 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [showActivationModal, setShowActivationModal] = useState(false);
+  const [activationMessage, setActivationMessage] = useState('');
+  const [showVerificationModal, setShowVerificationModal] = useState(false);
+  const [verificationCode, setVerificationCode] = useState('');
+  const [verificationError, setVerificationError] = useState('');
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [isResendingCode, setIsResendingCode] = useState(false);
+  const [pendingCredentials, setPendingCredentials] = useState<{ email: string; password: string } | null>(null);
+  const [pendingLoginData, setPendingLoginData] = useState<{
+    token: string;
+    user: any;
+    type: string;
+    role?: string | null;
+    email: string;
+  } | null>(null);
+  const [showEmailConfirmedModal, setShowEmailConfirmedModal] = useState(false);
+  const [confirmedEmailHasAccess, setConfirmedEmailHasAccess] = useState(false);
+  const [confirmedEmailType, setConfirmedEmailType] = useState<string>('user');
+  const [confirmedEmailRole, setConfirmedEmailRole] = useState<string | null>(null);
+
+  const redirectAfterLogin = (type: string, role?: string | null) => {
+    if (type === 'workshop') {
+      router.push('/dashboard-workshop');
+      return;
+    }
+    if (type === 'user') {
+      if (role === 'admin') {
+        router.push('/dashboard-admin');
+      } else {
+        router.push('/');
+      }
+      return;
+    }
+    router.push('/');
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,8 +66,28 @@ export default function LoginPage() {
       const data = await res.json();
 
       if (!res.ok) {
+        // Check if account needs email verification (show confirmation modal)
+        if (data.needsVerification) {
+          setPendingCredentials({ email, password });
+          setPendingLoginData({
+            token: '',
+            user: { email: data.email || email },
+            type: data.accountType || 'user',
+            role: null,
+            email: data.email || email,
+          });
+          setVerificationCode('');
+          setVerificationError('');
+          setShowVerificationModal(true);
+          setIsLoading(false);
+          return;
+        }
         // Check if account needs activation
         if (data.needsActivation && data.status === false) {
+          setActivationMessage(
+            data?.message ||
+              "Votre email est confirmé, mais vous n'avez pas d'abonnement actif. Veuillez contacter l'administrateur."
+          );
           setShowActivationModal(true);
           setIsLoading(false);
           return;
@@ -44,31 +98,133 @@ export default function LoginPage() {
       }
 
       // Store token and user data using context
-      if (data.token && data.user) {
-        login(data.token, data.user, data.type, data.role);
+      if (data.needsVerification && data.token && data.user) {
+        setPendingLoginData({
+          token: data.token,
+          user: data.user,
+          type: data.type,
+          role: data.role,
+          email: data.user.email || email,
+        });
+        setVerificationCode('');
+        setVerificationError('');
+        setShowVerificationModal(true);
+        setIsLoading(false);
+        return;
       }
 
-      // Redirect based on user type and role
-      if (data.type === 'workshop') {
-        // Workshop users go to workshop dashboard
-        router.push('/dashboard-workshop');
-      } else if (data.type === 'user') {
-        // Check user role
-        if (data.role === 'admin') {
-          // Admin users go to admin dashboard
-          router.push('/dashboard-admin');
-        } else {
-          // Regular client users go to home page
-          router.push('/');
-        }
-      } else {
-        // Fallback to home
-        router.push('/');
+      if (data.token && data.user) {
+        login(data.token, data.user, data.type, data.role);
+        redirectAfterLogin(data.type, data.role);
       }
     } catch (error) {
       setError(t("Erreur de connexion. Veuillez réessayer."));
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleVerifyCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!pendingLoginData) return;
+
+    const normalizedCode = verificationCode.replace(/\D/g, '');
+    if (normalizedCode.length !== 6) {
+      setVerificationError(t("Le code doit contenir exactement 6 chiffres"));
+      return;
+    }
+
+    setIsVerifying(true);
+    setVerificationError('');
+
+    try {
+      const res = await fetch('/api/auth/verify-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: pendingLoginData.email,
+          code: normalizedCode,
+          type: pendingLoginData.type,
+        }),
+      });
+      const data = await res.json();
+
+      if (!res.ok || !data.ok) {
+        setVerificationError(data?.message || t("Code invalide ou expiré"));
+        return;
+      }
+
+      // If we already have token/user from prior successful login response, use it.
+      // Otherwise, login again after successful email verification.
+      if (pendingLoginData.token && pendingLoginData.user) {
+        login(
+          pendingLoginData.token,
+          { ...pendingLoginData.user, verfie: true },
+          pendingLoginData.type,
+          pendingLoginData.role || undefined
+        );
+        setConfirmedEmailHasAccess(true);
+        setConfirmedEmailType(pendingLoginData.type);
+        setConfirmedEmailRole(pendingLoginData.role || null);
+      } else if (pendingCredentials) {
+        const loginRes = await fetch("/api/auth/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(pendingCredentials),
+        });
+        const loginData = await loginRes.json();
+        if (!loginRes.ok) {
+          if (loginData?.needsActivation && loginData?.status === false) {
+            setConfirmedEmailHasAccess(false);
+            setConfirmedEmailType(pendingLoginData.type);
+            setConfirmedEmailRole(null);
+          } else {
+            setVerificationError(loginData?.message || t("Connexion impossible après vérification"));
+            return;
+          }
+        } else if (!loginData.token || !loginData.user) {
+          setVerificationError(loginData?.message || t("Connexion impossible après vérification"));
+          return;
+        } else {
+          login(loginData.token, loginData.user, loginData.type, loginData.role);
+          setConfirmedEmailHasAccess(true);
+          setConfirmedEmailType(loginData.type);
+          setConfirmedEmailRole(loginData.role || null);
+        }
+      } else {
+        setVerificationError(t("Connexion impossible après vérification"));
+        return;
+      }
+
+      setShowVerificationModal(false);
+      setPendingLoginData(null);
+      setPendingCredentials(null);
+      setShowEmailConfirmedModal(true);
+    } catch (verifyError) {
+      setVerificationError(t("Erreur de connexion. Veuillez réessayer."));
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
+  const handleResendVerificationCode = async () => {
+    if (!pendingLoginData) return;
+    setIsResendingCode(true);
+    setVerificationError('');
+    try {
+      const res = await fetch('/api/auth/resend-verification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: pendingLoginData.email }),
+      });
+      const data = await res.json();
+      if (!res.ok || data?.ok !== true) {
+        setVerificationError(data?.message || t("Impossible de renvoyer le code"));
+      }
+    } catch {
+      setVerificationError(t("Erreur de connexion. Veuillez réessayer."));
+    } finally {
+      setIsResendingCode(false);
     }
   };
 
@@ -252,16 +408,14 @@ export default function LoginPage() {
 
               {/* Title */}
               <h2 className="text-2xl font-bold text-gray-900 mb-4 font-[var(--font-poppins)]">
-                {t("Compte en attente d'activation")}
+                {t("Abonnement inactif")}
               </h2>
 
               {/* Message */}
               <div className="text-gray-600 mb-6 space-y-3">
                 <p className="text-base leading-relaxed">
-                  {t("Votre compte n'est pas encore activé par l'administrateur.")}
-                </p>
-                <p className="text-base leading-relaxed">
-                  {t("Veuillez patienter jusqu'à ce que votre compte soit activé.")}
+                  {activationMessage ||
+                    t("Votre email est confirmé, mais vous n'avez pas d'abonnement actif. Veuillez contacter l'administrateur.")}
                 </p>
                 <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
                   <p className="text-sm text-gray-700 mb-2 font-medium">
@@ -286,6 +440,129 @@ export default function LoginPage() {
               >
                 {t('Compris')}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Email Verification Modal */}
+      {showVerificationModal && (
+        <div className="fixed inset-0 bg-gray-500/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white/95 backdrop-blur-md rounded-3xl shadow-2xl max-w-md w-full p-8 transform transition-all border-2 border-gray-200/50">
+            <div className="text-center mb-6">
+              <div className="mx-auto w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4">
+                <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2 font-[var(--font-poppins)]">
+                {t("Confirmer votre email")}
+              </h2>
+              <p className="text-sm text-gray-600">
+                {t("Un code de confirmation a été envoyé à votre adresse email.")}
+              </p>
+              {pendingLoginData?.email && (
+                <p className="text-sm font-semibold text-teal-600 mt-2">{pendingLoginData.email}</p>
+              )}
+            </div>
+
+            <form onSubmit={handleVerifyCode} className="space-y-4">
+              <div>
+                <label htmlFor="verification-code" className="block text-sm font-medium text-gray-700 mb-2">
+                  {t("Code de confirmation (6 chiffres)")}
+                </label>
+                <input
+                  id="verification-code"
+                  type="text"
+                  maxLength={6}
+                  value={verificationCode}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/\D/g, '');
+                    setVerificationCode(value);
+                    setVerificationError('');
+                  }}
+                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30 text-center text-2xl font-bold tracking-widest"
+                  placeholder="000000"
+                  required
+                />
+              </div>
+
+              {verificationError && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                  <p className="text-sm text-red-700">{verificationError}</p>
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={isVerifying || verificationCode.length !== 6}
+                className="w-full py-3.5 bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-600 hover:to-cyan-600 text-white rounded-xl font-bold transition-all duration-200 shadow-xl hover:shadow-2xl disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isVerifying ? t("Vérification...") : t("Confirmer le code")}
+              </button>
+
+              <button
+                type="button"
+                onClick={handleResendVerificationCode}
+                disabled={isResendingCode}
+                className="w-full py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-semibold transition-colors disabled:opacity-50"
+              >
+                {isResendingCode ? t("Envoi...") : t("Renvoyer le code")}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Email Confirmed Result Modal */}
+      {showEmailConfirmedModal && (
+        <div className="fixed inset-0 bg-gray-500/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white/95 backdrop-blur-md rounded-3xl shadow-2xl max-w-md w-full p-8 transform transition-all border-2 border-gray-200/50">
+            <div className="text-center">
+              <div className={`mx-auto w-20 h-20 rounded-full flex items-center justify-center mb-6 ${confirmedEmailHasAccess ? 'bg-green-100' : 'bg-yellow-100'}`}>
+                {confirmedEmailHasAccess ? (
+                  <svg className="w-12 h-12 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                ) : (
+                  <svg className="w-12 h-12 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                )}
+              </div>
+
+              <h2 className="text-2xl font-bold text-gray-900 mb-4 font-[var(--font-poppins)]">
+                {t("Votre email est confirmé")}
+              </h2>
+
+              {confirmedEmailHasAccess ? (
+                <p className="text-base text-gray-700 mb-6">
+                  {t("Votre email est confirmé. Vous pouvez maintenant accéder à votre espace.")}
+                </p>
+              ) : (
+                <p className="text-base text-gray-700 mb-6">
+                  {t("Vous ne pouvez pas accéder à votre espace parce que vous n'avez pas d'abonnement actif. Veuillez contacter l'administrateur.")}
+                </p>
+              )}
+
+              {confirmedEmailHasAccess ? (
+                <button
+                  onClick={() => {
+                    setShowEmailConfirmedModal(false);
+                    redirectAfterLogin(confirmedEmailType, confirmedEmailRole);
+                  }}
+                  className="w-full py-3.5 bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-600 hover:to-cyan-600 text-white rounded-xl font-bold transition-all duration-200 shadow-xl hover:shadow-2xl hover:scale-105"
+                >
+                  {t("Aller à mon espace")}
+                </button>
+              ) : (
+                <button
+                  onClick={() => setShowEmailConfirmedModal(false)}
+                  className="w-full py-3.5 bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 text-white rounded-xl font-bold transition-all duration-200 shadow-xl hover:shadow-2xl hover:scale-105"
+                >
+                  {t("Compris")}
+                </button>
+              )}
             </div>
           </div>
         </div>
