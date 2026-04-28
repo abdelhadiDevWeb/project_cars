@@ -14,13 +14,18 @@ const nextConfig: NextConfig = {
       {
         protocol: 'http',
         hostname: 'localhost',
+        port: '7000',
+        pathname: '/uploads/**',
+      },
+      {
+        protocol: 'http',
+        hostname: 'localhost',
         port: '8001',
         pathname: '/uploads/**',
       },
       {
         protocol: 'https',
-        hostname: 'localhost',
-        port: '8001',
+        hostname: 'server-bun.onrender.com',
         pathname: '/uploads/**',
       },
     ],

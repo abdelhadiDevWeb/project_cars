@@ -33,12 +33,14 @@ export function getImageUrl(imagePath: string): string | null {
     return imagePath;
   }
   
-  // If it starts with /, it's already a path
+  // Normalize incoming path
   const cleanPath = imagePath.startsWith('/') ? imagePath : `/${imagePath}`;
   
-  // Use relative path for uploads (Next.js will proxy it)
+  // Upload assets are served by backend. Build an absolute URL so images
+  // work consistently across home/details/dashboard pages in production.
   if (cleanPath.startsWith('/uploads/')) {
-    return cleanPath;
+    const backendUrl = getBackendUrl();
+    return `${backendUrl}${cleanPath}`;
   }
   
   // For other paths, return as is (they're served by Next.js)

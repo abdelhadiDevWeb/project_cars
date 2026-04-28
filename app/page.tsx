@@ -33,7 +33,7 @@ interface Car {
   };
 }
 
-type HeroSlide = { id: string; image: string; alt: string };
+type HeroSlide = { id: string; image: string; alt: string; certified: boolean };
 
 
 // Scroll reveal hook
@@ -122,6 +122,7 @@ export default function Home() {
           id,
           image,
           alt: `${c.brand} ${c.model} ${c.year}`,
+          certified: c.status === 'actif',
         };
       })
       .filter((s) => !!s.id && !!s.image);
@@ -873,13 +874,32 @@ export default function Home() {
                 <div className="absolute -top-6 -right-6 w-40 h-40 bg-gradient-to-br from-teal-400/30 to-cyan-400/30 rounded-full blur-3xl -z-10 animate-pulse"></div>
                 <div className="absolute -bottom-6 -left-6 w-48 h-48 bg-gradient-to-br from-blue-400/30 to-teal-400/30 rounded-full blur-3xl -z-10 animate-pulse animation-delay-2000"></div>
                 
-                {/* Floating Badge */}
-                <div className="absolute -top-4 left-4 z-20 px-4 py-2 bg-gradient-to-r from-teal-500 to-cyan-500 text-white rounded-full text-xs font-bold shadow-xl flex items-center gap-2">
-                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                  {t('Certifié')}
-                </div>
+                {/* Floating badge follows the current carousel slide */}
+                {heroSlides.length > 0 && (
+                  <div
+                    className={`absolute -top-4 left-4 z-20 px-4 py-2 text-white rounded-full text-xs font-bold shadow-xl flex items-center gap-2 ${
+                      heroSlides[currentHeroIndex]?.certified
+                        ? 'bg-gradient-to-r from-teal-500 to-cyan-500'
+                        : 'bg-gradient-to-r from-amber-500 to-orange-600'
+                    }`}
+                  >
+                    {heroSlides[currentHeroIndex]?.certified ? (
+                      <>
+                        <svg className="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                        </svg>
+                        {t('Certifié')}
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                        {t('Non certifié')}
+                      </>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -1380,7 +1400,7 @@ export default function Home() {
               <h2 className="text-5xl font-bold bg-gradient-to-r from-blue-900 via-teal-700 to-cyan-600 bg-clip-text text-transparent mb-3 font-[var(--font-poppins)]">
               {t('Dernières Offres Certifiées')}
             </h2>
-              <p className="text-gray-600 text-lg">Découvrez notre sélection de véhicules vérifiés</p>
+              <p className="text-gray-600 text-lg">{t('Home listings intro')}</p>
             </div>
             
             {loadingCars ? (
@@ -1442,7 +1462,7 @@ export default function Home() {
                             ✓ {t('Certifié')}
                           </div>
                         ) : (
-                          <div className="absolute top-4 left-4 bg-gradient-to-r from-gray-500 to-gray-600 text-white px-4 py-2 rounded-full text-xs font-bold shadow-lg backdrop-blur-sm">
+                          <div className="absolute top-4 left-4 bg-gradient-to-r from-amber-500 to-orange-600 text-white px-4 py-2 rounded-full text-xs font-bold shadow-lg backdrop-blur-sm">
                             {t('Non certifié')}
                           </div>
                         )}
@@ -1534,12 +1554,16 @@ export default function Home() {
                             {car.price.toLocaleString()} DA
                       </span>
                         </div>
-                        {car.status === 'actif' && (
+                        {car.status === 'actif' ? (
                           <div className="flex items-center gap-1.5 bg-gradient-to-r from-green-400 to-emerald-500 text-white px-4 py-2 rounded-full text-xs font-bold shadow-md">
                             <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                               <path fillRule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                             </svg>
                             ACTIF
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1.5 bg-gradient-to-r from-amber-500 to-orange-600 text-white px-4 py-2 rounded-full text-xs font-bold shadow-md">
+                            {t('Non certifié')}
                           </div>
                         )}
                     </div>

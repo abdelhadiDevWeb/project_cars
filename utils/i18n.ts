@@ -22,8 +22,11 @@ const DICT: Dictionary = {
     'Nouveau message': 'Nouveau message',
 
     // Home search / listings
-    'Dernières Offres Certifiées': 'Dernières Offres Certifiées',
-    'Recherchez parmi nos véhicules vérifiés': 'Recherchez parmi nos véhicules vérifiés',
+    'Dernières Offres Certifiées': 'Dernières offres',
+    'Recherchez parmi nos véhicules vérifiés':
+      'Annonces certifiées par nos ateliers et véhicules non certifiés — recherchez tout le catalogue.',
+    'Home listings intro':
+      'Véhicules certifiés (statut actif) et annonces en cours de vérification ou sans certification — le badge indique le statut.',
     'Filtres avancés': 'Filtres avancés',
     'Affinez votre recherche': 'Affinez votre recherche',
     'Rechercher': 'Rechercher',
@@ -783,8 +786,11 @@ const DICT: Dictionary = {
     'Nouveau message': 'New message',
 
     // Home search / listings
-    'Dernières Offres Certifiées': 'Latest Certified Offers',
-    'Recherchez parmi nos véhicules vérifiés': 'Search among our verified vehicles',
+    'Dernières Offres Certifiées': 'Latest listings',
+    'Recherchez parmi nos véhicules vérifiés':
+      'Workshop-certified listings and non-certified vehicles — search the full catalog.',
+    'Home listings intro':
+      'Certified vehicles (active status) and listings pending verification or without certification — the badge shows the status.',
     'Filtres avancés': 'Advanced filters',
     'Affinez votre recherche': 'Refine your search',
     'Rechercher': 'Search',
@@ -1562,8 +1568,11 @@ const DICT: Dictionary = {
     'Nouveau message': 'رسالة جديدة',
 
     // Home search / listings
-    'Dernières Offres Certifiées': 'أحدث عروض معتمدة',
-    'Recherchez parmi nos véhicules vérifiés': 'ابحث بين مركباتنا الموثّقة',
+    'Dernières Offres Certifiées': 'أحدث العروض',
+    'Recherchez parmi nos véhicules vérifiés':
+      'إعلانات معتمدة من الورش ومركبات غير معتمدة — ابحث في كامل الكتالوج.',
+    'Home listings intro':
+      'مركبات معتمدة (حالة نشطة) وإعلانات قيد التحقق أو بلا اعتماد — الشارة توضح الحالة.',
     'Filtres avancés': 'مرشحات متقدمة',
     'Affinez votre recherche': 'حسّن بحثك',
     'Rechercher': 'بحث',
