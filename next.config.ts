@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Next 16 defaults to Turbopack for `next build`; an empty block acknowledges that
+  // we intentionally use `next build --webpack` so custom `webpack()` below still applies.
+  turbopack: {},
   // Avoid webpack's persistent pack cache in dev — on some Windows setups it triggers
   // "Array buffer allocation failed" (PackFileCacheStrategy) during compile.
   webpack: (config, { dev }) => {
