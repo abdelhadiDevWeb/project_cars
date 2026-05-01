@@ -16,8 +16,8 @@ export default function AdminDashboardLayout({
   children: React.ReactNode;
 }) {
   const t = useT();
-  const { language } = useLanguage();
-  const isRTL = language === 'ar';
+  const { setLanguage } = useLanguage();
+  const isRTL = false;
   const { logout } = useUser();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [user, setUser] = useState<any>(null);
@@ -68,6 +68,10 @@ export default function AdminDashboardLayout({
       router.push('/');
     }
   };
+
+  useEffect(() => {
+    setLanguage('fr');
+  }, [setLanguage]);
 
   useEffect(() => {
     loadUser();

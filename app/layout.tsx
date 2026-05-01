@@ -3,7 +3,7 @@ import { Inter, Poppins } from "next/font/google";
 import "./globals.css";
 import { UserProvider } from "@/contexts/UserContext";
 import { LanguageProvider } from "@/contexts/LanguageContext";
-import LanguageSwitcher from "@/components/LanguageSwitcher";
+import GlobalLanguageSwitcher from "@/components/GlobalLanguageSwitcher";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -36,10 +36,7 @@ export default function RootLayout({
         <LanguageProvider>
           <UserProvider>
             {children}
-            {/* Global language switcher (bottom) */}
-            <div className="fixed bottom-4 left-4 z-[9999]">
-              <LanguageSwitcher />
-            </div>
+            <GlobalLanguageSwitcher />
           </UserProvider>
         </LanguageProvider>
       </body>
