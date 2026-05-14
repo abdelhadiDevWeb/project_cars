@@ -2159,8 +2159,6 @@ const DICT: Dictionary = {
     'Créneaux disponibles ({n}) - Cliquez pour sélectionner :':
       'الأوقات المتاحة ({n}) - اضغط للاختيار:',
     'Créneaux non disponibles ({n}) :': 'الأوقات غير المتاحة ({n}):',
-    'Création...': 'جارٍ الإنشاء...',
-    'Confirmer': 'تأكيد',
     'Image de vérification {n}': 'صورة التحقق {n}',
     'Voir le rapport PDF': 'عرض تقرير PDF',
     'Notifications par email': 'إشعارات البريد الإلكتروني',
@@ -2211,7 +2209,6 @@ const DICT: Dictionary = {
     'Non traité': 'غير معالج',
     'Actif': 'نشط',
     'Vendu': 'تم البيع',
-    'Prix': 'السعر',
     'Scannez ce code QR pour vérifier le statut de vérification de ce véhicule':
       'امسح رمز QR هذا للتحقق من حالة التحقق لهذه المركبة',
     'Vendeur': 'البائع',
