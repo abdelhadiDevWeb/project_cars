@@ -101,7 +101,8 @@ export default function DashboardAdminPage() {
         },
       });
 
-      if (response.ok) {
+      const ct = response.headers.get('content-type') || '';
+      if (response.ok && ct.includes('application/json')) {
         const data = await response.json();
         if (data.ok) {
           setStatistics(data.statistics);

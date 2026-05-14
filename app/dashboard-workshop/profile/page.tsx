@@ -6,6 +6,11 @@ import { useUser } from "@/contexts/UserContext";
 import { useRouter } from "next/navigation";
 import { getImageUrl } from "@/utils/backend";
 import { useT } from "@/utils/i18n";
+import WorkshopLocationPicker, {
+  type WorkshopLocationValue,
+} from "@/components/WorkshopLocationPicker";
+
+const mapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
 export default function WorkshopProfilePage() {
   const router = useRouter();
@@ -21,6 +26,34 @@ export default function WorkshopProfilePage() {
     price_visit_mec: '',
     price_visit_paint: '',
   });
+
+  const [workshopLocation, setWorkshopLocation] = useState<WorkshopLocationValue>({
+    lat: null,
+    lng: null,
+    formattedAddress: '',
+    googlePlaceId: null,
+    locationCity: null,
+    locationRegion: null,
+    locationPostalCode: null,
+    locationCountry: null,
+    locationNeighborhood: null,
+    locationStreetLine: null,
+  });
+
+  /** First paint may run before `useEffect` copies `user` into state — merge so the map never auto-locates over saved coords. */
+  const effectiveWorkshopLocation: WorkshopLocationValue = {
+    lat: workshopLocation.lat ?? user?.locationLat ?? null,
+    lng: workshopLocation.lng ?? user?.locationLng ?? null,
+    formattedAddress:
+      workshopLocation.formattedAddress || user?.locationFormattedAddress || '',
+    googlePlaceId: workshopLocation.googlePlaceId ?? user?.googlePlaceId ?? null,
+    locationCity: workshopLocation.locationCity ?? user?.locationCity ?? null,
+    locationRegion: workshopLocation.locationRegion ?? user?.locationRegion ?? null,
+    locationPostalCode: workshopLocation.locationPostalCode ?? user?.locationPostalCode ?? null,
+    locationCountry: workshopLocation.locationCountry ?? user?.locationCountry ?? null,
+    locationNeighborhood: workshopLocation.locationNeighborhood ?? user?.locationNeighborhood ?? null,
+    locationStreetLine: workshopLocation.locationStreetLine ?? user?.locationStreetLine ?? null,
+  };
 
   const [passwordData, setPasswordData] = useState({
     currentPassword: '',
@@ -49,6 +82,18 @@ export default function WorkshopProfilePage() {
         price_visite: user.price_visite?.toString() || '',
         price_visit_mec: user.price_visit_mec?.toString() || '',
         price_visit_paint: user.price_visit_paint?.toString() || '',
+      });
+      setWorkshopLocation({
+        lat: user.locationLat ?? null,
+        lng: user.locationLng ?? null,
+        formattedAddress: user.locationFormattedAddress || '',
+        googlePlaceId: user.googlePlaceId ?? null,
+        locationCity: user.locationCity ?? null,
+        locationRegion: user.locationRegion ?? null,
+        locationPostalCode: user.locationPostalCode ?? null,
+        locationCountry: user.locationCountry ?? null,
+        locationNeighborhood: user.locationNeighborhood ?? null,
+        locationStreetLine: user.locationStreetLine ?? null,
       });
       // Fetch profile image
       fetchProfileImage();
@@ -280,6 +325,23 @@ export default function WorkshopProfilePage() {
           price_visite: formData.price_visite ? Number(formData.price_visite) : null,
           price_visit_mec: formData.price_visit_mec ? Number(formData.price_visit_mec) : null,
           price_visit_paint: formData.price_visit_paint ? Number(formData.price_visit_paint) : null,
+          ...(effectiveWorkshopLocation.lat != null &&
+          effectiveWorkshopLocation.lng != null &&
+          !Number.isNaN(effectiveWorkshopLocation.lat) &&
+          !Number.isNaN(effectiveWorkshopLocation.lng)
+            ? {
+                locationLat: effectiveWorkshopLocation.lat,
+                locationLng: effectiveWorkshopLocation.lng,
+                locationFormattedAddress: effectiveWorkshopLocation.formattedAddress || null,
+                googlePlaceId: effectiveWorkshopLocation.googlePlaceId,
+                locationCity: effectiveWorkshopLocation.locationCity || null,
+                locationRegion: effectiveWorkshopLocation.locationRegion || null,
+                locationPostalCode: effectiveWorkshopLocation.locationPostalCode || null,
+                locationCountry: effectiveWorkshopLocation.locationCountry || null,
+                locationNeighborhood: effectiveWorkshopLocation.locationNeighborhood || null,
+                locationStreetLine: effectiveWorkshopLocation.locationStreetLine || null,
+              }
+            : {}),
         }),
       });
 
@@ -702,7 +764,7 @@ export default function WorkshopProfilePage() {
                     />
                   </div>
 
-                  <div>
+                  <div className="md:col-span-2">
                     <label htmlFor="adr" className="block text-sm font-medium text-gray-700 mb-2">
                       {t('Adresse')} *
                     </label>
@@ -714,6 +776,25 @@ export default function WorkshopProfilePage() {
                       value={formData.adr}
                       onChange={handleChange}
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+
+                  <div className="md:col-span-2 rounded-xl border border-blue-100 bg-blue-50/50 p-4">
+                    <p className="mb-3 text-sm font-semibold text-gray-800">
+                      {t('Localisation sur la carte')}
+                    </p>
+                    <WorkshopLocationPicker
+                      apiKey={mapsApiKey}
+                      value={effectiveWorkshopLocation}
+                      autoLocateIfEmpty
+                      onChange={(loc) => {
+                        setWorkshopLocation(loc);
+                        if (loc.formattedAddress) {
+                          setFormData((fd) => ({ ...fd, adr: loc.formattedAddress }));
+                        }
+                        if (error) setError('');
+                        if (errors.length > 0) setErrors([]);
+                      }}
                     />
                   </div>
 

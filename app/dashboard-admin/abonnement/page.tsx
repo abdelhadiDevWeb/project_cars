@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 
 interface TypeAbonnement {
   id: string;
@@ -70,6 +71,9 @@ export default function AbonnementPage() {
   const [loadingLastAbonnement, setLoadingLastAbonnement] = useState(false);
   
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showEditTypeModal, setShowEditTypeModal] = useState(false);
+  const [editingTypeId, setEditingTypeId] = useState<string | null>(null);
+  const [editTypeForm, setEditTypeForm] = useState({ name: '', time: '', price: '' });
 
   useEffect(() => {
     fetchData(true);
@@ -263,6 +267,85 @@ export default function AbonnementPage() {
     }
   };
 
+  const openEditType = (type: TypeAbonnement) => {
+    const tid = type.id || (type as any)._id?.toString?.() || '';
+    if (!tid) return;
+    setEditingTypeId(tid);
+    setEditTypeForm({
+      name: type.name,
+      time: String(type.time),
+      price: String(type.price),
+    });
+    setShowEditTypeModal(true);
+  };
+
+  const handleSaveEditType = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingTypeId || !editTypeForm.name || !editTypeForm.time || !editTypeForm.price) {
+      alert('Veuillez remplir tous les champs');
+      return;
+    }
+    try {
+      setIsSubmitting(true);
+      const token = localStorage.getItem('token');
+      const res = await fetch(`/api/abonnement/types/${editingTypeId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          name: editTypeForm.name.trim(),
+          time: Number(editTypeForm.time),
+          price: Number(editTypeForm.price),
+        }),
+      });
+      const data = await res.json();
+      if (data.ok && data.type) {
+        setShowEditTypeModal(false);
+        setEditingTypeId(null);
+        await fetchData(false);
+        alert('Type d\'abonnement mis à jour');
+      } else {
+        alert(data.message || 'Erreur lors de la mise à jour');
+      }
+    } catch {
+      alert('Erreur réseau');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDeleteType = async (type: TypeAbonnement) => {
+    const tid = type.id || (type as any)._id?.toString?.() || '';
+    if (!tid) return;
+    if (
+      !confirm(
+        `Supprimer le type « ${type.name} » ? Impossible s'il est encore utilisé par des abonnements clients.`
+      )
+    ) {
+      return;
+    }
+    try {
+      setIsSubmitting(true);
+      const token = localStorage.getItem('token');
+      const res = await fetch(`/api/abonnement/types/${tid}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (data.ok) {
+        await fetchData(false);
+      } else {
+        alert(data.message || 'Impossible de supprimer');
+      }
+    } catch {
+      alert('Erreur réseau');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleCreateAbonnement = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedType || !selectedClient.id || !selectedClient.type) {
@@ -413,7 +496,13 @@ export default function AbonnementPage() {
               Gérez les types d'abonnement et créez des abonnements pour les clients
             </p>
           </div>
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-3 justify-end">
+            <Link
+              href="/dashboard-admin/sponsor"
+              className="px-6 py-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl font-semibold hover:from-amber-600 hover:to-orange-600 transition-all shadow-lg hover:shadow-xl text-center"
+            >
+              Sponsoring & plans
+            </Link>
             <button
               onClick={() => setShowAddTypeModal(true)}
               className="px-6 py-3 bg-gradient-to-r from-teal-500 to-cyan-500 text-white rounded-xl font-semibold hover:from-teal-600 hover:to-cyan-600 transition-all shadow-lg hover:shadow-xl"
@@ -528,6 +617,31 @@ export default function AbonnementPage() {
                                 </div>
                               </div>
                             </div>
+                          </div>
+
+                          <div className="flex gap-2 pt-2 relative z-10">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openEditType(type);
+                              }}
+                              disabled={isSubmitting}
+                              className="flex-1 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold shadow-md disabled:opacity-50 transition-colors"
+                            >
+                              Modifier
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteType(type);
+                              }}
+                              disabled={isSubmitting}
+                              className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold shadow-md disabled:opacity-50 transition-colors"
+                            >
+                              Supprimer
+                            </button>
                           </div>
                         </div>
                       </div>
@@ -916,6 +1030,74 @@ export default function AbonnementPage() {
             </div>
           </div>
         </div>
+
+        {/* Edit subscription type (catalog) modal */}
+        {showEditTypeModal && (
+          <div className="fixed inset-0 bg-gray-500/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-8 border-2 border-teal-200">
+              <h2 className="text-2xl font-bold text-gray-900 mb-6 font-[var(--font-poppins)]">
+                Modifier le type d&apos;abonnement
+              </h2>
+              <form onSubmit={handleSaveEditType} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Nom</label>
+                  <input
+                    type="text"
+                    required
+                    value={editTypeForm.name}
+                    onChange={(e) => setEditTypeForm({ ...editTypeForm, name: e.target.value })}
+                    className="w-full px-4 py-3 bg-gradient-to-br from-gray-50 to-white border-2 border-gray-200 rounded-xl focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Durée (jours)
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    min={1}
+                    value={editTypeForm.time}
+                    onChange={(e) => setEditTypeForm({ ...editTypeForm, time: e.target.value })}
+                    className="w-full px-4 py-3 bg-gradient-to-br from-gray-50 to-white border-2 border-gray-200 rounded-xl focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Prix (DA)
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    min={0}
+                    value={editTypeForm.price}
+                    onChange={(e) => setEditTypeForm({ ...editTypeForm, price: e.target.value })}
+                    className="w-full px-4 py-3 bg-gradient-to-br from-gray-50 to-white border-2 border-gray-200 rounded-xl focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+                  />
+                </div>
+                <div className="flex gap-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowEditTypeModal(false);
+                      setEditingTypeId(null);
+                    }}
+                    className="flex-1 px-4 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-all"
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="flex-1 px-4 py-3 bg-gradient-to-r from-teal-500 to-cyan-500 text-white rounded-xl font-semibold hover:from-teal-600 hover:to-cyan-600 transition-all disabled:opacity-50"
+                  >
+                    {isSubmitting ? 'Enregistrement...' : 'Enregistrer'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
 
         {/* Add Type Modal */}
         {showAddTypeModal && (

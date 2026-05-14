@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   // IMPORTANT:
-  // Middleware bugs can make routes *look* like they don't exist (404).
+  // Proxy bugs can make routes *look* like they don't exist (404).
   // Always fail open (NextResponse.next()) so routing remains functional.
   try {
     const { pathname } = request.nextUrl;
@@ -75,7 +75,7 @@ export function middleware(request: NextRequest) {
 
     return NextResponse.next();
   } catch (error) {
-    console.error('Middleware error:', error);
+    console.error('Proxy error:', error);
     return NextResponse.next();
   }
 }

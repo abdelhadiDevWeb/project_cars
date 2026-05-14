@@ -3,6 +3,11 @@
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useT } from "@/utils/i18n";
+import WorkshopLocationPicker, {
+  type WorkshopLocationValue,
+} from "@/components/WorkshopLocationPicker";
+
+const mapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
 export default function RegisterPage() {
   const [registerAs, setRegisterAs] = useState<null | "client" | "workshop">(null);
@@ -34,7 +39,49 @@ export default function RegisterPage() {
     type: "",
     password: "",
     confirmPassword: "",
+    locationLat: null as number | null,
+    locationLng: null as number | null,
+    locationFormattedAddress: "",
+    googlePlaceId: null as string | null,
+    locationCity: null as string | null,
+    locationRegion: null as string | null,
+    locationPostalCode: null as string | null,
+    locationCountry: null as string | null,
+    locationNeighborhood: null as string | null,
+    locationStreetLine: null as string | null,
   });
+
+  const workshopLocationValue: WorkshopLocationValue = {
+    lat: workshopData.locationLat,
+    lng: workshopData.locationLng,
+    formattedAddress: workshopData.locationFormattedAddress,
+    googlePlaceId: workshopData.googlePlaceId,
+    locationCity: workshopData.locationCity,
+    locationRegion: workshopData.locationRegion,
+    locationPostalCode: workshopData.locationPostalCode,
+    locationCountry: workshopData.locationCountry,
+    locationNeighborhood: workshopData.locationNeighborhood,
+    locationStreetLine: workshopData.locationStreetLine,
+  };
+
+  const handleWorkshopLocationChange = (loc: WorkshopLocationValue) => {
+    setWorkshopData((prev) => ({
+      ...prev,
+      locationLat: loc.lat,
+      locationLng: loc.lng,
+      locationFormattedAddress: loc.formattedAddress,
+      googlePlaceId: loc.googlePlaceId,
+      locationCity: loc.locationCity ?? null,
+      locationRegion: loc.locationRegion ?? null,
+      locationPostalCode: loc.locationPostalCode ?? null,
+      locationCountry: loc.locationCountry ?? null,
+      locationNeighborhood: loc.locationNeighborhood ?? null,
+      locationStreetLine: loc.locationStreetLine ?? null,
+      adr: loc.formattedAddress ? loc.formattedAddress : prev.adr,
+    }));
+    if (formError) setFormError("");
+    if (formErrors.length > 0) setFormErrors([]);
+  };
 
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -142,6 +189,18 @@ export default function RegisterPage() {
         setIsSubmitting(false);
         return;
       }
+      if (
+        workshopData.locationLat == null ||
+        workshopData.locationLng == null ||
+        Number.isNaN(workshopData.locationLat) ||
+        Number.isNaN(workshopData.locationLng)
+      ) {
+        setFormError(
+          "Veuillez indiquer l’emplacement de l’atelier sur la carte (recherche, clic ou « Utiliser ma position »)."
+        );
+        setIsSubmitting(false);
+        return;
+      }
       try {
         const res = await fetch("/api/auth/register/workshop", {
           method: "POST",
@@ -153,6 +212,16 @@ export default function RegisterPage() {
             phone: normalizedWorkshopPhone,
             type: workshopData.type,
             password: workshopData.password,
+            locationLat: workshopData.locationLat,
+            locationLng: workshopData.locationLng,
+            locationFormattedAddress: workshopData.locationFormattedAddress || undefined,
+            googlePlaceId: workshopData.googlePlaceId || undefined,
+            locationCity: workshopData.locationCity || undefined,
+            locationRegion: workshopData.locationRegion || undefined,
+            locationPostalCode: workshopData.locationPostalCode || undefined,
+            locationCountry: workshopData.locationCountry || undefined,
+            locationNeighborhood: workshopData.locationNeighborhood || undefined,
+            locationStreetLine: workshopData.locationStreetLine || undefined,
           }),
         });
         const data = await res.json();
@@ -179,6 +248,16 @@ export default function RegisterPage() {
           type: "",
           password: "",
           confirmPassword: "",
+          locationLat: null,
+          locationLng: null,
+          locationFormattedAddress: "",
+          googlePlaceId: null,
+          locationCity: null,
+          locationRegion: null,
+          locationPostalCode: null,
+          locationCountry: null,
+          locationNeighborhood: null,
+          locationStreetLine: null,
         });
         setShowPassword(false);
         setShowConfirmPassword(false);
@@ -421,7 +500,9 @@ export default function RegisterPage() {
         <div className="absolute bottom-20 right-10 w-72 h-72 bg-cyan-200 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-2000"></div>
       </div>
 
-      <div className="max-w-md w-full space-y-8 relative z-10">
+      <div
+        className={`w-full space-y-8 relative z-10 ${registerAs === "workshop" ? "max-w-2xl" : "max-w-md"}`}
+      >
         {/* Logo and Header */}
         <div className="text-center">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-teal-500 to-cyan-500 rounded-2xl mb-4 shadow-xl">
@@ -732,6 +813,20 @@ export default function RegisterPage() {
                   onChange={handleWorkshopChange}
                   className="appearance-none relative block w-full px-4 py-3.5 bg-gradient-to-br from-gray-50 to-white border-2 border-gray-200 placeholder-gray-400 text-gray-900 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all shadow-sm hover:shadow-md"
                   placeholder="Adresse"
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  Affinez la position sur la carte ci-dessous ; l’adresse peut être mise à jour automatiquement.
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-teal-100 bg-teal-50/40 p-4">
+                <p className="mb-3 text-sm font-semibold text-gray-800">
+                  Localisation de l’atelier sur la carte *
+                </p>
+                <WorkshopLocationPicker
+                  apiKey={mapsApiKey}
+                  value={workshopLocationValue}
+                  onChange={handleWorkshopLocationChange}
                 />
               </div>
 

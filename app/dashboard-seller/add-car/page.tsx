@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useT } from "@/utils/i18n";
 
@@ -37,6 +37,28 @@ export default function AddCarPage() {
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [bypassVin, setBypassVin] = useState(false);
+  const [referenceColors, setReferenceColors] = useState<{ id: string; name: string }[]>([]);
+  const [colorsLoading, setColorsLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/car/colors-reference");
+        const data = await res.json();
+        if (!cancelled && res.ok && data.ok && Array.isArray(data.colors)) {
+          setReferenceColors(data.colors);
+        }
+      } catch {
+        /* keep empty list */
+      } finally {
+        if (!cancelled) setColorsLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -810,15 +832,28 @@ export default function AddCarPage() {
                 <label htmlFor="color" className="block text-sm font-medium text-gray-700 mb-2">
                   {t('Couleur')}
                 </label>
-                <input
-                  type="text"
+                <select
                   id="color"
                   name="color"
                   value={formData.color ?? ''}
                   onChange={handleChange}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
-                  placeholder={t('Ex: Noir, Blanc, Rouge')}
-                />
+                  disabled={colorsLoading}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 disabled:bg-gray-100 disabled:cursor-wait"
+                >
+                  <option value="">
+                    {colorsLoading ? t('Chargement...') : t('Sélectionner une couleur')}
+                  </option>
+                  {referenceColors.map((c) => (
+                    <option key={c.id} value={c.name}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+                {!colorsLoading && referenceColors.length === 0 && (
+                  <p className="mt-1 text-xs text-amber-700">
+                    {t('Aucune couleur répertoriée pour le moment. Contactez le support si besoin.')}
+                  </p>
+                )}
               </div>
 
               <div>

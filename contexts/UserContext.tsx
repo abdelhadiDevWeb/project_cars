@@ -21,6 +21,16 @@ interface User {
   price_visite?: number | null; // For workshops - price for car visit
   price_visit_mec?: number | null; // For workshops - price for mechanic visit
   price_visit_paint?: number | null; // For workshops - price for paint visit
+  locationLat?: number | null;
+  locationLng?: number | null;
+  locationFormattedAddress?: string | null;
+  googlePlaceId?: string | null;
+  locationCity?: string | null;
+  locationRegion?: string | null;
+  locationPostalCode?: string | null;
+  locationCountry?: string | null;
+  locationNeighborhood?: string | null;
+  locationStreetLine?: string | null;
 }
 
 interface UserContextType {
@@ -149,7 +159,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('userType', type);
     localStorage.setItem('userRole', role || 'client');
 
-    // Store in cookies for middleware
+    // Store in cookies for proxy (route protection)
     const maxAge = 7 * 24 * 60 * 60; // 7 days
     document.cookie = `token=${newToken}; path=/; max-age=${maxAge}`;
     document.cookie = `userType=${type}; path=/; max-age=${maxAge}`;

@@ -13,7 +13,7 @@ export const storeToken = (token: string, userType: string, userRole?: string): 
       localStorage.setItem('userRole', userRole);
     }
 
-    // Also set cookies for middleware access
+    // Also set cookies for proxy (route protection)
     const maxAge = 7 * 24 * 60 * 60; // 7 days
     document.cookie = `token=${token}; path=/; max-age=${maxAge}; SameSite=Strict`;
     document.cookie = `userType=${userType}; path=/; max-age=${maxAge}; SameSite=Strict`;

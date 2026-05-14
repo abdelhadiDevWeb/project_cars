@@ -18,7 +18,18 @@ export default function WorkshopDashboardLayout({
   const t = useT();
   const { language } = useLanguage();
   const isRTL = language === 'ar';
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  /** Desktop (lg+): full sidebar open; tablet/phone: always collapsed (w-20), no toggle */
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 1023px)");
+    const syncSidebarToViewport = () => {
+      setSidebarOpen(!mq.matches);
+    };
+    syncSidebarToViewport();
+    mq.addEventListener("change", syncSidebarToViewport);
+    return () => mq.removeEventListener("change", syncSidebarToViewport);
+  }, []);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
@@ -477,8 +488,10 @@ export default function WorkshopDashboardLayout({
         <header className="bg-white border-b border-gray-200 shadow-sm px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button
+              type="button"
+              aria-label="Toggle sidebar"
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="p-2 hover:bg-gray-100 rounded-xl transition-colors"
+              className="hidden lg:flex p-2 hover:bg-gray-100 rounded-xl transition-colors"
             >
               <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />

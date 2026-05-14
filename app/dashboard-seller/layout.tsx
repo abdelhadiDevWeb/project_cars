@@ -2,7 +2,8 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { acquireBestGeolocation } from "@/utils/acquireGeolocation";
 import { usePathname, useRouter } from "next/navigation";
 import { useUser } from "@/contexts/UserContext";
 import { getBackendUrl, getImageUrl } from "@/utils/backend";
@@ -33,7 +34,8 @@ export default function SellerDashboardLayout({
   const [warningMessage, setWarningMessage] = useState<string>('');
   const pathname = usePathname();
   const router = useRouter();
-  const { user, token, userType, userRole, isLoading, isAuthenticated, logout } = useUser();
+  const { user, token, userType, userRole, isLoading, isAuthenticated, logout, updateUser } = useUser();
+  const sellerGeoAttempted = useRef(false);
 
   useEffect(() => {
     // Security checks
@@ -69,6 +71,80 @@ export default function SellerDashboardLayout({
       checkExpiredAppointments();
     }
   }, [isLoading, isAuthenticated, token, user, userType, userRole, router, logout]);
+
+  // Capture seller GPS once (when missing) for nearby workshops / RDV sorting
+  useEffect(() => {
+    if (isLoading || !isAuthenticated || !user || !token) return;
+    if (userType !== "user" || userRole === "admin") return;
+    if (user.locationLat != null && user.locationLng != null) return;
+    if (sellerGeoAttempted.current) return;
+    sellerGeoAttempted.current = true;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const { lat, lng } = await acquireBestGeolocation({ timeoutMs: 18000 });
+        if (cancelled) return;
+
+        let locationRegion: string | null = null;
+        let locationFormattedAddress: string | null = null;
+        let locationCity: string | null = null;
+        let locationCountry: string | null = null;
+        try {
+          const gr = await fetch(`/api/geocode/reverse?lat=${encodeURIComponent(String(lat))}&lon=${encodeURIComponent(String(lng))}`);
+          const gj = await gr.json();
+          if (gj.ok && gj.data && typeof gj.data === "object") {
+            const d = gj.data as Record<string, unknown>;
+            if (typeof d.display_name === "string") locationFormattedAddress = d.display_name;
+            const addr = d.address as Record<string, string> | undefined;
+            if (addr) {
+              locationRegion =
+                addr.state ||
+                addr.region ||
+                addr.state_district ||
+                addr.county ||
+                addr.province ||
+                null;
+              locationCity = addr.city || addr.town || addr.village || addr.municipality || null;
+              locationCountry = addr.country || null;
+            }
+          }
+        } catch {
+          /* reverse geocode optional */
+        }
+
+        const res = await fetch("/api/auth/profile", {
+          method: "PUT",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            locationLat: lat,
+            locationLng: lng,
+            locationFormattedAddress: locationFormattedAddress ?? undefined,
+            locationRegion: locationRegion ?? undefined,
+            locationCity: locationCity ?? undefined,
+            locationCountry: locationCountry ?? undefined,
+          }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!cancelled && res.ok && data.ok && data.user) {
+          updateUser(data.user);
+        }
+      } catch {
+        /* permission denied / timeout — appointments still work without coords */
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isLoading, isAuthenticated, user, token, userType, userRole, updateUser]);
+
+  useEffect(() => {
+    if (!isAuthenticated) sellerGeoAttempted.current = false;
+  }, [isAuthenticated]);
 
   // Fetch profile image
   const fetchProfileImage = async () => {

@@ -15,8 +15,15 @@ interface Admin {
   createdAt: string;
 }
 
+interface CarColor {
+  id: string;
+  name: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export default function SettingsPage() {
-  const [activeTab, setActiveTab] = useState<'profile' | 'admins'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'admins' | 'colors'>('profile');
   const [user, setUser] = useState<Admin | null>(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
@@ -26,6 +33,15 @@ export default function SettingsPage() {
   const [creatingAdmin, setCreatingAdmin] = useState(false);
   const [showCreateAdminModal, setShowCreateAdminModal] = useState(false);
   const [updatingAdminStatus, setUpdatingAdminStatus] = useState<string | null>(null);
+
+  const [carColors, setCarColors] = useState<CarColor[]>([]);
+  const [colorsLoading, setColorsLoading] = useState(false);
+  const [newColorName, setNewColorName] = useState('');
+  const [addingColor, setAddingColor] = useState(false);
+  const [editingColorId, setEditingColorId] = useState<string | null>(null);
+  const [editingColorName, setEditingColorName] = useState('');
+  const [savingColorId, setSavingColorId] = useState<string | null>(null);
+  const [deletingColorId, setDeletingColorId] = useState<string | null>(null);
 
   // Profile form state
   const [profileForm, setProfileForm] = useState({
@@ -54,10 +70,132 @@ export default function SettingsPage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [successMessage, setSuccessMessage] = useState('');
 
+  const fetchCarColors = async () => {
+    setColorsLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/admin/colors', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await response.json();
+      if (data.ok && Array.isArray(data.colors)) {
+        setCarColors(data.colors);
+      }
+    } catch (e) {
+      console.error('Error fetching car colors:', e);
+    } finally {
+      setColorsLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchProfile();
     fetchAdmins();
+    fetchCarColors();
   }, []);
+
+  const handleAddColor = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const name = newColorName.trim();
+    if (!name) return;
+    setAddingColor(true);
+    setErrors({});
+    setSuccessMessage('');
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/admin/colors', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ name }),
+      });
+      const data = await response.json();
+      if (data.ok) {
+        setNewColorName('');
+        setSuccessMessage('Couleur ajoutée');
+        setTimeout(() => setSuccessMessage(''), 3000);
+        fetchCarColors();
+      } else {
+        setErrors({ general: data.message || 'Impossible d’ajouter la couleur' });
+      }
+    } catch {
+      setErrors({ general: 'Erreur réseau' });
+    } finally {
+      setAddingColor(false);
+    }
+  };
+
+  const startEditColor = (c: CarColor) => {
+    setEditingColorId(c.id);
+    setEditingColorName(c.name);
+  };
+
+  const cancelEditColor = () => {
+    setEditingColorId(null);
+    setEditingColorName('');
+  };
+
+  const handleSaveColor = async (id: string) => {
+    const name = editingColorName.trim();
+    if (!name) return;
+    setSavingColorId(id);
+    setErrors({});
+    setSuccessMessage('');
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`/api/admin/colors/${id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ name }),
+      });
+      const data = await response.json();
+      if (data.ok) {
+        setEditingColorId(null);
+        setEditingColorName('');
+        setSuccessMessage('Couleur mise à jour');
+        setTimeout(() => setSuccessMessage(''), 3000);
+        fetchCarColors();
+      } else {
+        setErrors({ general: data.message || 'Impossible de mettre à jour' });
+      }
+    } catch {
+      setErrors({ general: 'Erreur réseau' });
+    } finally {
+      setSavingColorId(null);
+    }
+  };
+
+  const handleDeleteColor = async (id: string) => {
+    if (!confirm('Supprimer cette couleur ?')) return;
+    setDeletingColorId(id);
+    setErrors({});
+    setSuccessMessage('');
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`/api/admin/colors/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await response.json();
+      if (response.ok && data.ok) {
+        if (editingColorId === id) cancelEditColor();
+        setSuccessMessage('Couleur supprimée');
+        setTimeout(() => setSuccessMessage(''), 3000);
+        fetchCarColors();
+      } else {
+        setErrors({ general: data.message || 'Suppression impossible' });
+      }
+    } catch {
+      setErrors({ general: 'Erreur réseau' });
+    } finally {
+      setDeletingColorId(null);
+    }
+  };
 
   const fetchProfile = async () => {
     try {
@@ -392,6 +530,16 @@ export default function SettingsPage() {
         >
           Administrateurs ({admins.length})
         </button>
+        <button
+          onClick={() => setActiveTab('colors')}
+          className={`px-6 py-3 font-semibold transition-colors border-b-2 ${
+            activeTab === 'colors'
+              ? 'border-purple-600 text-purple-600'
+              : 'border-transparent text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          Couleurs véhicules ({carColors.length})
+        </button>
       </div>
 
       {/* Profile Tab */}
@@ -581,6 +729,131 @@ export default function SettingsPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Car colors tab */}
+      {activeTab === 'colors' && (
+        <div className="space-y-6">
+          <div>
+            <h2 className="text-xl font-bold text-gray-900 font-[var(--font-poppins)]">
+              Couleurs de véhicules
+            </h2>
+            <p className="text-gray-600 mt-1 text-sm">
+              Référentiel des couleurs (nom + identifiant). Utilisable pour les filtres et formulaires.
+            </p>
+          </div>
+
+          <div className="bg-white rounded-xl p-6 border-2 border-gray-200 shadow-sm">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Ajouter une couleur</h3>
+            <form onSubmit={handleAddColor} className="flex flex-col sm:flex-row gap-3 sm:items-end">
+              <div className="flex-1">
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Nom</label>
+                <input
+                  type="text"
+                  value={newColorName}
+                  onChange={(e) => setNewColorName(e.target.value)}
+                  placeholder="Ex. Noir métallisé"
+                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-purple-500 focus:outline-none"
+                  disabled={addingColor}
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={addingColor || !newColorName.trim()}
+                className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-semibold disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+              >
+                {addingColor ? 'Ajout…' : 'Ajouter'}
+              </button>
+            </form>
+          </div>
+
+          <div className="bg-white rounded-xl border-2 border-gray-200 shadow-sm overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
+              <h3 className="font-semibold text-gray-900">Liste des couleurs</h3>
+            </div>
+            {colorsLoading ? (
+              <div className="p-12 flex justify-center">
+                <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-purple-600" />
+              </div>
+            ) : carColors.length === 0 ? (
+              <div className="p-12 text-center text-gray-500">Aucune couleur enregistrée</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50 border-b border-gray-200">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Nom</th>
+                      <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">ID</th>
+                      <th className="px-6 py-3 text-right text-sm font-semibold text-gray-700">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {carColors.map((c) => (
+                      <tr key={c.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4">
+                          {editingColorId === c.id ? (
+                            <input
+                              type="text"
+                              value={editingColorName}
+                              onChange={(e) => setEditingColorName(e.target.value)}
+                              className="w-full max-w-xs px-3 py-2 border-2 border-purple-300 rounded-lg focus:outline-none focus:border-purple-500"
+                              disabled={savingColorId === c.id}
+                            />
+                          ) : (
+                            <span className="font-medium text-gray-900">{c.name}</span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4">
+                          <code className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">{c.id}</code>
+                        </td>
+                        <td className="px-6 py-4 text-right whitespace-nowrap">
+                          {editingColorId === c.id ? (
+                            <div className="flex justify-end gap-2 flex-wrap">
+                              <button
+                                type="button"
+                                onClick={cancelEditColor}
+                                className="px-3 py-1.5 text-sm bg-gray-200 rounded-lg hover:bg-gray-300"
+                                disabled={savingColorId === c.id}
+                              >
+                                Annuler
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleSaveColor(c.id)}
+                                disabled={savingColorId === c.id || !editingColorName.trim()}
+                                className="px-3 py-1.5 text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
+                              >
+                                {savingColorId === c.id ? '…' : 'Enregistrer'}
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="flex justify-end gap-2">
+                              <button
+                                type="button"
+                                onClick={() => startEditColor(c)}
+                                className="px-3 py-1.5 text-sm text-purple-700 border border-purple-300 rounded-lg hover:bg-purple-50"
+                              >
+                                Modifier
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteColor(c.id)}
+                                disabled={deletingColorId === c.id}
+                                className="px-3 py-1.5 text-sm text-red-700 border border-red-300 rounded-lg hover:bg-red-50 disabled:opacity-50"
+                              >
+                                {deletingColorId === c.id ? '…' : 'Supprimer'}
+                              </button>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         </div>
       )}
