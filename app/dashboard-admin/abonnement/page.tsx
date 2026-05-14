@@ -8,6 +8,7 @@ interface TypeAbonnement {
   name: string;
   time: number;
   price: number;
+  status?: string;
   createdAt?: string;
 }
 
@@ -133,11 +134,15 @@ export default function AbonnementPage() {
       if (typesRes.ok) {
         const typesData = await typesRes.json();
         if (typesData.ok) {
-          // Map _id to id for types if needed
           const typesWithId = (typesData.types || []).map((type: any) => ({
             ...type,
             id: type.id || type._id?.toString() || type._id,
           }));
+          typesWithId.sort((a: any, b: any) => {
+            if (a.name === 'Starter Plan') return -1;
+            if (b.name === 'Starter Plan') return 1;
+            return 0;
+          });
           setTypes(typesWithId);
         }
       }
@@ -338,6 +343,31 @@ export default function AbonnementPage() {
         await fetchData(false);
       } else {
         alert(data.message || 'Impossible de supprimer');
+      }
+    } catch {
+      alert('Erreur réseau');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleToggleTypeStatus = async (type: TypeAbonnement) => {
+    const tid = type.id || (type as any)._id?.toString?.() || '';
+    if (!tid) return;
+    const newStatus = type.status === 'block' ? 'actif' : 'block';
+    if (!confirm(`${newStatus === 'block' ? 'Bloquer' : 'Activer'} le plan « ${type.name} » ?`)) return;
+    try {
+      setIsSubmitting(true);
+      const token = localStorage.getItem('token');
+      const res = await fetch(`/api/abonnement/types/${tid}/toggle-status`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (data.ok) {
+        await fetchData(false);
+      } else {
+        alert(data.message || 'Erreur lors du changement de statut');
       }
     } catch {
       alert('Erreur réseau');
@@ -619,29 +649,62 @@ export default function AbonnementPage() {
                             </div>
                           </div>
 
+                          {/* Status badge for Starter Plan */}
+                          {type.name === 'Starter Plan' && (
+                            <div className="flex items-center justify-center pt-2 relative z-10">
+                              <span className={`px-3 py-1.5 rounded-full text-xs font-bold ${
+                                type.status === 'block'
+                                  ? 'bg-red-100 text-red-700 border border-red-300'
+                                  : 'bg-green-100 text-green-700 border border-green-300'
+                              }`}>
+                                {type.status === 'block' ? 'Bloqué' : 'Actif'}
+                              </span>
+                            </div>
+                          )}
+
                           <div className="flex gap-2 pt-2 relative z-10">
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                openEditType(type);
-                              }}
-                              disabled={isSubmitting}
-                              className="flex-1 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold shadow-md disabled:opacity-50 transition-colors"
-                            >
-                              Modifier
-                            </button>
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDeleteType(type);
-                              }}
-                              disabled={isSubmitting}
-                              className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold shadow-md disabled:opacity-50 transition-colors"
-                            >
-                              Supprimer
-                            </button>
+                            {type.name === 'Starter Plan' ? (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleToggleTypeStatus(type);
+                                }}
+                                disabled={isSubmitting}
+                                className={`flex-1 py-2.5 rounded-xl text-white text-xs font-bold shadow-md disabled:opacity-50 transition-colors ${
+                                  type.status === 'block'
+                                    ? 'bg-green-600 hover:bg-green-700'
+                                    : 'bg-red-600 hover:bg-red-700'
+                                }`}
+                              >
+                                {type.status === 'block' ? 'Activer' : 'Bloquer'}
+                              </button>
+                            ) : (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    openEditType(type);
+                                  }}
+                                  disabled={isSubmitting}
+                                  className="flex-1 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold shadow-md disabled:opacity-50 transition-colors"
+                                >
+                                  Modifier
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteType(type);
+                                  }}
+                                  disabled={isSubmitting}
+                                  className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold shadow-md disabled:opacity-50 transition-colors"
+                                >
+                                  Supprimer
+                                </button>
+                              </>
+                            )}
                           </div>
                         </div>
                       </div>
